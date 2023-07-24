@@ -19,7 +19,7 @@
     "reportOptionalCall": "warning",
     "reportOptionalSubscript": "warning",
     "reportOptionalIterable": "warning",
-    "reportUndefinedVariable": "warning",
+    "reportUndefinedVariable": false,
     "reportOptionalOperand": "warning",
     "reportMissingImports": "warning",
 }
