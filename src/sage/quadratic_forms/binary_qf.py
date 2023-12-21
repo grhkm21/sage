@@ -207,9 +207,8 @@ class BinaryQF(SageObject):
 
         Some randomized testing::
 
-            sage: D = 1
-            sage: while D.is_square():
-            ....:     D = choice((-4,+4)) * randrange(9999) + randrange(2)
+            sage: from sage.quadratic_forms.binary_qf import _random_discriminant_for_testing
+            sage: D = _random_discriminant_for_testing()
             sage: Q = BinaryQF.principal(D)
             sage: Q.discriminant() == D     # correct discriminant
             True
