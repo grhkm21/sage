@@ -61,15 +61,14 @@ AUTHORS:
 #                  https://www.gnu.org/licenses/
 # ****************************************************************************
 
+from sage.modules.free_module import Module_free_ambient
+from sage.modules.free_module_element import vector
+from sage.rings.ideal import Ideal_generic
+from sage.rings.integer_ring import ZZ
+from sage.rings.polynomial.polynomial_ring import polygens
+from sage.rings.rational_field import QQ
 from sage.structure.richcmp import richcmp
 from sage.structure.sequence import Sequence
-from sage.rings.integer_ring import ZZ
-from sage.rings.rational_field import QQ
-from sage.arith.misc import gcd
-from sage.matrix.constructor import matrix
-from sage.modules.free_module_element import vector
-from sage.rings.polynomial.polynomial_ring import polygens
-from sage.rings.ideal import Ideal_generic
 
 from sage.misc.superseded import experimental_warning
 experimental_warning(34198, 'Ideals of non-maximal orders are an experimental feature. Be wary of bugs.')
@@ -132,19 +131,27 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
             Ideal (12*t^2 + 1, 12*t^2 + t, 13*t^2) of Order in Number Field in t with defining polynomial x^3 - 40
             sage: I.norm()
             13
+
+            sage: K.<a> = QuadraticField(-5)
+            sage: O = K.order_of_conductor(37)
+            sage: I = K.ideal([2, a + 1])
+            sage: I.lift_order(O)
+            Ideal (37*a + 1, 74*a) of Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
         """
         if not isinstance(O, sage.rings.number_field.order.Order):
             raise TypeError('not a number-field order')
 
-        if not isinstance(gens, (list, tuple)):
-            gens = [gens]
-
-        if coerce:
-            gens = Sequence(gens, O)
-
         _, from_V, to_V = O.number_field().absolute_vector_space()
-        span = [to_V(a*g) for a in O.basis() for g in gens]
-        self._module = O.free_module().submodule(span)
+        if not isinstance(gens, Module_free_ambient):
+            if not isinstance(gens, (list, tuple)):
+                gens = [gens]
+
+            if coerce:
+                gens = Sequence(gens, O)
+
+            gens = [to_V(a*g) for a in O.basis() for g in gens]
+
+        self._module = O.free_module().submodule(gens)
         basis = [O(from_V(v)) for v in self._module.basis()]
 
         super().__init__(O, basis, coerce=False)

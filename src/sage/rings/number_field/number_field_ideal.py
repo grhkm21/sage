@@ -975,6 +975,20 @@ class NumberFieldIdeal(Ideal_generic):
         I.__pari_hnf = hnf
         return I
 
+    def lift_order(self, order):
+        """
+        Return intersection of this ideal and the given order.
+
+        EXAMPLES:
+
+            sage: K.<a> = QuadraticField(-5)
+            sage: O = K.order_of_conductor(37)
+            sage: I = K.ideal([2, a + 1])
+            sage: I.lift_order(O)
+            Ideal (37*a + 1, 74*a) of Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+        """
+        return order.ideal(self.free_module() & order.free_module())
+
     def is_integral(self):
         """
         Return ``True`` if this ideal is integral.
