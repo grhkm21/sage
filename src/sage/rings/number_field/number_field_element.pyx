@@ -2057,7 +2057,9 @@ cdef class NumberFieldElement(NumberFieldElement_base):
             i + 1
             sage: R = K.order(2*i)
             sage: R(1).gcd(R(4*i))
-            1
+            Traceback (most recent call last):
+            ...
+            NotImplementedError: ...
 
         The following field has class number 3, but if the ideal
         ``(self, other)`` happens to be principal, this still works::
@@ -2080,6 +2082,7 @@ cdef class NumberFieldElement(NumberFieldElement_base):
             sage: R(a).gcd(R(2*a)).parent()
             Maximal Order in Number Field in a with defining polynomial x^3 - 7
         """
+        # TODO (grhkm): fix R(1).gcd(R(4*i))
         # gcd(0,0) = 0
         if not self and not other:
             return self

@@ -683,7 +683,7 @@ cdef class pAdicGenericElement(LocalGenericElement):
 
         TESTS:
 
-        Using Theorem 2.5 of [Conr]_::
+        Using Theorem 2.5 of [Conr1]_::
 
             sage: x1 = 5*Zp(5).random_element()
             sage: x2 = 5*Zp(5).random_element()

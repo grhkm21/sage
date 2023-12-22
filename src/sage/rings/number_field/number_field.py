@@ -12404,7 +12404,8 @@ class NumberField_quadratic(NumberField_absolute, sage.rings.abc.NumberField_qua
             sage: K.order_of_conductor(44).gens()
             (1, 22*t)
             sage: K.order_of_conductor(9001).conductor()
-            9001
+            doctest:warning ... FutureWarning: ...
+            Ideal (9001/2*t + 9001/2, 9001*t) of Maximal Order in Number Field in t with defining polynomial x^2 + 123 with t = 11.09053650640942?*I
         """
         f = ZZ(f)
         if f <= 0:

@@ -985,6 +985,7 @@ class NumberFieldIdeal(Ideal_generic):
             sage: O = K.order_of_conductor(37)
             sage: I = K.ideal([2, a + 1])
             sage: I.lift_order(O)
+            doctest:warning ... FutureWarning: ...
             Ideal (37*a + 1, 74*a) of Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
         """
         return order.ideal(self.free_module() & order.free_module())

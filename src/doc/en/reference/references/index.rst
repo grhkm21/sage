@@ -1540,8 +1540,11 @@ REFERENCES:
              Secret. Cryptology ePrint Archive, Report 2013/164. 2013.
              2013/164. http://eprint.iacr.org/2013/164
 
-.. [Conr] Keith Conrad, "Artin-Hasse-Type Series and Roots of Unity",
+.. [Conr1] Keith Conrad, "Artin-Hasse-Type Series and Roots of Unity",
           http://www.math.uconn.edu/~kconrad/blurbs/gradnumthy/AHrootofunity.pdf
+
+.. [Conr2] Keith Conrad, "The Conductor Ideal of an Order",
+          https://kconrad.math.uconn.edu/blurbs/gradnumthy/conductor.pdf
 
 .. [Coron2023] Basile Coron *Supersolvability of built lattices and Koszulness
                of generalized Chow rings*. Preprint, :arxiv:`2302.13072` (2023).

@@ -540,8 +540,6 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             from sage.rings.number_field.order_ideal import NumberFieldOrderIdeal
             return NumberFieldOrderIdeal(self, *args, **kwds)
         if kwds.get('warn', True):
-            if 'warn' in kwds:
-                del kwds['warn']
             from sage.misc.superseded import deprecation
             deprecation(34198, 'In the future, constructing an ideal of the ring of '
                                'integers of a number field will use an implementation '
@@ -552,6 +550,8 @@ class Order(IntegralDomain, sage.rings.abc.Order):
                                'emulate the current behavior.\nSet warn=0 to silence '
                                'this warning, and future=1 to activate the upcoming '
                                'behavior already.')
+        if 'warn' in kwds:
+            del kwds['warn']
         I = self.number_field().ideal(*args, **kwds)
         if not I.is_integral():
             raise ValueError("ideal must be integral; use fractional_ideal to create a non-integral ideal.")
@@ -1152,6 +1152,28 @@ class Order(IntegralDomain, sage.rings.abc.Order):
         else:
             raise NotImplementedError('non-maximal orders are not yet supported')
 
+    def unit_group(self, proof=None):
+        r"""
+        Return the unit group of this order.
+
+        (Currently only implemented for the maximal order.)
+
+        EXAMPLES::
+
+            sage: x = QQ['x'].0
+            sage: K.<a> = NumberField(x^4 - 10*x^3 + 20*5*x^2 - 15*5^2*x + 11*5^3)
+            sage: O = K.maximal_order(); O
+            Maximal Order in Number Field in a with defining
+             polynomial x^4 - 10*x^3 + 100*x^2 - 375*x + 1375
+            sage: O.unit_group()
+            Unit group with structure C10 x Z of Number Field in a
+             with defining polynomial x^4 - 10*x^3 + 100*x^2 - 375*x + 1375
+        """
+        if self.is_maximal():
+            return self.number_field().unit_group(proof=proof)
+        else:
+            raise NotImplementedError('non-maximal orders are not yet supported')
+
     def is_suborder(self, other):
         """
         Return ``True`` if ``self`` and ``other`` are both orders in the
@@ -1272,14 +1294,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
 
     def conductor(self):
         r"""
-        For orders in *quadratic* number fields, return the conductor
-        of this order.
-
-        The conductor is the unique positive integer `f` such that
-        the discriminant of this order is `f^2` times the discriminant
-        of the containing quadratic field.
-
-        Not implemented for orders in number fields of degree `\neq 2`.
+        Return the conductor ideal of this order.
 
         .. SEEALSO ::
 
@@ -1289,24 +1304,48 @@ class Order(IntegralDomain, sage.rings.abc.Order):
 
             sage: K.<t> = QuadraticField(-101)
             sage: K.maximal_order().conductor()
-            1
-            sage: K.order(5*t).conductor()
-            5
+            Ideal (1, t) of Maximal Order in Number Field in t with defining polynomial x^2 + 101 with t = 10.04987562112089?*I
+            sage: K.order_of_conductor(5).conductor()
+            Ideal (5, 5*t) of Maximal Order in Number Field in t with defining polynomial x^2 + 101 with t = 10.04987562112089?*I
             sage: K.discriminant().factor()
             -1 * 2^2 * 101
             sage: K.order(5*t).discriminant().factor()
             -1 * 2^2 * 5^2 * 101
 
+        The following example is taken from [Conr2]_, Example 2.5.
+
+            sage: K.<t> = NumberField(x^3 - 19)
+            sage: O = K.order([1, t])
+            sage: O.conductor()
+            Ideal (2*t^2 + 1, 2*t^2 + t, 3*t^2) of Maximal Order in Number Field in t with defining polynomial x^3 - 19
+            sage: _ == K.maximal_order().ideal([3, t - 1], future=True)
+            True
+
         TESTS::
 
             sage: type(K.order(5*t).conductor())
-            <class 'sage.rings.integer.Integer'>
+            <class 'sage.rings.number_field.order_ideal.NumberFieldOrderIdeal_generic'>
         """
-        if not isinstance(self._K, sage.rings.abc.NumberField_quadratic):
-            raise NotImplementedError('not implemented for number fields of degree != 2')
-        D = self.discriminant()
-        D0 = self._K.discriminant()
-        return (D // D0).sqrt()
+        OK = self._K.maximal_order()
+
+        if isinstance(self._K, sage.rings.abc.NumberField_quadratic):
+            D = self.discriminant()
+            D0 = self._K.discriminant()
+            f = (D // D0).sqrt()
+            return OK.ideal(f, future=True)
+
+        # Conductor divides [O_K : O], which we (temporarily?) compute an upper bound using modules,
+        # then reduce the prime ideals one by one.
+        m = OK.ideal((OK.module() / self.module()).cardinality(), warn=False)
+        for p, e in m.factor():
+            m /= p**e
+            for _ in range(e + 1):
+                m *= p
+                # We need to check that m * O_K ⊆ O (by definition), so we do it for each generator.
+                if all([pg * g in self for g in OK.gens() for pg in m.gens()]):
+                    break
+
+        return OK.ideal(m.gens(), future=True)
 
     def random_element(self, *args, **kwds):
         r"""
