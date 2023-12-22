@@ -733,12 +733,18 @@ def _random_for_testing():
         sage: random_ideal().ring() is O
         True
     """
-    from sage.all import choice, randrange, QuadraticField, primes, Zmod, prod
+    from sage.misc.prandom import choice
+    from sage.misc.prandom import randrange
+    from sage.rings.number_field.number_field import QuadraticField
+    from sage.arith.misc import primes
+    from sage.rings.finite_rings.integer_mod_ring import IntegerModRing as Zmod
+
     while True:
         d = ZZ(choice((-1,+1)) * randrange(1,10**5))
         if not d.is_square():
             break
-    K,t = QuadraticField(d).objgen()
+
+    K = QuadraticField(d)
     g, = K.ring_of_integers().ring_generators()
 
     f = randrange(1, 100)
@@ -757,4 +763,3 @@ def _random_for_testing():
             I = NumberFieldOrderIdeal(O, [x*y for x in I.gens() for y in J.gens()])
         return I
     return O, random_ideal
-

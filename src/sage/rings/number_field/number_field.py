@@ -4638,9 +4638,28 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
         # Gens is a list of ideals (the generators)
         gens = tuple(self.ideal(hnf) for hnf in k.bnf_get_gen())
 
-        G = ClassGroup(cycle_structure, names, self, gens, proof=proof)
+        rels = self.class_group_relations(proof=proof)
+
+        G = ClassGroup(cycle_structure, names, self, gens, rels, proof=proof)
         self.__class_group[proof, names] = G
         return G
+
+    def class_group_relations(self, proof=None):
+        r"""
+        Return a list of vector, each representing the exponents $e_i$ such
+        that $\prod_i p_i^e_i$ is principal, where $p_i$ are the generators
+        of the class group.
+
+        sage: from sage.misc.misc_c import prod
+        sage: K.<a> = NumberField(x^3 - 28365)
+        sage: M = K.class_group_relations(); M
+        [804 507]
+        [  0   3]
+        sage: Cl = K.class_group()
+        sage: for row in M:
+        ....:     assert prod(Cl.gens_exp(row)).is_principal()
+        """
+        return self.pari_bnf(proof)[0].sage()
 
     def class_number(self, proof=None):
         """

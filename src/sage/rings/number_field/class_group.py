@@ -435,7 +435,7 @@ class ClassGroup(AbelianGroupWithValues_class):
     """
     Element = FractionalIdealClass
 
-    def __init__(self, gens_orders, names, number_field, gens, proof=True):
+    def __init__(self, gens_orders, names, number_field, gens, rels=None, proof=True):
         r"""
         Create a class group.
 
@@ -450,6 +450,7 @@ class ClassGroup(AbelianGroupWithValues_class):
                                               values_group=number_field.ideal_monoid())
         self._proof_flag = proof
         self._number_field = number_field
+        self._rels = rels
 
     def _element_constructor_(self, *args, **kwds):
         r"""
@@ -481,10 +482,10 @@ class ClassGroup(AbelianGroupWithValues_class):
         if isinstance(args[0], FractionalIdealClass):
             return self.element_class(self, None, self._number_field.ideal(args[0].ideal()))
         else:
-            I = self._number_field.ideal(*args, **kwds)
-            if I.is_zero():
+            ideal = self._number_field.ideal(*args, **kwds)
+            if ideal.is_zero():
                 raise TypeError("The zero ideal is not a fractional ideal")
-            return self.element_class(self, None, I)
+            return self.element_class(self, None, ideal)
 
     def _ideal_log(self, ideal):
         """
@@ -504,6 +505,24 @@ class ClassGroup(AbelianGroupWithValues_class):
             (1,)
         """
         return tuple(ZZ(order) for order in ideal.ideal_class_log(proof=self._proof_flag))
+
+    def gens_exp(self, vec):
+        r"""
+        Compute $\mathfrak{p}_i^{v_i}$ from $v_i$.
+
+        EXAMPLES::
+
+            sage: C = NumberField(x^2 + x + 23899, 'a').class_group(); C
+            Class group of order 68 with structure C34 x C2 of Number Field
+            in a with defining polynomial x^2 + x + 23899
+            sage: C.gens_exp([1, 3])
+        """
+        if len(vec) != self.ngens():
+            raise ValueError(
+                f"Length of vec(={vec}) does not equal number of generators(={self.ngens()})"
+            )
+
+        return self.prod(p**e for p, e in zip(self.gens(), vec))
 
     def gens_ideals(self):
         r"""
@@ -739,10 +758,10 @@ class SClassGroup(ClassGroup):
         if isinstance(args[0], FractionalIdealClass):
             return self.element_class(self, None, args[0].ideal())
         else:
-            I = self.number_field().ideal(*args, **kwds)
-            if I.is_zero():
+            ideal = self.number_field().ideal(*args, **kwds)
+            if ideal.is_zero():
                 raise TypeError("The zero ideal is not a fractional ideal")
-            return self.element_class(self, None, I)
+            return self.element_class(self, None, ideal)
 
     def _repr_(self):
         r"""
