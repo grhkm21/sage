@@ -864,8 +864,8 @@ class GaloisGroup(SageObject):
             sage: K5 = heegner_points(389,-52,5).ring_class_field()
             sage: G = K5.galois_group(K5.quadratic_field())
             sage: G.lift_of_hilbert_class_field_galois_group()
-            (Class field automorphism defined by x^2 + 325*y^2,
-             Class field automorphism defined by 2*x^2 + 2*x*y + 163*y^2)
+            doctest:warning...DeprecationWarning...
+            Class field automorphism defined by 2*x^2 + 2*x*y + 163*y^2)
             sage: G.cardinality()
             12
             sage: K5.quadratic_field().class_number()

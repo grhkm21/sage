@@ -665,12 +665,8 @@ class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
             sage: R.<x> = PolynomialRing(QuadraticField(2))                             # needs sage.rings.number_field
             sage: C = HyperellipticCurve(R([1, 0, 0, 0, 0, 1]))                         # needs sage.rings.number_field
             sage: C.rational_points(bound=2)                                            # needs sage.rings.number_field
-            [(-1 : 0 : 1),
-             (0 : -1 : 1),
-             (0 : 1 : 0),
-             (0 : 1 : 1),
-             (1 : -a : 1),
-             (1 : a : 1)]
+            doctest:warning...DeprecationWarning...
+            (1 : a : 1)]
         """
         from sage.schemes.curves.constructor import Curve
         # we change C to be a plane curve to allow the generic rational

@@ -231,6 +231,7 @@ class SchemeHomset_points_affine(SchemeHomset_points):
             sage: K.<v> = NumberField(u^2 + 3)                                          # needs sage.rings.number_field
             sage: A.<x,y> = AffineSpace(K, 2)                                           # needs sage.rings.number_field
             sage: len(A(K).points(bound=2))                                             # needs sage.rings.number_field
+            doctest:warning...DeprecationWarning...
             1849
 
         ::

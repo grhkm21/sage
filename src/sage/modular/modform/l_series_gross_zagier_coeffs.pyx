@@ -126,6 +126,7 @@ def gross_zagier_L_series(an_list, Q, long N, long u, var=None):
         sage: A = K.class_group().gen(0)
         sage: Q = A.ideal().quadratic_form().reduced_form()
         sage: Q2 = (A**2).ideal().quadratic_form().reduced_form()
+        doctest:warning...DeprecationWarning...
         sage: u = K.zeta_order()
         sage: t = PowerSeriesRing(ZZ,'t').gen()
         sage: LA = gross_zagier_L_series(an,Q,N,u,t); LA

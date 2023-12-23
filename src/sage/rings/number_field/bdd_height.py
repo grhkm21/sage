@@ -133,6 +133,7 @@ def bdd_height_iq(K, height_bound):
         1.00000000000000
         1.00000000000000
         1.00000000000000
+        doctest:warning...DeprecationWarning...
         4.00000000000000
         4.00000000000000
         4.00000000000000
@@ -414,6 +415,7 @@ def bdd_height(K, height_bound, tolerance=1e-2, precision=53):
         sage: from sage.rings.number_field.bdd_height import bdd_height
         sage: K.<g> = NumberField(x^4 - x^3 - 3*x^2 + x + 1)
         sage: len(list(bdd_height(K, 10)))
+        doctest:warning...DeprecationWarning...
         99
 
     TESTS:

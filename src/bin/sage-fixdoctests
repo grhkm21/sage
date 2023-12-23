@@ -295,6 +295,17 @@ def process_block(block, src_in_lines, file_optional_tags, venv_explainer=''):
         else:
             got = got.splitlines()
             got = ['Traceback (most recent call last):', '...', got[-1].lstrip()]
+    elif "doctest:warning" in block:
+        expected, got = block.split('\nGot:\n')
+        got = got.splitlines()
+        # There are cases where doctest:warning is in the middle of the test
+        # In that case, this "test minimiser" will fail.
+        if got[0].lstrip() == "doctest:warning":
+            for line in got:
+                if m := re.match("^ *([a-zA-Z]+Warning): ", line):
+                    # "    DeprecationWarning: ..."
+                    got = [f'doctest:warning...{m.group(1)}...', got[-1].lstrip()]
+                    break
     elif block[-21:] == 'Got:\n    <BLANKLINE>\n':
         expected = block[:-22]
         got = ['']
@@ -459,10 +470,14 @@ def process_grouped_blocks(grouped_iterator, distribution=None, venv=None, envir
         file_optional_tags = set(parse_file_optional_tags(enumerate(src_in_lines)))
 
         for block in blocks:
+            process_block(block, src_in_lines, file_optional_tags, venv_explainer=explainer)
             try:
                 process_block(block, src_in_lines, file_optional_tags, venv_explainer=explainer)
-            except Exception:
-                print('sage-fixdoctests: Failure to process block')
+            except AssertionError:
+                print(f'sage-fixdoctests: Assertion error while processing block')
+                print(block)
+            except Exception as e:
+                print(f'sage-fixdoctests: Failure to process block')
                 print(block)
 
         # Now source line numbers do not matter any more, and lines can be real lines again

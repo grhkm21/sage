@@ -118,6 +118,7 @@ def _coords_in_C_p(I, C, p):
         2
         sage: P = K.prime_above(2)
         sage: C(P).order()
+        doctest:warning...DeprecationWarning...
         2
         sage: _coords_in_C_p(P,C,2)
         [1]

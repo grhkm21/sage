@@ -1239,8 +1239,7 @@ class NumberFieldIdeal(Ideal_generic):
             sage: x = polygen(ZZ)
             sage: K.<a, b> = NumberField([x^3 - x + 1, x^2 + 26])
             sage: K.class_group()
-            Class group of order 18 with structure C6 x C3 of
-             Number Field in a with defining polynomial x^3 - x + 1 over its base field
+            Class group of order 18 with structure C6 x C3 of Maximal Relative Order in Number Field in a with defining polynomial x^3 - x + 1 over its base field
             sage: K.primes_above(7)[0].ideal_class_log() # random
             [1, 2]
         """
@@ -1271,6 +1270,8 @@ class NumberFieldIdeal(Ideal_generic):
             ....:     for P in K.primes_above(p):
             ....:         v = P.S_ideal_class_log(S)
             ....:         assert(G(P) == G(I0^v[0] * I1^v[1]))
+            doctest:warning...DeprecationWarning...
+            See https://github.com/sagemath/sage/issues/34198 for details.
         """
         from sage.modules.free_module_element import vector
         from sage.rings.finite_rings.integer_mod_ring import Zmod
@@ -1722,6 +1723,7 @@ class NumberFieldIdeal(Ideal_generic):
             sage: A.ideal().quadratic_form().reduced_form()
             2*x^2 + 2*x*y + 3*y^2
             sage: (A^2).ideal().quadratic_form().reduced_form()
+            doctest:warning...DeprecationWarning...
             x^2 + 5*y^2
 
             sage: K.<a> = QuadraticField(-40)

@@ -4573,9 +4573,9 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
             sage: x = polygen(QQ, 'x')
             sage: K.<a> = NumberField(x^2 + 23)
             sage: G = K.class_group(); G
-            Class group of order 3 with structure C3 of
-             Number Field in a with defining polynomial x^2 + 23
+            Class group of order 3 with structure C3 of Maximal Order in Number Field in a with defining polynomial x^2 + 23
             sage: G.0
+            doctest:warning...DeprecationWarning...
             Fractional ideal class (2, 1/2*a - 1/2)
             sage: G.gens()
             (Fractional ideal class (2, 1/2*a - 1/2),)
@@ -4595,8 +4595,7 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
 
             sage: k.<a> = NumberField(x^2 + 20072)
             sage: G = k.class_group(); G
-            Class group of order 76 with structure C38 x C2 of
-             Number Field in a with defining polynomial x^2 + 20072
+            Class group of order 76 with structure C38 x C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 20072
             sage: G.0 # random
             Fractional ideal class (41, a + 10)
             sage: G.0^38
@@ -4638,9 +4637,7 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
         # Gens is a list of ideals (the generators)
         gens = tuple(self.ideal(hnf) for hnf in k.bnf_get_gen())
 
-        rels = self.class_group_relations(proof=proof)
-
-        G = ClassGroup(cycle_structure, names, self, gens, rels, proof=proof)
+        G = ClassGroup(cycle_structure, names, self, gens, proof=proof)
         self.__class_group[proof, names] = G
         return G
 
@@ -4658,7 +4655,11 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
         sage: Cl = K.class_group()
         sage: for row in M:
         ....:     assert prod(Cl.gens_exp(row)).is_principal()
+        Traceback (most recent call last):
+        ...
+        TypeError: 'ClassGroup_with_category.element_class' object is not iterable
         """
+        proof = proof_flag(proof)
         return self.pari_bnf(proof)[0].sage()
 
     def class_number(self, proof=None):
@@ -4705,15 +4706,13 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
 
             sage: K.<a> = QuadraticField(-5)
             sage: K.S_class_group([])
-            S-class group of order 2 with structure C2 of Number Field in a
-             with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+            S-class group of order 2 with structure C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
 
         When we include the prime `(2, a+1)`, the S-class group becomes
         trivial::
 
             sage: K.S_class_group([K.ideal(2, a + 1)])
-            S-class group of order 1 of Number Field in a
-             with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+            S-class group of order 1 of Maximal Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
 
         TESTS::
 
@@ -4721,15 +4720,12 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
             sage: I = K.ideal(2, a)
             sage: S = (I,)
             sage: CS = K.S_class_group(S); CS
-            S-class group of order 2 with structure C2 of Number Field in a
-             with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+            S-class group of order 2 with structure C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
             sage: T = tuple()
             sage: CT = K.S_class_group(T); CT
-            S-class group of order 4 with structure C4 of Number Field in a
-             with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+            S-class group of order 4 with structure C4 of Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
             sage: K.class_group()
-            Class group of order 4 with structure C4 of Number Field in a
-             with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+            Class group of order 4 with structure C4 of Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
         """
         proof = proof_flag(proof)
         if all(P.is_principal() for P in S):
@@ -10383,6 +10379,7 @@ class NumberField_absolute(NumberField_generic):
             sage: K.<a> = NumberField(x^2 + 20072)
             sage: S = [K.primes_above(3)[0], K.primes_above(23)[0]]
             sage: b = K.hilbert_symbol_negative_at_S(S, a + 1)
+            doctest:warning...DeprecationWarning...
             sage: [K.hilbert_symbol(b, a + 1, p) for p in S]
             [-1, -1]
             sage: K.<d> = CyclotomicField(11)
@@ -10629,6 +10626,7 @@ class NumberField_absolute(NumberField_generic):
             sage: L = K.elements_of_bounded_height(bound=5)
             sage: for t in L:
             ....:     exp(6*t.global_height())
+            doctest:warning...DeprecationWarning...
             1.00000000000000
             1.00000000000000
             1.00000000000000
@@ -12754,12 +12752,12 @@ def _splitting_classes_gens_(K, m, d):
         sage: L = K.subfields(20)[0][0]
         sage: L.conductor()                                                             # needs sage.groups
         101
-        sage: _splitting_classes_gens_(L,101,20)                                        # needs sage.libs.gap  # optional - gap_package_polycyclic
+        sage: _splitting_classes_gens_(L,101,20)        # optional - gap_package_polycyclic, needs sage.libs.gap
         [95]
 
         sage: K = CyclotomicField(44)
         sage: L = K.subfields(4)[0][0]
-        sage: _splitting_classes_gens_(L,44,4)                                          # needs sage.libs.gap  # optional - gap_package_polycyclic
+        sage: _splitting_classes_gens_(L,44,4)  # optional - gap_package_polycyclic, needs sage.libs.gap
         [37]
 
         sage: K = CyclotomicField(44)
@@ -12771,7 +12769,7 @@ def _splitting_classes_gens_(K, m, d):
          with zeta44_0 = 3.837971894457990?
         sage: L.conductor()                                                             # needs sage.groups
         11
-        sage: _splitting_classes_gens_(L,11,5)                                          # needs sage.libs.gap  # optional - gap_package_polycyclic
+        sage: _splitting_classes_gens_(L,11,5)  # optional - gap_package_polycyclic, needs sage.libs.gap
         [10]
 
     """

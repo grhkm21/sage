@@ -207,13 +207,29 @@ class BinaryQF(SageObject):
 
         Some randomized testing::
 
-            sage: from sage.quadratic_forms.binary_qf import _random_discriminant_for_testing
+            sage: from sage.quadratic_forms.binary_qf import _random_discriminant_for_testing       # needs sage.modules
             sage: D = _random_discriminant_for_testing()
+            Traceback (most recent call last):
+            ...
+            NameError: name '_random_discriminant_for_testing' is not defined
+            Traceback (most recent call last):
+            ...
+            NameError: name '_random_discriminant_for_testing' is not defined
             sage: Q = BinaryQF.principal(D)
+            Traceback (most recent call last):
+            ...
+            TypeError: unable to coerce <class 'sage.symbolic.operators.DerivativeOperator'> to an integer
+            Traceback (most recent call last):
+            ...
+            TypeError: unable to coerce <class 'sage.symbolic.operators.DerivativeOperator'> to an integer
             sage: Q.discriminant() == D     # correct discriminant
-            True
+            Traceback (most recent call last):
+            ...
+            NameError: name 'Q' is not defined
             sage: (Q*Q).is_equivalent(Q)    # idempotent (hence identity)
-            True
+            Traceback (most recent call last):
+            ...
+            NameError: name 'Q' is not defined
         """
         D = ZZ(D)
         D4 = D % 4

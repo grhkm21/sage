@@ -56,11 +56,8 @@ EXAMPLES::
 ::
 
     sage: E.isogenies_prime_degree(3)
-    [Isogeny of degree 3
-      from Elliptic Curve defined by y^2 = x^3 + (i+4)
-           over Number Field in i with defining polynomial x^2 + 1
-        to Elliptic Curve defined by y^2 = x^3 + (-27*i-108)
-           over Number Field in i with defining polynomial x^2 + 1]
+    doctest:warning...DeprecationWarning...
+    [Isogeny of degree 3 from Elliptic Curve defined by y^2 = x^3 + (i+4) over Number Field in i with defining polynomial x^2 + 1 to Elliptic Curve defined by y^2 = x^3 + (-27*i-108) over Number Field in i with defining polynomial x^2 + 1]
 
 AUTHORS:
 

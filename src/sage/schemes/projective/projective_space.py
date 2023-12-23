@@ -1026,6 +1026,7 @@ class ProjectiveSpace_ring(UniqueRepresentation, AmbientSpace):
             sage: u = QQ['u'].0
             sage: P.<x,y,z> = ProjectiveSpace(NumberField(u^2 - 2, 'v'), 2)             # needs sage.rings.number_field
             sage: len(list(P.points_of_bounded_height(bound=2)))                        # needs sage.rings.number_field
+            doctest:warning...DeprecationWarning...
             265
 
         ::

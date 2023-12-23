@@ -4516,6 +4516,7 @@ cdef class NumberFieldElement(NumberFieldElement_base):
             sage: f = Qi.embeddings(K)[0]
             sage: a = f(2+3*i) * (2-zeta)^2
             sage: a.descend_mod_power(Qi,2)
+            doctest:warning...DeprecationWarning...
             [-2*i + 3, 3*i + 2]
 
         An absolute example::

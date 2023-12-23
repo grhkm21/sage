@@ -179,6 +179,7 @@ def IQ_points_of_bounded_height(PS, K, dim, bound):
         sage: len(list(IQ_points_of_bounded_height(P, CF, 2, -1)))
         0
         sage: len(list(IQ_points_of_bounded_height(P, CF, 2, 1)))
+        doctest:warning...DeprecationWarning...
         57
     """
     if bound < 1:

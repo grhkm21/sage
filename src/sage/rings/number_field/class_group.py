@@ -12,6 +12,7 @@ EXAMPLES::
     sage: x = polygen(ZZ, 'x')
     sage: K.<a> = NumberField(x^2 + 23)
     sage: I = K.class_group().gen(); I
+    doctest:warning...DeprecationWarning...
     Fractional ideal class (2, 1/2*a - 1/2)
     sage: I.ideal()
     Fractional ideal (2, 1/2*a - 1/2)
@@ -40,10 +41,11 @@ EXAMPLES::
     Fractional ideal (1/2*a - 3/2)
 """
 
-from sage.groups.abelian_gps.values import AbelianGroupWithValues_class, AbelianGroupWithValuesElement
 from sage.groups.abelian_gps.abelian_group_element import AbelianGroupElement
-from sage.structure.element import MonoidElement
+from sage.groups.abelian_gps.values import AbelianGroupWithValues_class, AbelianGroupWithValuesElement
 from sage.rings.integer_ring import ZZ
+from sage.rings.number_field.order import Order
+from sage.structure.element import MonoidElement
 
 
 class FractionalIdealClass(AbelianGroupWithValuesElement):
@@ -55,7 +57,7 @@ class FractionalIdealClass(AbelianGroupWithValuesElement):
         sage: x = polygen(ZZ, 'x')
         sage: G = NumberField(x^2 + 23,'a').class_group(); G
         Class group of order 3 with structure C3 of
-         Number Field in a with defining polynomial x^2 + 23
+         Maximal Order in Number Field in a with defining polynomial x^2 + 23
         sage: I = G.0; I
         Fractional ideal class (2, 1/2*a - 1/2)
         sage: I.ideal()
@@ -111,7 +113,7 @@ class FractionalIdealClass(AbelianGroupWithValuesElement):
             sage: x = polygen(ZZ, 'x')
             sage: G = NumberField(x^2 + 23,'a').class_group(); G
             Class group of order 3 with structure C3 of
-             Number Field in a with defining polynomial x^2 + 23
+             Maximal Order in Number Field in a with defining polynomial x^2 + 23
             sage: I = G.0; I
             Fractional ideal class (2, 1/2*a - 1/2)
             sage: I*I # indirect doctest
@@ -125,6 +127,7 @@ class FractionalIdealClass(AbelianGroupWithValuesElement):
             sage: CS = K.S_class_group(S)
             sage: G = K.ideal(3,a+1)
             sage: CS(G)*CS(G)
+            doctest:warning...DeprecationWarning...
             Trivial S-ideal class
         """
         m = AbelianGroupElement._mul_(self, other)
@@ -140,7 +143,7 @@ class FractionalIdealClass(AbelianGroupWithValuesElement):
             sage: x = polygen(ZZ, 'x')
             sage: G = NumberField(x^2 + 23,'a').class_group(); G
             Class group of order 3 with structure C3 of
-             Number Field in a with defining polynomial x^2 + 23
+             Maximal Order in Number Field in a with defining polynomial x^2 + 23
             sage: I = G.0; I
             Fractional ideal class (2, 1/2*a - 1/2)
             sage: I*I # indirect doctest
@@ -227,7 +230,7 @@ class FractionalIdealClass(AbelianGroupWithValuesElement):
             sage: x = polygen(ZZ, 'x')
             sage: k.<a> = NumberField(x^2 + 20072); G = k.class_group(); G
             Class group of order 76 with structure C38 x C2 of
-             Number Field in a with defining polynomial x^2 + 20072
+             Maximal Order in Number Field in a with defining polynomial x^2 + 20072
             sage: I = (G.0)^11; I
             Fractional ideal class (33, 1/2*a + 8)
             sage: J = G(I.ideal()^5); J
@@ -413,7 +416,7 @@ class ClassGroup(AbelianGroupWithValues_class):
         sage: K.<a> = NumberField(x^2 + 23)
         sage: G = K.class_group(); G
         Class group of order 3 with structure C3 of
-         Number Field in a with defining polynomial x^2 + 23
+         Maximal Order in Number Field in a with defining polynomial x^2 + 23
         sage: G.category()
         Category of finite enumerated commutative groups
 
@@ -421,8 +424,8 @@ class ClassGroup(AbelianGroupWithValues_class):
     exponents::
 
         sage: C = NumberField(x^2 + 120071, 'a').class_group(); C
-        Class group of order 500 with structure C250 x C2
-        of Number Field in a with defining polynomial x^2 + 120071
+        Class group of order 500 with structure C250 x C2 of
+         Maximal Order in Number Field in a with defining polynomial x^2 + 120071
         sage: c = C.gen(0)
         sage: c  # random
         Fractional ideal class (5, 1/2*a + 3/2)
@@ -435,7 +438,7 @@ class ClassGroup(AbelianGroupWithValues_class):
     """
     Element = FractionalIdealClass
 
-    def __init__(self, gens_orders, names, number_field, gens, rels=None, proof=True):
+    def __init__(self, gens_orders, names, ring, gens, proof=True):
         r"""
         Create a class group.
 
@@ -445,12 +448,21 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: K.<a> = NumberField(x^2 + 23)
             sage: G = K.class_group()
             sage: TestSuite(G).run()
+            doctest:warning...DeprecationWarning...
         """
+        if not isinstance(ring, Order):
+            from sage.rings.number_field.number_field import NumberField_generic
+            if isinstance(ring, NumberField_generic):
+                # TODO (grhkm): Should there be a warning here?
+                # Should we only allow O_K.class_group()?
+                ring = ring.maximal_order()
+            else:
+                raise TypeError(f"ring(={ring}) is not an Order")
+
         AbelianGroupWithValues_class.__init__(self, gens_orders, names, gens,
-                                              values_group=number_field.ideal_monoid())
+                                              values_group=ring.ideal_monoid())
         self._proof_flag = proof
-        self._number_field = number_field
-        self._rels = rels
+        self._ring = ring
 
     def _element_constructor_(self, *args, **kwds):
         r"""
@@ -464,6 +476,7 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: K.<b> = NumberField(x^2 + 389)
             sage: C = K.class_group()
             sage: C(K.ideal(b)) # indirect doctest
+            doctest:warning...DeprecationWarning...
             Trivial principal fractional ideal class
             sage: C(K.ideal(59049, b + 35312)) # indirect doctest
             Fractional ideal class (59049, b + 35312)
@@ -477,15 +490,15 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: CK = K.class_group()
             sage: CL = L.class_group()
             sage: [CL(I).exponents() for I in CK]
+            doctest:warning...DeprecationWarning...
             [(0,), (2,), (4,)]
         """
         if isinstance(args[0], FractionalIdealClass):
-            return self.element_class(self, None, self._number_field.ideal(args[0].ideal()))
-        else:
-            ideal = self._number_field.ideal(*args, **kwds)
-            if ideal.is_zero():
-                raise TypeError("The zero ideal is not a fractional ideal")
-            return self.element_class(self, None, ideal)
+            return self.element_class(self, None, self.ring().ideal(args[0].ideal()))
+        ideal = self.ring().ideal(*args, **kwds)
+        if ideal.is_zero():
+            raise TypeError("The zero ideal is not a fractional ideal")
+        return self.element_class(self, None, ideal)
 
     def _ideal_log(self, ideal):
         """
@@ -513,9 +526,10 @@ class ClassGroup(AbelianGroupWithValues_class):
         EXAMPLES::
 
             sage: C = NumberField(x^2 + x + 23899, 'a').class_group(); C
-            Class group of order 68 with structure C34 x C2 of Number Field
-            in a with defining polynomial x^2 + x + 23899
+            Class group of order 68 with structure C34 x C2 of
+             Maximal Order in Number Field in a with defining polynomial x^2 + x + 23899
             sage: C.gens_exp([1, 3])
+            Fractional ideal class (35, a + 33)
         """
         if len(vec) != self.ngens():
             raise ValueError(
@@ -542,8 +556,8 @@ class ClassGroup(AbelianGroupWithValues_class):
             (Fractional ideal (2, 1/4*a^3 - 1/4*a^2 + 1/4*a - 1/4),)
 
             sage: C = NumberField(x^2 + x + 23899, 'a').class_group(); C
-            Class group of order 68 with structure C34 x C2 of Number Field
-            in a with defining polynomial x^2 + x + 23899
+            Class group of order 68 with structure C34 x C2 of
+             Maximal Order in Number Field in a with defining polynomial x^2 + x + 23899
             sage: C.gens()
             (Fractional ideal class (7, a + 5), Fractional ideal class (5, a + 3))
             sage: C.gens_ideals()
@@ -561,8 +575,8 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: K.<a> = NumberField(x^4 + 23)
             sage: G = K.class_group()
             sage: G
-            Class group of order 3 with structure C3 of Number Field
-            in a with defining polynomial x^4 + 23
+            Class group of order 3 with structure C3 of
+             Maximal Order in Number Field in a with defining polynomial x^4 + 23
             sage: list(G)
             [Trivial principal fractional ideal class,
              Fractional ideal class (2, 1/4*a^3 - 1/4*a^2 + 1/4*a - 1/4),
@@ -577,7 +591,8 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: K.<a> = NumberField(x^2 + 1)
             sage: G = K.class_group()
             sage: G
-            Class group of order 1 of Number Field in a with defining polynomial x^2 + 1
+            Class group of order 1 of
+             Gaussian Integers in Number Field in a with defining polynomial x^2 + 1
             sage: list(G)
             [Trivial principal fractional ideal class]
             sage: G.list()
@@ -621,13 +636,17 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: x = polygen(ZZ, 'x')
             sage: C = NumberField(x^2 + 23, 'a').class_group()
             sage: C._repr_()
-            'Class group of order 3 with structure C3 of Number Field in a with defining polynomial x^2 + 23'
+            'Class group of order 3 with structure C3 of
+             Maximal Order in Number Field in a with defining polynomial x^2 + 23'
         """
         s = 'Class group of order %s ' % self.order()
         if self.order() > 1:
             s += 'with structure %s ' % self._group_notation(self.gens_orders())
-        s += 'of %s' % self.number_field()
+        s += 'of %s' % self.ring()
         return s
+
+    def ring(self):
+        return self._ring
 
     def number_field(self):
         r"""
@@ -638,7 +657,7 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: x = polygen(ZZ, 'x')
             sage: C = NumberField(x^2 + 23, 'w').class_group(); C
             Class group of order 3 with structure C3 of
-             Number Field in w with defining polynomial x^2 + 23
+             Maximal Order in Number Field in w with defining polynomial x^2 + 23
             sage: C.number_field()
             Number Field in w with defining polynomial x^2 + 23
 
@@ -647,7 +666,53 @@ class ClassGroup(AbelianGroupWithValues_class):
             sage: CS.number_field()
             Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
         """
-        return self._number_field
+        return self.ring().number_field()
+
+    def relations_matrix(self):
+        r"""
+        Return a matrix whose rows are exponent vectors $\{e_i\}_i$ such that
+        the ideal class $\prod_i [\mathfrak{p}_i]^{e_i}$ is trivial.
+
+        EXAMPLES::
+
+            sage: x = polygen(ZZ, 'x')
+            sage: C = NumberField(x^3 - 28365, 'w').class_group(); C
+            Class group of order 2412 with structure C804 x C3 of
+             Maximal Order in Number Field in w with defining polynomial x^3 - 28365
+            sage: C.relations_matrix()
+            [804 507]
+            [  0   3]
+            sage: for row in C.relations_matrix():
+            ....:     assert prod(p**e for p, e in zip(C.gens(), row)).is_trivial()
+        """
+        if not self.ring().is_maximal():
+            raise NotImplementedError("non-maximal orders are not yet supported")
+
+        return self.number_field().class_group_relations()
+
+    def relations_module(self):
+        r"""
+        Return a module whose elements are exponent vectors $\{e_i\}_i$ such
+        that the ideal class $\prod_i [\mathfrak{p}_i]^{e_i}$ is trivial.
+
+        EXAMPLES::
+
+            sage: x = polygen(ZZ, 'x')
+            sage: C = NumberField(x^3 - 28365, 'w').class_group(); C
+            Class group of order 2412 with structure C804 x C3 of
+             Maximal Order in Number Field in w with defining polynomial x^3 - 28365
+            sage: C.relations_module()
+            Free module of degree 2 and rank 2 over Integer Ring
+            Echelon basis matrix:
+            [804   0]
+            [  0   3]
+            sage: for row in C.relations_module().gens():
+            ....:     assert prod(p**e for p, e in zip(C.gens(), row)).is_trivial()
+        """
+        if not self.ring().is_maximal():
+            raise NotImplementedError("non-maximal orders are not yet supported")
+
+        return self.relations_matrix().row_module()
 
 
 class SClassGroup(ClassGroup):
@@ -664,7 +729,7 @@ class SClassGroup(ClassGroup):
         sage: K.<a> = QuadraticField(-974)
         sage: CS = K.S_class_group(K.primes_above(2)); CS
         S-class group of order 18 with structure C6 x C3 of
-         Number Field in a with defining polynomial x^2 + 974 with a = 31.20897306865447?*I
+         Maximal Order in Number Field in a with defining polynomial x^2 + 974 with a = 31.20897306865447?*I
         sage: CS.gen(0) # random
         Fractional S-ideal class (3, a + 2)
         sage: CS.gen(1) # random
@@ -672,7 +737,7 @@ class SClassGroup(ClassGroup):
     """
     Element = SFractionalIdealClass
 
-    def __init__(self, gens_orders, names, number_field, gens, S, proof=True):
+    def __init__(self, gens_orders, names, ring, gens, S, proof=True):
         r"""
         Create an `S`-class group.
 
@@ -682,15 +747,26 @@ class SClassGroup(ClassGroup):
             sage: I = K.ideal(2,a)
             sage: S = (I,)
             sage: K.S_class_group(S)
-            S-class group of order 2 with structure C2 of Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+            S-class group of order 2 with structure C2 of
+             Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
             sage: K.<a> = QuadraticField(-105)
             sage: K.S_class_group([K.ideal(13, a + 8)])
-            S-class group of order 4 with structure C2 x C2 of Number Field in a with defining polynomial x^2 + 105 with a = 10.24695076595960?*I
+            S-class group of order 4 with structure C2 x C2 of
+             Maximal Order in Number Field in a with defining polynomial x^2 + 105 with a = 10.24695076595960?*I
         """
+        if not isinstance(ring, Order):
+            from sage.rings.number_field.number_field import NumberField_generic
+            if isinstance(ring, NumberField_generic):
+                # TODO (grhkm): Should there be a warning here?
+                # Should we only allow O_K.S_class_group()?
+                ring = ring.maximal_order()
+            else:
+                raise TypeError(f"ring(={ring}) is not an Order")
+
         AbelianGroupWithValues_class.__init__(self, gens_orders, names, gens,
-                                              values_group=number_field.ideal_monoid())
+                                              values_group=ring.ideal_monoid())
         self._proof_flag = proof
-        self._number_field = number_field
+        self._ring = ring
         self._S = S
 
     def S(self):
@@ -704,11 +780,11 @@ class SClassGroup(ClassGroup):
             sage: S = (I,)
             sage: CS = K.S_class_group(S);CS
             S-class group of order 2 with structure C2 of
-             Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+             Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
             sage: T = tuple()
             sage: CT = K.S_class_group(T);CT
             S-class group of order 4 with structure C4 of
-             Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
+             Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I
             sage: CS.S()
             (Fractional ideal (2, a),)
             sage: CT.S()
@@ -729,6 +805,7 @@ class SClassGroup(ClassGroup):
             sage: S = (I,)
             sage: CS = K.S_class_group(S)
             sage: s = CS.an_element()
+            doctest:warning...DeprecationWarning...
             sage: CS._ideal_log(s.ideal())
             (1,)
             sage: s.exponents()
@@ -758,7 +835,7 @@ class SClassGroup(ClassGroup):
         if isinstance(args[0], FractionalIdealClass):
             return self.element_class(self, None, args[0].ideal())
         else:
-            ideal = self.number_field().ideal(*args, **kwds)
+            ideal = self.ring().ideal(*args, **kwds)
             if ideal.is_zero():
                 raise TypeError("The zero ideal is not a fractional ideal")
             return self.element_class(self, None, ideal)
@@ -772,10 +849,10 @@ class SClassGroup(ClassGroup):
             sage: K.<a> = QuadraticField(-14)
             sage: CS = K.S_class_group(K.primes_above(2))
             sage: CS._repr_()
-            'S-class group of order 2 with structure C2 of Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I'
+            'S-class group of order 2 with structure C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 14 with a = 3.741657386773942?*I'
         """
         s = 'S-class group of order %s ' % self.order()
         if self.order() > 1:
             s += 'with structure %s ' % self._group_notation(self.gens_orders())
-        s += 'of %s' % self.number_field()
+        s += 'of %s' % self.ring()
         return s

@@ -37,6 +37,7 @@ class GrossZagierLseries(SageObject):
 
             sage: K.<b> = QuadraticField(131)
             sage: A = K.class_group().one()
+            doctest:warning...DeprecationWarning...
             sage: G = GrossZagierLseries(e, A)
             Traceback (most recent call last):
             ...

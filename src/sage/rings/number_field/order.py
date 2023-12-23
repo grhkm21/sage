@@ -581,8 +581,9 @@ class Order(IntegralDomain, sage.rings.abc.Order):
 
             sage: x = polygen(ZZ, 'x')
             sage: k.<a> = NumberField(x^2 + 5077); G = k.class_group(); G
-            Class group of order 22 with structure C22 of Number Field in a with defining polynomial x^2 + 5077
+            Class group of order 22 with structure C22 of Maximal Order in Number Field in a with defining polynomial x^2 + 5077
             sage: G.0 ^ -9
+            doctest:warning...DeprecationWarning...
             Fractional ideal class (43, a + 13)
             sage: Ok = k.maximal_order(); Ok
             Maximal Order in Number Field in a with defining polynomial x^2 + 5077
@@ -602,7 +603,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
 
             sage: x = polygen(ZZ, 'x')
             sage: k.<a> = NumberField(x^2 + 431); G = k.class_group(); G
-            Class group of order 21 with structure C21 of Number Field in a with defining polynomial x^2 + 431
+            Class group of order 21 with structure C21 of Maximal Order in Number Field in a with defining polynomial x^2 + 431
             sage: G.0   # random output
             Fractional ideal class (6, 1/2*a + 11/2)
             sage: Ok = k.maximal_order(); Ok
@@ -1144,8 +1145,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             sage: O = k.maximal_order(); O
             Maximal Order in Number Field in a with defining polynomial x^2 + 5077
             sage: O.class_group()
-            Class group of order 22 with structure C22 of
-             Number Field in a with defining polynomial x^2 + 5077
+            Class group of order 22 with structure C22 of Maximal Order in Number Field in a with defining polynomial x^2 + 5077
         """
         if self.is_maximal():
             return self.number_field().class_group(proof=proof, names=names)
@@ -1334,7 +1334,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             f = (D // D0).sqrt()
             return OK.ideal(f, future=True)
 
-        # Conductor divides [O_K : O], which we (temporarily?) compute an upper bound using modules,
+        # Conductor divides [O_K : O], which we compute an upper bound using modules,
         # then reduce the prime ideals one by one.
         m = OK.ideal((OK.module() / self.module()).cardinality(), warn=False)
         for p, e in m.factor():

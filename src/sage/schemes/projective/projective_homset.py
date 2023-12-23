@@ -125,6 +125,7 @@ class SchemeHomset_points_projective_field(SchemeHomset_points):
             sage: K.<v> = NumberField(u^2 + 3)                                          # needs sage.rings.number_field
             sage: P.<x,y,z> = ProjectiveSpace(K, 2)                                     # needs sage.rings.number_field
             sage: len(P(K).points(bound=1.8))                                           # needs sage.rings.number_field
+            doctest:warning...DeprecationWarning...
             309
 
         ::

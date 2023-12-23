@@ -3591,6 +3591,7 @@ class EllipticCurve_rational_field(EllipticCurve_number_field):
             sage: E = EllipticCurve('37a')
             sage: K.<a> = QuadraticField(-40)
             sage: A = K.class_group().gen(0); A
+            doctest:warning...DeprecationWarning...
             Fractional ideal class (2, 1/2*a)
             sage: L = E.lseries_gross_zagier(A)  ; L
             Gross Zagier L-series attached to

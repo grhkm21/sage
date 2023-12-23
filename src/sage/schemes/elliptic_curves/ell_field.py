@@ -664,9 +664,8 @@ class EllipticCurve_field(ell_generic.EllipticCurve_generic, ProjectivePlaneCurv
             sage: G.<a> = F.extension(x^3 + 5)
             sage: E = EllipticCurve(j=1728*b).change_ring(G)
             sage: EF = E.descend_to(F); EF
-            [Elliptic Curve defined by y^2 = x^3 + (27*b-621)*x + (-1296*b+2484)
-              over Number Field in b with defining polynomial x^2 - 23
-              with b = 4.795831523312720?]
+            doctest:warning...DeprecationWarning...
+            [Elliptic Curve defined by y^2 = x^3 + (27*b-621)*x + (-1296*b+2484) over Number Field in b with defining polynomial x^2 - 23 with b = 4.795831523312720?]
             sage: all(Ei.change_ring(G).is_isomorphic(E) for Ei in EF)
             True
 
@@ -1548,21 +1547,8 @@ class EllipticCurve_field(ell_generic.EllipticCurve_generic, ProjectivePlaneCurv
             sage: QQroot2.<e> = NumberField(x^2 - 2)
             sage: E = EllipticCurve(QQroot2, j=8000)
             sage: E.isogenies_prime_degree()
-            [Isogeny of degree 2
-              from Elliptic Curve defined by y^2 = x^3 + (-150528000)*x + (-629407744000)
-                   over Number Field in e with defining polynomial x^2 - 2
-                to Elliptic Curve defined by y^2 = x^3 + (-36750)*x + 2401000
-                   over Number Field in e with defining polynomial x^2 - 2,
-            Isogeny of degree 2
-              from Elliptic Curve defined by y^2 = x^3 + (-150528000)*x + (-629407744000)
-                   over Number Field in e with defining polynomial x^2 - 2
-                to Elliptic Curve defined by y^2 = x^3 + (220500*e-257250)*x + (54022500*e-88837000)
-                   over Number Field in e with defining polynomial x^2 - 2,
-            Isogeny of degree 2
-              from Elliptic Curve defined by y^2 = x^3 + (-150528000)*x + (-629407744000)
-                   over Number Field in e with defining polynomial x^2 - 2
-                to Elliptic Curve defined by y^2 = x^3 + (-220500*e-257250)*x + (-54022500*e-88837000)
-                   over Number Field in e with defining polynomial x^2 - 2]
+            doctest:warning...DeprecationWarning...
+            Isogeny of degree 2 from Elliptic Curve defined by y^2 = x^3 + (-150528000)*x + (-629407744000) over Number Field in e with defining polynomial x^2 - 2 to Elliptic Curve defined by y^2 = x^3 + (-220500*e-257250)*x + (-54022500*e-88837000) over Number Field in e with defining polynomial x^2 - 2]
             sage: E = EllipticCurve(QQroot2, [1,0,1,4, -6]); E
             Elliptic Curve defined by y^2 + x*y + y = x^3 + 4*x + (-6)
              over Number Field in e with defining polynomial x^2 - 2

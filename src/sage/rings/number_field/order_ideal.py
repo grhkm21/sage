@@ -67,6 +67,7 @@ from sage.rings.ideal import Ideal_generic
 from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.polynomial_ring import polygens
 from sage.rings.rational_field import QQ
+from sage.structure.factorization import Factorization
 from sage.structure.richcmp import richcmp
 from sage.structure.sequence import Sequence
 
@@ -142,7 +143,14 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
             raise TypeError('not a number-field order')
 
         _, from_V, to_V = O.number_field().absolute_vector_space()
-        if not isinstance(gens, Module_free_ambient):
+        if isinstance(gens, Module_free_ambient):
+            # Intentional choice for code clarity
+            pass
+
+        else:
+            if isinstance(gens, Ideal_generic):
+                gens = gens.gens()
+
             if not isinstance(gens, (list, tuple)):
                 gens = [gens]
 
@@ -218,6 +226,59 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
         x = self.ring()(x)
         return vector(QQ, x.list()) in self._module
 
+    def __pari__(self):
+        """
+        Return PARI Hermite Normal Form representations of this ideal.
+
+        EXAMPLES::
+
+            sage: x = QQ['x'].0
+            sage: K.<w> = NumberField(x^3 - 37)
+            sage: I = K.maximal_order().ideal(K.class_group().0.ideal(), future=True); I
+            Ideal (4/3*w^2 + 1/3*w + 1/3, w^2 + w, 2*w^2) of Maximal Order in Number Field in w with defining polynomial x^3 - 37
+            sage: I.__pari__()
+            [2, 1, 1; 0, 1, 0; 0, 0, 1]
+        """
+        return self.pari_hnf()
+
+    def _pari_init_(self):
+        """
+        Return self in PARI Hermite Normal Form as a string.
+
+        EXAMPLES::
+
+            sage: x = QQ['x'].0
+            sage: K.<w> = NumberField(x^3 - 37)
+            sage: I = K.maximal_order().ideal(K.class_group().0.ideal(), future=True); I
+            Ideal (4/3*w^2 + 1/3*w + 1/3, w^2 + w, 2*w^2) of Maximal Order in Number Field in w with defining polynomial x^3 - 37
+            sage: I._pari_init_()
+            '[2, 1, 1; 0, 1, 0; 0, 0, 1]'
+        """
+        return str(self.__pari__())
+
+    def pari_hnf(self):
+        """
+        Return PARI's representation of this ideal in Hermite normal form.
+
+        EXAMPLES::
+
+            sage: x = QQ['x'].0
+            sage: R.<x> = PolynomialRing(QQ)
+            sage: K.<a> = NumberField(x^3 - 2)
+            sage: I = K.ideal(2/(5+a))
+            sage: I.pari_hnf()
+            [2, 0, 50/127; 0, 2, 244/127; 0, 0, 2/127]
+        """
+        try:
+            return self.__pari_hnf
+        except AttributeError:
+            nf = self.number_field().pari_nf()
+            self.__pari_hnf = nf.idealhnf(0)
+            hnflist = [nf.idealhnf(x) for x in self.gens()]
+            for ideal in hnflist:
+                self.__pari_hnf = nf.idealadd(self.__pari_hnf, ideal)
+            return self.__pari_hnf
+
     def free_module(self):
         r"""
         Return the free `\ZZ`-module corresponding to this ideal
@@ -266,6 +327,40 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
             191
         """
         return self.free_module().index_in(self.ring().free_module())
+
+    def number_field(self):
+        return self.ring().number_field()
+
+    def factor(self):
+        """
+        Return factorization of this ideal in terms of prime ideals.
+
+        EXAMPLES::
+
+            sage: x = QQ['x'].0
+            sage: K.<a> = NumberField(x^4 + 23); K
+            Number Field in a with defining polynomial x^4 + 23
+            sage: O_K = K.maximal_order(); O_K
+            Maximal Order in Number Field in a with defining polynomial x^4 + 23
+            sage: I = O_K.ideal(19, future=True); I
+            Ideal (19/4*a^3 + 19/4*a^2 + 19/4*a + 19/4, 19/2*a^3 + 19/2*a, 19*a^2, 19*a^3) of Maximal Order in Number Field in a with defining polynomial x^4 + 23
+            sage: F = I.factor(); F
+            Traceback (most recent call last):
+            ...
+            NotImplementedError
+        """
+        raise NotImplementedError
+        try:
+            return self.__factorization
+        except AttributeError:
+            order = self.ring()
+            K = self.number_field()
+            F = K.pari_nf().idealfactor(self.pari_hnf())
+            A = []
+            for p, e in zip(F[0], F[1]):
+                A.append((order.ideal(p, future=True), ZZ(e)))
+            self.__factorization = Factorization(A)
+            return self.__factorization
 
 def _gens_from_bqf(O, Q):
     r"""

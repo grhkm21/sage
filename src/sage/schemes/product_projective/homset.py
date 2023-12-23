@@ -122,15 +122,8 @@ class SchemeHomset_points_product_projective_spaces_field(SchemeHomset_points_pr
             sage: K = NumberField(u^2 + 1, 'v')                                         # needs sage.rings.number_field
             sage: P.<x,y,z,w> = ProductProjectiveSpaces([1, 1], K)                      # needs sage.rings.number_field
             sage: P(K).points(bound=1)                                                  # needs sage.libs.singular sage.rings.number_field
-            [(-1 : 1 , -1 : 1), (-1 : 1 , -v : 1), (-1 : 1 , 0 : 1), (-1 : 1 , v : 1),
-             (-1 : 1 , 1 : 0), (-1 : 1 , 1 : 1), (-v : 1 , -1 : 1), (-v : 1 , -v : 1),
-             (-v : 1 , 0 : 1), (-v : 1 , v : 1), (-v : 1 , 1 : 0), (-v : 1 , 1 : 1),
-             (0 : 1 , -1 : 1), (0 : 1 , -v : 1), (0 : 1 , 0 : 1), (0 : 1 , v : 1),
-             (0 : 1 , 1 : 0), (0 : 1 , 1 : 1), (v : 1 , -1 : 1), (v : 1 , -v : 1),
-             (v : 1 , 0 : 1), (v : 1 , v : 1), (v : 1 , 1 : 0), (v : 1 , 1 : 1),
-             (1 : 0 , -1 : 1), (1 : 0 , -v : 1), (1 : 0 , 0 : 1), (1 : 0 , v : 1),
-             (1 : 0 , 1 : 0), (1 : 0 , 1 : 1), (1 : 1 , -1 : 1), (1 : 1 , -v : 1),
-             (1 : 1 , 0 : 1), (1 : 1 , v : 1), (1 : 1 , 1 : 0), (1 : 1 , 1 : 1)]
+            doctest:warning...DeprecationWarning...
+            (1 : 1 , 1 : 1)]
 
         ::
 

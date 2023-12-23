@@ -47,6 +47,7 @@ Check Gamma0(N)-equivalence of cusps::
     sage: alpha = NFCusp(k, 3, a + 1)
     sage: beta = kCusps((2, a - 3))
     sage: alpha.is_Gamma0_equivalent(beta, N)
+    doctest:warning...DeprecationWarning...
     True
 
 Obtain transformation matrix for equivalent cusps::

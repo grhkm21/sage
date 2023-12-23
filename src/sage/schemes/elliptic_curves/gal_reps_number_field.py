@@ -540,6 +540,7 @@ def Frobenius_filter(E, L, patience=100):
     Here the curve really does possess isogenies of degrees 2 and 3::
 
         sage: [len(E.isogenies_prime_degree(l)) for l in [2,3]]
+        doctest:warning...DeprecationWarning...
         [1, 1]
     """
     E = _over_numberfield(E).global_integral_model()

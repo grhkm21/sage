@@ -1423,8 +1423,7 @@ class PolynomialQuotientRing_generic(QuotientRing_generic):
             sage: # needs sage.rings.number_field
             sage: K.<a> = QuadraticField(-5)
             sage: K.class_group()
-            Class group of order 2 with structure C2 of Number Field in a
-             with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+            Class group of order 2 with structure C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
             sage: R.<x> = K[]
             sage: S.<xbar> = R.quotient(x^2 + 23)
             sage: S.S_class_group([])
@@ -1575,8 +1574,7 @@ class PolynomialQuotientRing_generic(QuotientRing_generic):
             sage: # needs sage.rings.number_field
             sage: K.<a> = QuadraticField(-3)
             sage: K.class_group()
-            Class group of order 1 of Number Field in a
-             with defining polynomial x^2 + 3 with a = 1.732050807568878?*I
+            Class group of order 1 of Eisenstein Integers in Number Field in a with defining polynomial x^2 + 3 with a = 1.732050807568878?*I
             sage: x = polygen(QQ, 'x')
             sage: K.<a> = QQ['x'].quotient(x^2 + 3)
             sage: K.class_group()
@@ -1605,8 +1603,7 @@ class PolynomialQuotientRing_generic(QuotientRing_generic):
             sage: # needs sage.rings.number_field
             sage: K.<a> = QuadraticField(-5)
             sage: K.class_group()
-            Class group of order 2 with structure C2 of Number Field in a
-             with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+            Class group of order 2 with structure C2 of Maximal Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
             sage: R.<x> = K[]
             sage: S.<xbar> = R.quotient(x^2 + 23)
             sage: S.class_group()
@@ -1866,6 +1863,7 @@ class PolynomialQuotientRing_generic(QuotientRing_generic):
             sage: D.selmer_generators((), 2)
             [-1, 2]
             sage: D.selmer_generators([K.ideal(2, -a + 1)], 2)
+            doctest:warning...DeprecationWarning...
             [2, -1]
             sage: D.selmer_generators([K.ideal(2, -a + 1), K.ideal(3, a + 1)], 2)
             [2, a + 1, -1]
