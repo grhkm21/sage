@@ -1432,7 +1432,9 @@ class Ideal_principal(Ideal_generic):
             return rich_to_bool(op, 0)
 
         # is other.gen() / self.gen() a unit in the base ring?
-        g0 = other.gen()
+        # other might not be a principal ideal object (but reducible to it)
+        g0, *rest = other.gens_reduced()
+        assert len(rest) == 0
         g1 = self.gen()
         if g0.divides(g1) and g1.divides(g0):
             return rich_to_bool(op, 0)

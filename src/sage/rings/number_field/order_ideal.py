@@ -306,8 +306,6 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
             sage: t-91 in I
             False
             sage: t-91 in K.maximal_ideal(I.gens())
-            Traceback (most recent call last):
-            ...
             True
         """
         x = self.ring()(x)
@@ -420,23 +418,34 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
             raise NotImplementedError("absolute_norm of relative orders not implemented")
         return 0
 
-    def is_invertible(self):
+    def is_coprime(self, other):
         """
-        Return "True" if this ideal is invertible in the order, else "False".
+        Return "True" if this ideal is coprime to "other", else "False".
 
-        EXAMPLES:::
+        EXAMPLES::
 
             sage: K.<a> = QuadraticField(-1)
             sage: O = K.order([13 * a])
             sage: I = K.maximal_ideal([13, a - 8])
-            sage: I.is_invertible()
-            True
+            sage: I.is_coprime(O.conductor())
+            False
         """
         # TODO (grhkm): Docs
-        f = self.ring().conductor()
-        if gcd(ZZ(self.absolute_norm()), f.absolute_norm()) == 1:
-            return True
-        return self + f == self.ring().unit_ideal()
+        return self + other == self.ring().unit_ideal()
+
+    def is_coprime_conductor(self):
+        """
+        Return "True" if this ideal is coprime to the conductor of the order, else "False".
+
+        EXAMPLES::
+
+            sage: K.<a> = QuadraticField(-1)
+            sage: O = K.order([13 * a])
+            sage: I = K.maximal_ideal([13, a - 8])
+            sage: I.is_coprime_conductor()
+            True
+        """
+        return self.is_coprime(self.ring().conductor())
 
     def number_field(self):
         """
@@ -516,7 +525,7 @@ class NumberFieldOrderIdeal_generic(Ideal_generic):
         try:
             return self.__factorization
         except AttributeError:
-            if not self.is_invertible():
+            if not self.is_coprime_conductor():
                 raise ValueError("ideal is not invertible")
 
             order = self.ring()
@@ -757,8 +766,6 @@ class NumberFieldOrderIdeal_quadratic(NumberFieldOrderIdeal_generic):
             sage: O = K.order(7*a)
             sage: I = O.ideal([31915, -71145879*a - 32195694])
             sage: I.gens_reduced()
-            Traceback (most recent call last):
-            ...
             (-63*a + 17,)
 
         ALGORITHM:
@@ -815,8 +822,6 @@ class NumberFieldOrderIdeal_quadratic(NumberFieldOrderIdeal_generic):
             sage: I.is_equivalent(J)
             False
             sage: (I^10).is_equivalent(J)
-            Traceback (most recent call last):
-            ...
             True
 
         ::
@@ -828,8 +833,6 @@ class NumberFieldOrderIdeal_quadratic(NumberFieldOrderIdeal_generic):
             sage: I = O.ideal([3, 7*a-2])
             sage: J = O.ideal([5, 7*a-4])
             sage: I.is_equivalent(J)
-            Traceback (most recent call last):
-            ...
             True
 
         ::
@@ -845,19 +848,13 @@ class NumberFieldOrderIdeal_quadratic(NumberFieldOrderIdeal_generic):
             sage: (I^3).is_equivalent(J)
             False
             sage: (I^6).is_equivalent(J^2)
-            Traceback (most recent call last):
-            ...
             True
             sage: el = 177 + 11*a
             sage: el.norm()
             -1704
             sage: (I^6).is_equivalent(J^2, narrow=True)
-            Traceback (most recent call last):
-            ...
             True
             sage: (I^6).is_equivalent(J^2*el, narrow=True)
-            Traceback (most recent call last):
-            ...
             False
         """
         if self.ring() != other.ring():
