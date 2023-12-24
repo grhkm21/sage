@@ -1340,7 +1340,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             sage: K.maximal_order().conductor()
             Ideal (1, t) of Maximal Order in Number Field in t with defining polynomial x^2 + 101 with t = 10.04987562112089?*I
             sage: K.order_of_conductor(5).conductor()
-            Ideal (5, 5*t) of Maximal Order in Number Field in t with defining polynomial x^2 + 101 with t = 10.04987562112089?*I
+            Ideal (5, 25*t) of Order in Number Field in t with defining polynomial x^2 + 101 with t = 10.04987562112089?*I
             sage: K.discriminant().factor()
             -1 * 2^2 * 101
             sage: K.order(5*t).discriminant().factor()
@@ -1351,8 +1351,8 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             sage: K.<t> = NumberField(x^3 - 19)
             sage: O = K.order([1, t])
             sage: O.conductor()
-            Ideal (2*t^2 + 1, 2*t^2 + t, 3*t^2) of Maximal Order in Number Field in t with defining polynomial x^3 - 19
-            sage: _ == K.maximal_ideal([3, t - 1])
+            Ideal (2*t^2 + 1, 2*t^2 + t, 3*t^2) of Order in Number Field in t with defining polynomial x^3 - 19
+            sage: _ == O.ideal([3, t - 1])
             True
 
         TESTS::
@@ -1367,7 +1367,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             D = self.discriminant()
             D0 = self._K.discriminant()
             f = (D // D0).sqrt()
-            return OK.ideal(f, future=True)
+            return self.ideal(f, future=True)
 
         # Conductor divides [O_K : O], which we compute an upper bound using modules,
         # then reduce the prime ideals one by one.
@@ -1380,7 +1380,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
                 if all([pg * g in self for g in OK.gens() for pg in m.gens()]):
                     break
 
-        return OK.ideal(m.gens(), future=True)
+        return self.ideal(m.gens(), future=True)
 
     def random_element(self, *args, **kwds):
         r"""
