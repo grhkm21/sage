@@ -220,8 +220,6 @@ class IsogenyClass_EC(SageObject):
             sage: C = E.isogeny_class()
             doctest:warning...DeprecationWarning...
             See https://github.com/sagemath/sage/issues/34198 for details.
-            doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
             sage: C
             Isogeny class of Elliptic Curve defined by y^2 = x^3 + 1 over Number Field in i with defining polynomial x^2 + 1 with i = 1*I
             sage: C.curves
@@ -735,8 +733,6 @@ class IsogenyClass_EC_NumberField(IsogenyClass_EC):
             sage: E = EllipticCurve(K, [0,0,0,0,1])
             sage: C = E.isogeny_class()
             sage: C2 = C.copy()
-            doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
             doctest:warning...DeprecationWarning...
             See https://github.com/sagemath/sage/issues/34198 for details.
             sage: C is C2

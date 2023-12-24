@@ -949,8 +949,6 @@ def semi_global_minimal_model(E, debug=False):
         sage: Emin, P = semi_global_minimal_model(E)
         doctest:warning...DeprecationWarning...
         See https://github.com/sagemath/sage/issues/34198 for details.
-        doctest:warning...DeprecationWarning...
-        See https://github.com/sagemath/sage/issues/34198 for details.
         sage: Emin
         Elliptic Curve defined by y^2 + 3*x*y + (2*a-11)*y = x^3 + (a-10)*x^2 + (-152*a-415)*x + (1911*a+5920) over Number Field in a with defining polynomial x^2 - 10
         sage: E.minimal_discriminant_ideal()*P**12 == K.ideal(Emin.discriminant())

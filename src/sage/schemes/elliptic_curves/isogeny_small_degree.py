@@ -882,7 +882,8 @@ def isogenies_5_0(E, minimal_models=True):
         sage: E = EllipticCurve(K, [0,0,1,0,0])                                         # needs sage.rings.number_field
         sage: isogenies_5_0(E)                                                          # needs sage.rings.number_field
         doctest:warning...DeprecationWarning...
-        Isogeny of degree 5 from Elliptic Curve defined by y^2 + y = x^3 over Number Field in a with defining polynomial x^6 - 320*x^3 - 320 to Elliptic Curve defined by y^2 + y = x^3 + (47519/32*a^5-72103/48*a^4+32939/24*a^3-1909753/4*a^2+2861549/6*a-1429675/3)*x + (-131678717/192*a^5+65520419/96*a^4-12594215/18*a^3+5280985135/24*a^2-2637787519/12*a+1976130088/9) over Number Field in a with defining polynomial x^6 - 320*x^3 - 320]
+        [Isogeny of degree 5 from Elliptic Curve defined by y^2 + y = x^3 over Number Field in a with defining polynomial x^6 - 320*x^3 - 320 to Elliptic Curve defined by y^2 + y = x^3 + (241565/32*a^5-362149/48*a^4+180281/24*a^3-9693307/4*a^2+14524871/6*a-7254985/3)*x + (1660391123/192*a^5-829315373/96*a^4+77680504/9*a^3-66622345345/24*a^2+33276655441/12*a-24931615912/9) over Number Field in a with defining polynomial x^6 - 320*x^3 - 320,
+         Isogeny of degree 5 from Elliptic Curve defined by y^2 + y = x^3 over Number Field in a with defining polynomial x^6 - 320*x^3 - 320 to Elliptic Curve defined by y^2 + y = x^3 + (47519/32*a^5-72103/48*a^4+32939/24*a^3-1909753/4*a^2+2861549/6*a-1429675/3)*x + (-131678717/192*a^5+65520419/96*a^4-12594215/18*a^3+5280985135/24*a^2-2637787519/12*a+1976130088/9) over Number Field in a with defining polynomial x^6 - 320*x^3 - 320]
     """
     F = E.base_field()
     if E.j_invariant() != 0:

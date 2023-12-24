@@ -217,6 +217,7 @@ def enum_product_projective_number_field(X, **kwds):
         sage: from sage.schemes.product_projective.rational_point import \
                 enum_product_projective_number_field
         sage: enum_product_projective_number_field(X, bound=1.5)
+        doctest:warning...DeprecationWarning...
         [(-v : 1 , -1 : 1), (-v : 1 , -v : 1), (-v : 1 , -1/2*v : 1),
          (-v : 1 , 0 : 1), (-v : 1 , 1/2*v : 1), (-v : 1 , v : 1),
          (-v : 1 , 1 : 0), (-v : 1 , 1 : 1), (v : 1 , -1 : 1),

@@ -358,9 +358,6 @@ class ProjectiveConic_number_field(ProjectiveConic_field):
             sage: O = K.maximal_order()
             sage: f = (2*O).factor()
             doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
-            doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
             sage: C.is_locally_solvable(f[0][0])
             True
 

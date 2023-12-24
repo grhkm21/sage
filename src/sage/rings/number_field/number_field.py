@@ -3713,6 +3713,10 @@ class NumberField_generic(WithEqualityById, number_field_base.NumberField):
             d[i+1] = [self.ideal(hnf) for hnf in hnf_ideals[i]]
         return d
 
+    def maximal_ideal(self, *gens, **kwds):
+        # TODO (grhkm): Docs
+        return self.maximal_order().ideal(*gens, **kwds, future=True)
+
     def primes_above(self, x, degree=None):
         r"""
         Return prime ideals of ``self`` lying over `x`.

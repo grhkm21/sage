@@ -538,7 +538,11 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             if 'future' in kwds:
                 del kwds['future']
             from sage.rings.number_field.order_ideal import NumberFieldOrderIdeal
-            return NumberFieldOrderIdeal(self, *args, **kwds)
+            try:
+                return NumberFieldOrderIdeal(self, *args, **kwds)
+            except TypeError:
+                return NumberFieldOrderIdeal(self, args, **kwds)
+
         if kwds.get('warn', True):
             from sage.misc.superseded import deprecation
             deprecation(34198, 'In the future, constructing an ideal of the ring of '
@@ -666,6 +670,36 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             True
         """
         return self.is_maximal()
+
+    def is_absolute(self):
+        """
+        Return ``True`` if ``self`` is an absolute order.
+
+        This function will be implemented in the derived classes.
+
+        EXAMPLES::
+
+            sage: OK = QuadraticField(-5).maximal_order()
+            sage: OK.is_absolute()
+            True
+        """
+        raise NotImplementedError
+
+    def is_relative(self):
+        """
+        Return ``True`` if ``self`` is an absolute order.
+
+        This function will be implemented in the derived classes.
+
+        EXAMPLES::
+
+            sage: OK = QuadraticField(-5).maximal_order()
+            sage: OK.is_absolute()
+            True
+            sage: OK.is_relative()
+            False
+        """
+        return not self.is_absolute()
 
     def krull_dimension(self):
         r"""
@@ -1318,7 +1352,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             sage: O = K.order([1, t])
             sage: O.conductor()
             Ideal (2*t^2 + 1, 2*t^2 + t, 3*t^2) of Maximal Order in Number Field in t with defining polynomial x^3 - 19
-            sage: _ == K.maximal_order().ideal([3, t - 1], future=True)
+            sage: _ == K.maximal_ideal([3, t - 1])
             True
 
         TESTS::
@@ -1326,6 +1360,7 @@ class Order(IntegralDomain, sage.rings.abc.Order):
             sage: type(K.order(5*t).conductor())
             <class 'sage.rings.number_field.order_ideal.NumberFieldOrderIdeal_generic'>
         """
+        # TODO: Fix it for relative orders
         OK = self._K.maximal_order()
 
         if isinstance(self._K, sage.rings.abc.NumberField_quadratic):
@@ -1915,6 +1950,18 @@ class Order_absolute(Order):
 
         p = ZZ(p).abs()
         return self.__is_maximal_at.get(p, None)
+
+    def is_absolute(self):
+        r"""
+        Return ``True`` since ``self`` is an absolute field.
+
+        EXAMPLES::
+
+            sage: OK = QuadraticField(-5).maximal_order()
+            sage: OK.is_absolute()
+            True
+        """
+        return True
 
     def _assume_maximal(self, is_maximal=True, p=None):
         r"""
@@ -2527,6 +2574,20 @@ class Order_relative(Order):
 
         """
         return self._absolute_order._is_maximal_at(p=p)
+
+    def is_absolute(self):
+        r"""
+        Return ``True`` since ``self`` is an absolute field.
+
+        EXAMPLES::
+
+            sage: x = polygen(ZZ, 'x')
+            sage: L.<a, b> = NumberField([x^2 + 1, x^2 - 5])
+            sage: OK = L.order([a, 2*b])
+            sage: OK.is_absolute()
+            False
+        """
+        return False
 
     def _assume_maximal(self, is_maximal=True, p=None):
         r"""

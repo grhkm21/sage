@@ -3193,9 +3193,6 @@ class EllipticCurveIsogeny(EllipticCurveHom):
             sage: E = EllipticCurve(k, [-3*s*(4 + 5*s), 2*s*(2 + 14*s + 11*s^2)])
             sage: phi = E.isogenies_prime_degree(3)[0]
             doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
-            doctest:warning...DeprecationWarning...
-            See https://github.com/sagemath/sage/issues/34198 for details.
             sage: (-phi).dual() == -phi.dual()
             True
             sage: phi._EllipticCurveIsogeny__clear_cached_values()  # forget the dual

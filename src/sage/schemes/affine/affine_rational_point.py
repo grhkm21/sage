@@ -196,7 +196,10 @@ def enum_affine_number_field(X, **kwds):
         sage: X = A.subscheme([y^2 - x])
         sage: enum_affine_number_field(X(K), bound=2**0.5)
         doctest:warning...DeprecationWarning...
-        (1, 1, 1)]
+        [(0, 0, -1), (0, 0, -v), (0, 0, -1/2*v), (0, 0, 0), (0, 0, 1/2*v),
+         (0, 0, v), (0, 0, 1), (1, -1, -1), (1, -1, -v), (1, -1, -1/2*v),
+         (1, -1, 0), (1, -1, 1/2*v), (1, -1, v), (1, -1, 1), (1, 1, -1),
+         (1, 1, -v), (1, 1, -1/2*v), (1, 1, 0), (1, 1, 1/2*v), (1, 1, v), (1, 1, 1)]
 
     ::
 

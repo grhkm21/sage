@@ -343,7 +343,7 @@ class NumberFieldIdeal(Ideal_generic):
             Traceback (most recent call last):
             ...
             TypeError: vector is not in free module
-       """
+        """
         K = self.number_field()
         V, from_V, to_V = K.absolute_vector_space()
         try:
@@ -975,20 +975,14 @@ class NumberFieldIdeal(Ideal_generic):
         I.__pari_hnf = hnf
         return I
 
-    def lift_order(self, order):
+    def to_new(self):
         """
-        Return intersection of this ideal and the given order.
-
-        EXAMPLES:
-
-            sage: K.<a> = QuadraticField(-5)
-            sage: O = K.order_of_conductor(37)
-            sage: I = K.ideal([2, a + 1])
-            sage: I.lift_order(O)
-            doctest:warning ... FutureWarning: ...
-            Ideal (37*a + 1, 74*a) of Order in Number Field in a with defining polynomial x^2 + 5 with a = 2.236067977499790?*I
+        New version (integral) of self
         """
-        return order.ideal(self.free_module() & order.free_module())
+        # TODO (grhkm): Write docs
+        if not self.is_integral():
+            raise TypeError("ideal is not integral")
+        return self.number_field().maximal_ideal(self)
 
     def is_integral(self):
         """
