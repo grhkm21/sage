@@ -42,6 +42,7 @@ EXAMPLES::
 #                  https://www.gnu.org/licenses/
 # ****************************************************************************
 
+from sage.misc.prandom import choice, randrange
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.integer_ring import ZZ
 from sage.rings.integer import is_Integer, Integer
@@ -176,11 +177,67 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
     def order(self):
         return self.codomain().order()
 
+    def _random_element_cover(self):
+        r"""
+        # TODO (grhkm): Docs, not uniform
+        """
+        J = self.codomain()
+        H = self.curve()
+        g = H.genus()
+        R = H.hyperelliptic_polynomials()[0].parent()
+
+        while True:
+            u = R.random_element(degree=(0, g))
+            if u == 0:
+                return J(0)
+
+            F_ext = u.splitting_field(names="a").extension(2, names="b")
+            H_ext = H.change_ring(F_ext)
+            J_ext = J(F_ext)
+
+            ele = J_ext(0)
+            for u, e in u.roots(F_ext):
+                try:
+                    P_ext = choice(H_ext.lift_x(u, all=True))
+                except IndexError:
+                    # Empty range
+                    continue
+                ele += e * J_ext(P_ext)
+
+            u, v = ele
+            if u in R and v in R:
+                return J(R(u), R(v))
+
+    def _random_element_rational(self):
+        r"""
+        TODO (grhkm): Docs
+        """
+        H = self.curve().change_ring(self.value_ring())
+        g = H.genus()
+
+        # We randomly sample 2g + 1 points on the hyperelliptic curve
+        points = [H.random_point() for _ in range(2*g + 1)]
+
+        # We create 2g + 1 divisors of the form (P) - infty
+        divisors = [self(P) for P in points if P[2] != 0]
+
+        # If we happened to only sample the point at infinity, we return this
+        # Otherwise we compute the sum of all divisors.
+        if not divisors:
+            return self(0)
+        return sum(divisors)
+
     def random_element(self, cover=False):
         r"""
         Returns a random element from the Jacobian. Distribution is not
         uniformly random, but returns the entire group for Jacobians of
         hyperelliptic curves with an odd degree model.
+
+        # TODO (grhkm)
+
+        INPUT:
+
+        # TODO (grhkm)
 
         .. WARNING::
 
@@ -273,17 +330,6 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             ....:     s.add(tuple(S.random_element()))
 
         """
-        H = self.curve().change_ring(self.value_ring())
-        g = H.genus()
-
-        # We randomly sample 2g + 1 points on the hyperelliptic curve
-        points = [H.random_point() for _ in range(2*g + 1)]
-
-        # We create 2g + 1 divisors of the form (P) - infty
-        divisors = [self(P) for P in points if P[2] != 0]
-
-        # If we happened to only sample the point at infinity, we return this
-        # Otherwise we compute the sum of all divisors.
-        if not divisors:
-            return self(0)
-        return sum(divisors)
+        if cover:
+            return self._random_element_cover()
+        return self._random_element_rational()
