@@ -10,6 +10,7 @@ Jacobian of a general hyperelliptic curve
 
 from sage.rings.integer import Integer
 from sage.rings.rational_field import QQ
+from sage.misc.cachefunc import cached_method
 from sage.misc.lazy_attribute import lazy_attribute
 from sage.schemes.jacobians.abstract_jacobian import Jacobian_generic
 from . import jacobian_homset
@@ -208,7 +209,7 @@ class HyperellipticJacobian_generic(Jacobian_generic):
             sage: H = HyperellipticCurve(f)
             sage: J = H.jacobian()
             sage: s = set()
-            sage: order = H.zeta_function().numerator()(1)
+            sage: order = J.order()
             sage: while len(s) < order:
             ....:     s.add(tuple(J.random_element()))
 
@@ -216,6 +217,7 @@ class HyperellipticJacobian_generic(Jacobian_generic):
         """
         return self(self.base_ring()).random_element(cover=cover)
 
+    @cached_method
     def order(self):
         r"""
         Return order of this curve.

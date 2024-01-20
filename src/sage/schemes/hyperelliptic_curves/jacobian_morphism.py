@@ -587,6 +587,20 @@ class JacobianMorphism_divisor_class_field(AdditiveGroupElement, SchemeMorphism)
         """
         return tuple(self.__polys)
 
+    def __hash__(self):
+        r"""
+        Return the hash of this point.
+
+        EXAMPLES::
+
+            sage: x = polygen(GF(11))
+            sage: H = HyperellipticCurve(x^5 + x^2 + 1)
+            sage: J = H.jacobian()
+            sage: hash(J(H.lift_x(3)))
+            8870242543873190829
+        """
+        return hash(tuple(self))
+
     def __getitem__(self, n):
         r"""
         Return the `n`-th item of the pair `(a(x), b(x))`

@@ -146,6 +146,8 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
         elif isinstance(P, JacobianMorphism_divisor_class_field) and self == P.parent():
             return P
         elif is_SchemeMorphism(P):
+            if P[2] == 0:
+                return self(0)
             x0 = P[0]
             y0 = P[1]
             R, x = PolynomialRing(self.value_ring(), 'x').objgen()
@@ -305,9 +307,9 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             sage: J = H.jacobian()
             sage: S = J(F)
             sage: s = set()
-            sage: order = H.zeta_function().numerator()(1)
+            sage: order = J.order()
             sage: while len(s) < order:
-            ....:     s.add(tuple(S.random_element()))
+            ....:     s.add(S.random_element())
 
         TODO (grhkm): TESTS
 
@@ -325,9 +327,9 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             sage: S = J(F)
             sage: s = set()
             sage: num_points = H.count_points()[0]
-            sage: order = H.zeta_function().numerator()(1)
+            sage: order = J.order()
             sage: while len(s) < (order - num_points):
-            ....:     s.add(tuple(S.random_element()))
+            ....:     s.add(S.random_element())
 
         """
         if cover:
