@@ -175,7 +175,7 @@ class HyperellipticJacobian_generic(Jacobian_generic):
     def _point(self, *args, **kwds):
         return jacobian_morphism.JacobianMorphism_divisor_class_field(*args, **kwds)
 
-    def random_element(self):
+    def random_element(self, cover=False):
         """
         Returns a random element from the Jacobian. Distribution is not
         uniformly random, but returns the entire group.
@@ -211,8 +211,24 @@ class HyperellipticJacobian_generic(Jacobian_generic):
             sage: order = H.zeta_function().numerator()(1)
             sage: while len(s) < order:
             ....:     s.add(tuple(J.random_element()))
+
+        # TODO (grhkm): Docs, cover
         """
-        return self(self.base_ring()).random_element()
+        return self(self.base_ring()).random_element(cover=cover)
+
+    def order(self):
+        r"""
+        Return order of this curve.
+
+        EXAMPLES::
+
+            sage: R.<x> = GF(11)[]
+            sage: H = HyperellipticCurve(x^5 + x^2 + 1)
+            sage: J = H.jacobian()
+            sage: J.order()
+            216
+        """
+        return self.curve().zeta_function().numerator().subs(x=1)
 
     ####################################################################
     # Some properties of geometric Endomorphism ring and algebra

@@ -1397,6 +1397,8 @@ class HyperellipticCurve_finite_field(hyperelliptic_generic.HyperellipticCurve_g
         # No smart method available
         return self.cardinality_exhaustive(n)
 
+    order = cardinality
+
     def zeta_function(self):
         r"""
         Compute the zeta function of the hyperelliptic curve.

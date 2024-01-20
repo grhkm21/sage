@@ -173,7 +173,10 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             raise NotImplementedError("Jacobian point sets viewed as modules over rings other than ZZ not implemented")
         return self
 
-    def random_element(self):
+    def order(self):
+        return self.codomain().order()
+
+    def random_element(self, cover=False):
         r"""
         Returns a random element from the Jacobian. Distribution is not
         uniformly random, but returns the entire group for Jacobians of
@@ -248,6 +251,8 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             sage: order = H.zeta_function().numerator()(1)
             sage: while len(s) < order:
             ....:     s.add(tuple(S.random_element()))
+
+        TODO (grhkm): TESTS
 
         TESTS:
 

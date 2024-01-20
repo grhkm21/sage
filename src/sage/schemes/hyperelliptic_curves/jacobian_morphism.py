@@ -825,3 +825,7 @@ class JacobianMorphism_divisor_class_field(AdditiveGroupElement, SchemeMorphism)
             (1)
         """
         return self + (-other)
+
+    def order(self):
+        from sage.groups.generic import order_from_multiple
+        return order_from_multiple(self, self.parent().order())
