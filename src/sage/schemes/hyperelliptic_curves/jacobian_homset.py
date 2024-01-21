@@ -180,53 +180,40 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
     def order(self):
         return self.codomain().order()
 
-    def _random_element_cover(self):
+    def _random_element_cover(self, degree=None):
         r"""
-        # TODO (grhkm): Docs, not uniform
+        # TODO (grhkm): Docs, make truly uniform, char 2
         """
-        J = self.codomain()
         H = self.curve()
-        p = self.value_ring().order()
+        K = H.base_ring()
         g = H.genus()
-        R = H.hyperelliptic_polynomials()[0].parent()
+
+        f, h = H.hyperelliptic_polynomials()
+        R = f.parent()
+
+        if degree is None:
+            degree = (-1, g)
 
         while True:
-            u = R.random_monic_element(degree=(-1, g))
+            u = R.random_monic_element(degree=degree)
             if u == 0:
-                return J(0)
+                return self(0)
 
-            F_ext = u.splitting_field(names="a")
-            H_ext = H.change_ring(F_ext)
-            J_ext = J(F_ext)
+            try:
+                D = self(0)
+                for x, e in u.factor():
+                    det = K.extension(modulus=x, names="a")((h**2 + 4 * f) % x)
+                    # Sometimes .sqrt(all=True) is NotImplemented
+                    if not det.is_square():
+                        raise IndexError
 
-            ele = J_ext(0)
-            for x, e in u.factor():
-                # TODO (grhkm): Optimise this using Frobenius magic
-                # For now, we lift it to the extension field
-                xs = x.change_ring(F_ext).roots(multiplicities=False)
-                # assert sorted(xs) == sorted([xs[0]**(p**i) for i in range(k)])
+                    y_ = R(choice(det.sqrt(all=True)))
+                    y = (-h + y_) / 2
+                    D += e * self([x, y])
+                return D
+            except IndexError:
+                pass
 
-                try:
-                    cx, cy, _ = choice(H_ext.lift_x(xs[0], all=True))
-                except IndexError:
-                    break
-
-                cur = J_ext(0)
-                for _ in range(x.degree()):
-                    cx, cy = cx**p, cy**p
-                    Q_ext = H_ext(cx, cy)
-                    # assert D_ext in [J_ext(Q) for Q in H_ext.lift_x(cx, all=True)]
-                    cur += J_ext(Q_ext)
-
-                if cur[1] not in R:
-                    break
-
-                ele += e * cur * choice([-1, 1])
-
-            else:
-                u, v = ele
-                assert u in R and v in R
-                return J(R(u), R(v))
 
     def _random_element_rational(self):
         r"""
