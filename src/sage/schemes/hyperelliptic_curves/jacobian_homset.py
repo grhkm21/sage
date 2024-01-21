@@ -42,11 +42,12 @@ EXAMPLES::
 #                  https://www.gnu.org/licenses/
 # ****************************************************************************
 
-from sage.misc.prandom import choice, randrange
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.misc.prandom import choice
+from sage.rings.finite_rings.finite_field_base import FiniteField as FiniteField_generic
 from sage.rings.integer_ring import ZZ
 from sage.rings.integer import is_Integer, Integer
 from sage.rings.polynomial.polynomial_element import Polynomial
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
 from sage.schemes.generic.homset import SchemeHomset_points
 from sage.schemes.generic.morphism import is_SchemeMorphism
@@ -185,29 +186,46 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
         """
         J = self.codomain()
         H = self.curve()
+        p = self.value_ring().order()
         g = H.genus()
         R = H.hyperelliptic_polynomials()[0].parent()
 
         while True:
-            u = R.random_element(degree=(0, g))
+            u = R.random_monic_element(degree=(-1, g))
             if u == 0:
                 return J(0)
 
-            F_ext = u.splitting_field(names="a").extension(2, names="b")
+            F_ext = u.splitting_field(names="a")
             H_ext = H.change_ring(F_ext)
             J_ext = J(F_ext)
 
             ele = J_ext(0)
-            for u, e in u.roots(F_ext):
-                try:
-                    P_ext = choice(H_ext.lift_x(u, all=True))
-                except IndexError:
-                    # Empty range
-                    continue
-                ele += e * J_ext(P_ext)
+            for x, e in u.factor():
+                # TODO (grhkm): Optimise this using Frobenius magic
+                # For now, we lift it to the extension field
+                xs = x.change_ring(F_ext).roots(multiplicities=False)
+                # assert sorted(xs) == sorted([xs[0]**(p**i) for i in range(k)])
 
-            u, v = ele
-            if u in R and v in R:
+                try:
+                    cx, cy, _ = choice(H_ext.lift_x(xs[0], all=True))
+                except IndexError:
+                    break
+
+                cur = J_ext(0)
+                for _ in range(x.degree()):
+                    cx, cy = cx**p, cy**p
+                    Q_ext = H_ext(cx, cy)
+                    # assert D_ext in [J_ext(Q) for Q in H_ext.lift_x(cx, all=True)]
+                    cur += J_ext(Q_ext)
+
+                if cur[1] not in R:
+                    break
+
+                ele += e * cur * choice([-1, 1])
+
+            else:
+                u, v = ele
+                assert u in R and v in R
                 return J(R(u), R(v))
 
     def _random_element_rational(self):
@@ -229,7 +247,7 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             return self(0)
         return sum(divisors)
 
-    def random_element(self, cover=False):
+    def random_element(self, cover=False, *args, **kwargs):
         r"""
         Returns a random element from the Jacobian. Distribution is not
         uniformly random, but returns the entire group for Jacobians of
@@ -332,6 +350,10 @@ class JacobianHomset_divisor_classes(SchemeHomset_points):
             ....:     s.add(S.random_element())
 
         """
+        if not isinstance(self.base_ring(), FiniteField_generic):
+            # This shouldn't even be reachable
+            raise NotImplementedError("random element of Jacobian is only implemented over Finite Fields")
+
         if cover:
-            return self._random_element_cover()
-        return self._random_element_rational()
+            return self._random_element_cover(*args, **kwargs)
+        return self._random_element_rational(*args, **kwargs)

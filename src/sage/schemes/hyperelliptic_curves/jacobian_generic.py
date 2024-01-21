@@ -176,7 +176,7 @@ class HyperellipticJacobian_generic(Jacobian_generic):
     def _point(self, *args, **kwds):
         return jacobian_morphism.JacobianMorphism_divisor_class_field(*args, **kwds)
 
-    def random_element(self, cover=False):
+    def random_element(self, *args, **kwargs):
         """
         Returns a random element from the Jacobian. Distribution is not
         uniformly random, but returns the entire group.
@@ -215,7 +215,7 @@ class HyperellipticJacobian_generic(Jacobian_generic):
 
         # TODO (grhkm): Docs, cover
         """
-        return self(self.base_ring()).random_element(cover=cover)
+        return self(self.base_ring()).random_element(*args, **kwargs)
 
     @cached_method
     def order(self):
