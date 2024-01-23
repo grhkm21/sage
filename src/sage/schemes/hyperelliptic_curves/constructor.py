@@ -15,6 +15,7 @@ AUTHORS:
 # ****************************************************************************
 
 from sage.schemes.projective.projective_space import ProjectiveSpace
+from sage.schemes.toric.library import toric_varieties
 
 from .hyperelliptic_generic import HyperellipticCurve_generic
 from .hyperelliptic_finite_field import HyperellipticCurve_finite_field
@@ -247,7 +248,8 @@ def HyperellipticCurve(f, h=0, names=None, PP=None, check_squarefree=True):
             raise ValueError("Not a hyperelliptic curve: "
                              "singularity in the provided affine patch.")
     R = P.base_ring()
-    PP = ProjectiveSpace(2, R)
+    # PP = ProjectiveSpace(2, R, names="X, Y, Z")
+    PP = toric_varieties.WP([1, g + 1, 1], names="X, Y, Z", base_ring=R)
     if names is None:
         names = ["x", "y"]
 

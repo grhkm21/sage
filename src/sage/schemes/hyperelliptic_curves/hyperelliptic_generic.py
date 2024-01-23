@@ -41,7 +41,10 @@ from sage.rings.real_mpfr import RR
 from sage.functions.all import log
 from sage.structure.category_object import normalize_names
 
+from sage.schemes.generic.algebraic_scheme import AlgebraicScheme_subscheme
+from sage.schemes.toric.toric_subscheme import AlgebraicScheme_subscheme_toric
 import sage.schemes.curves.projective_curve as plane_curve
+from sage.rings.polynomial.term_order import TermOrder
 
 def is_HyperellipticCurve(C):
     """
@@ -56,7 +59,8 @@ def is_HyperellipticCurve(C):
     return isinstance(C, HyperellipticCurve_generic)
 
 
-class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
+class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
+# class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
     """
     TESTS::
 
@@ -96,17 +100,34 @@ class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
         False
     """
     def __init__(self, PP, f, h=None, names=None, genus=None):
-        x, y, z = PP.gens()
-        df = f.degree()
-        F1 = sum([ f[i]*x**i*z**(df-i) for i in range(df+1) ])
-        if h is None:
-            F = y**2*z**(df-2) - F1
+        assert genus is not None
+        # print("h:", h)
+        # TODO (grhkm): ToricVariety.coordinate_ring() should return weighted polynomial ring?
+        # We need to change weights manually, since either ToricVariety returns
+        # the wrong weight, or I understand the math behind it incorrectly.
+        # Either way, we want a weighted polynomial ring so that `.homogenize`
+        # works properly.
+        R_PP = PP.coordinate_ring()
+        to = TermOrder("wdegrevlex", [1, genus + 1, 1])
+        R = PolynomialRing(R_PP.base_ring(), R_PP.ngens(), R_PP._names, order=to)
+        X, Y, Z = R.gens()
+        # Let's use uppercase for projective coordinates!
+        # Evaluate f and h as polynomials in PP
+        f_ = sum(c * X**mon.degree() for c, mon in zip(f.coefficients(), f.monomials()))
+        if h is not None:
+            h_ = sum(c * X**mon.degree() for c, mon in zip(h.coefficients(), h.monomials()))
         else:
-            dh = h.degree()
-            deg = max(df,dh+1)
-            F0 = sum([ h[i]*x**i*z**(dh-i) for i in range(dh+1) ])
-            F = y**2*z**(deg-2) + F0*y*z**(deg-dh-1) - F1*z**(deg-df)
-        plane_curve.ProjectivePlaneCurve.__init__(self,PP,F)
+            h_ = R.zero()
+        F = (Y**2 + h_ * Y - f_).homogenize(Z)
+        assert PP.is_homogeneous(F)
+
+        print("============================================================================")
+        # plane_curve.ProjectivePlaneCurve.__init__(self, PP, F)
+        print("I can construct:", PP.subscheme([F]))
+        print("But then the following line fails!")
+        AlgebraicScheme_subscheme_toric.__init__(self, PP, F)
+        print("============================================================================")
+
         R = PP.base_ring()
         if names is None:
             names = ("x", "y")

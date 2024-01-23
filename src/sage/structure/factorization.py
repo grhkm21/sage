@@ -628,6 +628,21 @@ class Factorization(SageObject):
         """
         self.__cr = bool(cr)
 
+    def factor(self):
+        """
+        Return the factorization of ``self``, which is just ``self``.
+
+        If ``self`` is not reduced, then neither is the returned value.
+
+        EXAMPLES::
+
+            sage: factor(12)
+            2^2 * 3
+            sage: factor(12).factor()
+            2^2 * 3
+        """
+        return self
+
     def simplify(self):
         """
         Combine adjacent products as much as possible.

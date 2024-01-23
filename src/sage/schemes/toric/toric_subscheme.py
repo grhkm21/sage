@@ -94,6 +94,7 @@ class AlgebraicScheme_subscheme_toric(AlgebraicScheme_subscheme):
               x^3 + y^3
         """
         # Just to make sure that keyword arguments will be passed correctly
+        print(f"super(): {super()}")
         super().__init__(toric_variety, polynomials)
 
     def _morphism(self, *args, **kwds):
