@@ -63,11 +63,10 @@ from sage.matrix.constructor import identity_matrix, matrix
 from sage.misc.functional import rank
 from sage.libs.pari.all import pari
 
-from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_finite_field
+# from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_finite_field
 
 
-class HyperellipticCurve_finite_field(hyperelliptic_generic.HyperellipticCurve_generic,
-                                      ProjectivePlaneCurve_finite_field):
+class HyperellipticCurve_finite_field(hyperelliptic_generic.HyperellipticCurve_generic):
     def _frobenius_coefficient_bound_charpoly(self):
         r"""
         Computes bound on number of `p`-adic digits needed to recover

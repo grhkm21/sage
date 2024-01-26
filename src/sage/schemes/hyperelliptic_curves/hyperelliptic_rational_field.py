@@ -16,8 +16,7 @@ from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_field
 from . import hyperelliptic_generic
 
 
-class HyperellipticCurve_rational_field(hyperelliptic_generic.HyperellipticCurve_generic,
-                                        ProjectivePlaneCurve_field):
+class HyperellipticCurve_rational_field(hyperelliptic_generic.HyperellipticCurve_generic):
 
     def matrix_of_frobenius(self, p, prec=20):
 

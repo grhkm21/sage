@@ -32,8 +32,7 @@ from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_field
 from . import hyperelliptic_generic
 
 
-class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_generic,
-                                     ProjectivePlaneCurve_field):
+class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_generic):
 
     # The functions below were prototyped at the 2007 Arizona Winter School by
     # Robert Bradshaw and Ralf Gerkmann, working with Miljan Brakovevic and

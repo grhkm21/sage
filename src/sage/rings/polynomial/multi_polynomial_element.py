@@ -1305,6 +1305,18 @@ class MPolynomial_polydict(Polynomial_singular_repr, MPolynomial_element):
             False
             sage: (x^2*y + y^2*x).is_homogeneous()
             True
+
+        Ensure that weighted polynomials are supported::
+
+            sage: K = Qp(7)
+            sage: to = TermOrder("wdegrevlex", [1, 3])
+            sage: R.<X, Y> = PolynomialRing(K, 2, order=to)
+            sage: X.degree(), Y.degree()
+            (1, 3)
+            sage: (X + Y).is_homogeneous()
+            False
+            sage: (X^3 + Y).is_homogeneous()
+            True
         """
         return self.element().is_homogeneous()
 

@@ -108,7 +108,9 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
         # Either way, we want a weighted polynomial ring so that `.homogenize`
         # works properly.
         R_PP = PP.coordinate_ring()
-        to = TermOrder("wdegrevlex", [1, genus + 1, 1])
+        d = max(h.degree() if h else -1, (f.degree() + 1) // 2)
+        to = TermOrder("wdegrevlex", [1, d, 1])
+        print("Weights:", to)
         R = PolynomialRing(R_PP.base_ring(), R_PP.ngens(), R_PP._names, order=to)
         X, Y, Z = R.gens()
         # Let's use uppercase for projective coordinates!
@@ -118,15 +120,12 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
             h_ = sum(c * X**mon.degree() for c, mon in zip(h.coefficients(), h.monomials()))
         else:
             h_ = R.zero()
-        F = (Y**2 + h_ * Y - f_).homogenize(Z)
+        F = (Y**2 + h_ * Y - f_)
+        F = F.homogenize(Z)
         assert PP.is_homogeneous(F)
 
-        print("============================================================================")
         # plane_curve.ProjectivePlaneCurve.__init__(self, PP, F)
-        print("I can construct:", PP.subscheme([F]))
-        print("But then the following line fails!")
         AlgebraicScheme_subscheme_toric.__init__(self, PP, F)
-        print("============================================================================")
 
         R = PP.base_ring()
         if names is None:
