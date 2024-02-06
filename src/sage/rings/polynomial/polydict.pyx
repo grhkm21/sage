@@ -529,7 +529,7 @@ cdef class PolyDict:
         repn = ' '.join(pformat(self.__repn).splitlines())
         return 'PolyDict with representation %s' % repn
 
-    def degree(self, PolyDict x=None):
+    def degree(self, PolyDict x=None, tuple w=None):
         r"""
         Return the total degree or the maximum degree in the variable ``x``.
 
@@ -545,13 +545,16 @@ cdef class PolyDict:
             3
         """
         if x is None:
-            return self.total_degree()
+            return self.total_degree(w)
         cdef int i = gen_index(x)
         if i < 0:
             raise ValueError('x must be a generator')
         if not self.__repn:
             return -1
-        return max((<ETuple> e).get_exp(i) for e in self.__repn)
+        cdef int deg = max((<ETuple> e).get_exp(i) for e in self.__repn)
+        if w is None:
+            return deg
+        return deg * w[i]
 
     def total_degree(self, tuple w=None):
         r"""
@@ -671,7 +674,7 @@ cdef class PolyDict:
                 ans[ETuple(t)] = self.__repn[S]
         return self._new(ans)
 
-    def is_homogeneous(self):
+    def is_homogeneous(self, tuple w=None):
         r"""
         Return whether this polynomial is homogeneous.
 
@@ -688,9 +691,9 @@ cdef class PolyDict:
         if not self.__repn:
             return True
         it = iter(self.__repn)
-        cdef size_t s = (<ETuple> next(it)).unweighted_degree()
+        cdef size_t s = (<ETuple> next(it)).degree(w)
         for elt in it:
-            if (<ETuple> elt).unweighted_degree() != s:
+            if (<ETuple> elt).degree(w) != s:
                 return False
         return True
 
@@ -717,7 +720,7 @@ cdef class PolyDict:
             return False
         return not any(self.__repn)
 
-    def homogenize(self, size_t var):
+    def homogenize(self, size_t var, tuple w=None):
         r"""
         Return the homogeneization of ``self`` by increasing the degree of the
         variable ``var``.
@@ -733,14 +736,26 @@ cdef class PolyDict:
 
             sage: PolyDict({(0, 1): 1, (1, 1): -1}).homogenize(0)
             PolyDict with representation {(1, 1): 0}
+
+            sage: PolyDict({(0, 4): 1, (2, 1): 3, (1, 1): 5}).homogenize(0, w=(3, 5))
+            PolyDict with representation {(0, 4): 1, (5, 1): 8}
         """
         cdef dict H = {}
-        cdef int deg = self.degree()
+        cdef int deg = self.degree(w=w)
         cdef int shift
+        cdef int varw
+        if w is None:
+            varw = 1
+        else:
+            varw = w[var]
+
         for e, val in self.__repn.items():
-            shift = deg - (<ETuple> e).unweighted_degree()
+            shift = deg - (<ETuple> e).degree(w)
+            if shift % varw != 0:
+                raise ValueError(f"{self} cannot be homogenized by {var} with respect to weights "
+                                 f"{w}")
             if shift:
-                f = (<ETuple> e).eadd_p(shift, var)
+                f = (<ETuple> e).eadd_p(shift / varw, var)
             else:
                 f = e
             if f in H:
@@ -1845,6 +1860,22 @@ cdef class ETuple:
 
     # additional methods
 
+    cpdef int degree(self, tuple w=None) except *:
+        r"""
+        Return the sum of entries weighted by ``w``, or `1` by default.
+
+        EXAMPLES::
+
+             sage: from sage.rings.polynomial.polydict import ETuple
+             sage: ETuple([1, 1, 0, 2, 0]).degree()
+             4
+             sage: ETuple([1, 1, 0, 2, 0]).degree((3, 4, 1, 2, 5))
+             11
+        """
+        if w is None:
+            return self.unweighted_degree()
+        return self.weighted_degree(w)
+
     cpdef int unweighted_degree(self) except *:
         r"""
         Return the sum of entries.
@@ -2074,7 +2105,7 @@ cdef class ETuple:
         cdef size_t rindex = 0
         cdef int new_value
         if pos >= self._length:
-            raise ValueError("pos must be between 0 and %s" % self._length)
+            raise ValueError("pos must be between 0 and %s" % self._length - 1)
 
         cdef ETuple result = self._new()
         result._nonzero = self._nonzero

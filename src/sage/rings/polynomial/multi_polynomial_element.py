@@ -704,7 +704,7 @@ class MPolynomial_polydict(Polynomial_singular_repr, MPolynomial_element):
             -1
         """
         if x is None:
-            if std_grading or not self.parent().term_order().is_weighted_degree_order():
+            if std_grading or not self.parent().term_order().is_weighted_order():
                 return self.element().degree(None)
             return self.weighted_degree(self.parent().term_order().weights())
         if isinstance(x, MPolynomial):
@@ -1318,7 +1318,7 @@ class MPolynomial_polydict(Polynomial_singular_repr, MPolynomial_element):
             sage: (X^3 + Y).is_homogeneous()
             True
         """
-        return self.element().is_homogeneous()
+        return self.element().is_homogeneous(self.parent().term_order().weights())
 
     def _homogenize(self, var):
         r"""

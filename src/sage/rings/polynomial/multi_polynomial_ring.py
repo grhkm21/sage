@@ -113,7 +113,6 @@ class MPolynomialRing_polydict(MPolynomialRing_macaulay2_repr, PolynomialRing_si
     def __init__(self, base_ring, n, names, order):
         from sage.rings.polynomial.polynomial_singular_interface import can_convert_to_singular
         order = TermOrder(order, n)
-        print("New order:", order)
         # MPolynomialRing_base.__init__() normally initialises the base ring,
         # but it also needs the generators to construct a coercion map from the
         # base ring, and the base ring must be set to initialise the generators.

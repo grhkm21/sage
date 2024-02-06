@@ -2127,7 +2127,8 @@ cdef class Polynomial_rational_flint(Polynomial):
 
         ::
 
-            sage: # needs sage.libs.pari
+            sage: # needs sage.groups sage.libs.pari
+            sage: R.<x> = QQ[]
             sage: f = x^4 - 17*x^3 - 2*x + 1
             sage: G = f.galois_group(pari_group=True); G
             PARI group [24, -1, 5, "S4"] of degree 4

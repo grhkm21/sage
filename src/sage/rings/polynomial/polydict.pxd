@@ -14,6 +14,7 @@ cdef class ETuple:
     cdef ETuple _new(self) noexcept
     cdef int get_exp(self, size_t i) noexcept
 
+    cpdef int degree(self, tuple w=*) except *
     cpdef int unweighted_degree(self) except *
     cpdef int weighted_degree(self, tuple w) except *
     cpdef int unweighted_quotient_degree(self, ETuple other) except *

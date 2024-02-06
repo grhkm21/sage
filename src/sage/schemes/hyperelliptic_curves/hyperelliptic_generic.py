@@ -109,12 +109,12 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
         # works properly.
         R_PP = PP.coordinate_ring()
         d = max(h.degree() if h else -1, (f.degree() + 1) // 2)
-        to = TermOrder("wdegrevlex", [1, d, 1])
-        print("Weights:", to)
-        R = PolynomialRing(R_PP.base_ring(), R_PP.ngens(), R_PP._names, order=to)
+        TO = TermOrder("wdegrevlex", [1, d, 1])
+        R = PolynomialRing(R_PP.base_ring(), R_PP.ngens(), R_PP._names, order=TO)
         X, Y, Z = R.gens()
         # Let's use uppercase for projective coordinates!
         # Evaluate f and h as polynomials in PP
+        # TODO (grhkm) :I think you can do something like f.list()
         f_ = sum(c * X**mon.degree() for c, mon in zip(f.coefficients(), f.monomials()))
         if h is not None:
             h_ = sum(c * X**mon.degree() for c, mon in zip(h.coefficients(), h.monomials()))
@@ -139,6 +139,7 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
         self._printing_ring = P2
         self._hyperelliptic_polynomials = (f,h)
         self._genus = genus
+        self._projective_curve = F
 
     def change_ring(self, R):
         """
