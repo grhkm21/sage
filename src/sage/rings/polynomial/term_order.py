@@ -801,7 +801,7 @@ class TermOrder(SageObject):
                     singular_str = []
                     macaulay2_str = []
 
-                    length_pattern  = re.compile(r"\(([0-9]+)\)$") # match with parenthesized block length at end
+                    length_pattern = re.compile(r"\(([0-9]+)\)$") # match with parenthesized block length at end
                     for block in block_names:
                         try:
                             block_name, block_length, _ = re.split(length_pattern,block.strip())

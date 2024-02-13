@@ -1349,7 +1349,7 @@ class MPolynomial_polydict(Polynomial_singular_repr, MPolynomial_element):
         """
         if self.is_homogeneous():
             return self
-        X = self.element().homogenize(var)
+        X = self.element().homogenize(var, self.parent().term_order().weights())
         X.remove_zeros()
         R = self.parent()
         return R(X)
