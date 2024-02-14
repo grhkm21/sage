@@ -1,3 +1,4 @@
+# sage.doctest: needs numpy sage.libs.linbox
 """
 Isolate Real Roots of Real Polynomials
 
@@ -32,7 +33,7 @@ algorithm in that paper:
 
 The best description of the algorithms used (other than this source
 code itself) is in the slides for my Sage Days 4 talk, currently available
-from http://www.sagemath.org:9001/days4schedule .
+from https://wiki.sagemath.org/days4schedule .
 """
 
 ################################################################################
@@ -130,19 +131,25 @@ from http://www.sagemath.org:9001/days4schedule .
 # This may be vastly faster than the exact calculations carried out
 # by this algorithm!  Is it enough faster to be faster than, say,
 # Pari's floating-point algorithms?)
-from __future__ import print_function
 
 from copy import copy
-from random import Random
 import time
 
-from sage.rings.all import ZZ, QQ, RR, AA, RealField, RealIntervalField, RIF, RDF, infinity
-from sage.arith.all import binomial, factorial
-from sage.modules.all import vector, FreeModule
-from sage.matrix.all import MatrixSpace
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
+from sage.rings.infinity import infinity
+from sage.rings.qqbar import AA
+from sage.rings.real_double import RDF
+from sage.rings.real_mpfi import RealIntervalField, RIF
+from sage.rings.real_mpfr import RR, RealField
+from sage.arith.misc import binomial, factorial
+from sage.misc.randstate import randstate
+from sage.modules.free_module_element import free_module_element as vector
+from sage.modules.free_module import FreeModule
+from sage.matrix.matrix_space import MatrixSpace
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.polynomial.polynomial_ring import polygen
-from sage.misc.all import numerator, denominator, prod
+from sage.misc.functional import numerator, denominator
+from sage.misc.misc_c import prod
 
 from sage.matrix.matrix_integer_dense cimport Matrix_integer_dense
 from sage.modules.vector_integer_dense cimport Vector_integer_dense
@@ -152,11 +159,10 @@ from sage.rings.real_mpfr cimport RealNumber
 
 cimport numpy
 
-# TODO: Just for the fabs function below
-from math import fabs
+from libc.math cimport fabs, sqrt, ldexp, frexp
 
-include "sage/ext/cdefs.pxi"
-
+from sage.libs.gmp.mpz cimport *
+from sage.libs.gmp.mpq cimport *
 from sage.libs.mpfr cimport *
 
 cdef class interval_bernstein_polynomial:
@@ -169,7 +175,7 @@ cdef class interval_bernstein_polynomial:
     The Bernstein basis of degree n over the region [a .. b] is the
     set of polynomials
 
-    .. math::
+    .. MATH::
 
       \binom{n}{k} (x-a)^k (b-x)^{n-k} / (b-a)^n
 
@@ -314,7 +320,7 @@ cdef class interval_bernstein_polynomial:
         """
         return (self.min_variations, self.max_variations)
 
-    cdef void update_variations(self, interval_bernstein_polynomial bp1, interval_bernstein_polynomial bp2):
+    cdef void update_variations(self, interval_bernstein_polynomial bp1, interval_bernstein_polynomial bp2) noexcept:
         """
         Update the max_variations of bp1 and bp2 (which are assumed to be
         the result of splitting this polynomial).
@@ -327,9 +333,9 @@ cdef class interval_bernstein_polynomial:
         on bp2 (or bp1).
         """
         if self.max_variations - bp1.min_variations < bp2.max_variations:
-           bp2.max_variations = self.max_variations - bp1.min_variations
+            bp2.max_variations = self.max_variations - bp1.min_variations
         if self.max_variations - bp2.min_variations < bp1.max_variations:
-           bp1.max_variations = self.max_variations - bp2.min_variations
+            bp1.max_variations = self.max_variations - bp2.min_variations
 
     def try_split(self, context ctx, logging_note):
         """
@@ -350,9 +356,9 @@ cdef class interval_bernstein_polynomial:
             sage: bp = mk_ibpf([0.5, 0.2, -0.9, -0.7, 0.99], neg_err=-0.1, pos_err=0.01)
             sage: bp1, bp2, _ = bp.try_split(mk_context(), None)
             sage: bp1
-            <IBP: (0.5, 0.35, 0.0, -0.2875, -0.369375) + [-0.1 .. 0.01] over [0 .. 1/2]>
+            <IBP: (0.5, 0.35, 0.0, -0.2875, -0.369375) + [-0.10000000000000023 .. 0.010000000000000226] over [0 .. 1/2]>
             sage: bp2
-            <IBP: (-0.369375, -0.45125, -0.3275, 0.14500000000000002, 0.99) + [-0.1 .. 0.01] over [1/2 .. 1]>
+            <IBP: (-0.369375, -0.45125, -0.3275, 0.14500000000000002, 0.99) + [-0.10000000000000023 .. 0.010000000000000226] over [1/2 .. 1]>
         """
         (p1, p2, ok) = self.de_casteljau(ctx, QQ_1_2)
         ctx.dc_log_append(("half" + self._type_code(), self.scale_log2, self.bitsize, ok, logging_note))
@@ -388,9 +394,9 @@ cdef class interval_bernstein_polynomial:
             sage: bp = mk_ibpf([0.5, 0.2, -0.9, -0.7, 0.99], neg_err=-0.1, pos_err=0.01)
             sage: bp1, bp2, _ = bp.try_rand_split(mk_context(), None)
             sage: bp1  # rel tol
-            <IBP: (0.5, 0.2984375, -0.2642578125, -0.5511661529541015, -0.3145806974172592) + [-0.1 .. 0.01] over [0 .. 43/64]>
+            <IBP: (0.5, 0.2984375, -0.2642578125, -0.5511661529541015, -0.3145806974172592) + [-0.10000000000000069 .. 0.010000000000000677] over [0 .. 43/64]>
             sage: bp2  # rel tol
-            <IBP: (-0.3145806974172592, -0.19903896331787108, 0.04135986328125002, 0.43546875, 0.99) + [-0.1 .. 0.01] over [43/64 .. 1]>
+            <IBP: (-0.3145806974172592, -0.19903896331787108, 0.04135986328125002, 0.43546875, 0.99) + [-0.10000000000000069 .. 0.010000000000000677] over [43/64 .. 1]>
         """
 
         # We want a split point which is a dyadic rational (denominator
@@ -407,9 +413,9 @@ cdef class interval_bernstein_polynomial:
         # A different algorithm here might be more efficient.
 
         div = 1024
-        while self.degree() >= div//4:
+        while self.degree() >= (div // 4):
             div = div * 2
-        qdiv = div/4
+        qdiv = div // 4  # divides evenly since div = 1024*2^k
         rand = Integer(ctx.random.randrange(qdiv, 3*qdiv)) / div
         (p1, p2, ok) = self.de_casteljau(ctx, rand)
         ctx.dc_log_append(("div" + self._type_code(), self.scale_log2, self.bitsize, rand, ok, logging_note))
@@ -417,7 +423,7 @@ cdef class interval_bernstein_polynomial:
             return (p1, p2, rand)
         return None
 
-    cdef int degree(self):
+    cdef int degree(self) noexcept:
         raise NotImplementedError()
 
     def region(self):
@@ -430,7 +436,7 @@ dr_cache = {}
 
 cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
     """
-    This is the subclass of interval_bernstein_polynomial where
+    This is the subclass of :class:`interval_bernstein_polynomial` where
     polynomial coefficients are represented using integers.
 
     In this integer representation, each coefficient is represented by
@@ -438,8 +444,8 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
     E (which is a machine integer).  These represent the coefficients
     A*2^n <= c < (A+E)*2^n.
 
-    (Note that mk_ibpi is a simple helper function for creating
-    elements of interval_bernstein_polynomial_integer in doctests.)
+    (Note that :func:`mk_ibpi is a simple helper` function for creating
+    elements of :class:`interval_bernstein_polynomial_integer` in doctests.)
 
     EXAMPLES::
 
@@ -450,11 +456,13 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
         <IBP: (1, 2, 3) + [0 .. 5)>
         sage: bp.variations()
         (0, 0)
-        sage: bp = mk_ibpi([-3, -1, 1, -1, -3, -1], lower=1, upper=5/4, usign=1, error=2, scale_log2=-3, level=2, slope_err=RIF(pi)); print(bp)
+        sage: bp = mk_ibpi([-3, -1, 1, -1, -3, -1], lower=1, upper=5/4, usign=1,        # needs sage.symbolic
+        ....:              error=2, scale_log2=-3, level=2, slope_err=RIF(pi)); print(bp)
         degree 5 IBP with 2-bit coefficients
-        sage: bp
-        <IBP: ((-3, -1, 1, -1, -3, -1) + [0 .. 2)) * 2^-3 over [1 .. 5/4]; usign 1; level 2; slope_err 3.141592653589794?>
-        sage: bp.variations()
+        sage: bp                                                                        # needs sage.symbolic
+        <IBP: ((-3, -1, 1, -1, -3, -1) + [0 .. 2)) * 2^-3 over [1 .. 5/4]; usign 1;
+              level 2; slope_err 3.141592653589794?>
+        sage: bp.variations()                                                           # needs sage.symbolic
         (3, 3)
     """
 
@@ -483,7 +491,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
             sage: bp
             <IBP: ((50, -30, -10) + [0 .. 17)) * 2^3 over [-3/7 .. 4/7]; usign -1; level 2; slope_err 1.0000000000000000?e-30>
         """
-        assert(len(coeffs) > 0)
+        assert len(coeffs) > 0
         self.coeffs = coeffs
         self.lower = lower
         self.upper = upper
@@ -558,7 +566,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
         """
         return 'i'
 
-    cdef void _set_bitsize(self):
+    cdef void _set_bitsize(self) noexcept:
         """
         A private function that computes the maximum coefficient size
         of this Bernstein polynomial (in bits).
@@ -573,7 +581,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
         """
         self.bitsize = max_bitsize_intvec(self.coeffs)
 
-    cdef void _count_variations(self):
+    cdef void _count_variations(self) noexcept:
         """
         A private function that counts the number of sign variations in
         this Bernstein polynomial.  Since the coefficients are represented
@@ -634,7 +642,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
             count_maybe_neg = 0
             sign = 0
 
-        for i from 1 <= i < n:
+        for i in range(1, n):
             lower_sgn = mpz_sgn(c._entries[i])
             upper_sgn = mpz_cmp_si(c._entries[i], -self.error)
             new_count_maybe_pos = count_maybe_pos
@@ -670,9 +678,9 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
         else:
             self.max_variations = max(count_maybe_pos, count_maybe_neg)
 
-    cdef int degree(self):
+    cdef int degree(self) noexcept:
         """
-        Returns the (formal) degree of this polynomial.
+        Return the (formal) degree of this polynomial.
         """
         return len(self.coeffs) - 1
 
@@ -728,7 +736,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
         if msign == 0:
             msign = sign
         elif sign != 0:
-            assert(msign == sign)
+            assert msign == sign
 
         cdef Rational absolute_mid = self.lower + mid * (self.upper - self.lower)
 
@@ -759,7 +767,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
             sage: print(bp.as_float())
             degree 4 IBP with floating-point coefficients
             sage: bp.as_float()
-            <IBP: ((0.1953125, 0.078125, -0.3515625, -0.2734375, 0.78125) + [-1.12757025938e-16 .. 0.01953125]) * 2^8>
+            <IBP: ((0.1953125, 0.078125, -0.3515625, -0.2734375, 0.78125) + [-1.1275702593849246e-16 .. 0.01953125000000017]) * 2^8>
         """
         (fcoeffs, neg_err, pos_err, scale_log2_delta) = intvec_to_doublevec(self.coeffs, self.error)
         cdef interval_bernstein_polynomial_float fbp = interval_bernstein_polynomial_float(fcoeffs, self.lower, self.upper, self.lsign, self.usign, neg_err, pos_err, self.scale_log2 + scale_log2_delta, self.level, self.slope_err)
@@ -769,7 +777,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
 
     def get_msb_bit(self):
         """
-        Returns an approximation of the log2 of the maximum of the
+        Return an approximation of the log2 of the maximum of the
         absolute values of the coefficients, as an integer.
         """
         return self.scale_log2 + self.bitsize
@@ -869,7 +877,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
                 indicator = '='
             if bitsize(err) > 17:
                 shift = bitsize(err) - 15
-                for i in xrange(len(ribp)):
+                for i in range(len(ribp)):
                     ribp[i] = ribp[i] >> shift
                 max_err = max_err >> shift
                 err = -((-err) >> shift)
@@ -909,7 +917,8 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
 
         while True:
             next = degree_reduction_next_size(bp.degree())
-            if next is None: return bp
+            if next is None:
+                return bp
             if bp.variations()[0] > next:
                 return bp
             (rbp, err_info) = bp.down_degree(ctx, Integer(1) << (max_scale - bp.scale_log2), 32)
@@ -938,7 +947,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
             <IBP: ((0, 3, 12, 28) + [0 .. 1)) * 2^5>
         """
         p = self.coeffs.__copy__()
-        for i in xrange(len(p)):
+        for i in range(len(p)):
             p[i] = p[i] >> bits
         return interval_bernstein_polynomial_integer(p, self.lower, self.upper, self.lsign, self.usign, -((-self.error) >> bits), self.scale_log2 + bits, self.level, self.slope_err)
 
@@ -964,6 +973,7 @@ cdef class interval_bernstein_polynomial_integer(interval_bernstein_polynomial):
             rng = rng >> (-self.scale_log2)
         return rng
 
+
 def mk_ibpi(coeffs, lower=0, upper=1, lsign=0, usign=0, error=1, scale_log2=0,
             level=0, slope_err=RIF(0)):
     """
@@ -979,6 +989,7 @@ def mk_ibpi(coeffs, lower=0, upper=1, lsign=0, usign=0, error=1, scale_log2=0,
         degree 4 IBP with 8-bit coefficients
     """
     return interval_bernstein_polynomial_integer(vector(ZZ, coeffs), QQ(lower), QQ(upper), lsign, usign, error, scale_log2, level, slope_err)
+
 
 def de_casteljau_intvec(Vector_integer_dense c, int c_bitsize, Rational x, int use_ints):
     """
@@ -1110,7 +1121,8 @@ def de_casteljau_intvec(Vector_integer_dense c, int c_bitsize, Rational x, int u
         den_log2 = mpz_sizeinbase(den, 2) - 1
 
     cdef int max_den_bits = c_bitsize / 2
-    if max_den_bits < 100: max_den_bits = 100
+    if max_den_bits < 100:
+        max_den_bits = 100
 # These settings are slower than the above on laguerre(1000), but that's
 # the only experiment I've done so far... more testing is needed.
 #     cdef int max_den_bits = 3 * c_bitsize / 2
@@ -1124,21 +1136,21 @@ def de_casteljau_intvec(Vector_integer_dense c, int c_bitsize, Rational x, int u
         den_powers = FreeModule(ZZ, len(c)+1)(0)
         mpz_set_ui(den_powers._entries[0], 1)
         max_den_power = 1
-        for i from 1 <= i <= n:
+        for i in range(1, n + 1):
             mpz_mul_ui(den_powers._entries[i], den_powers._entries[i-1], den_ui)
             if mpz_sizeinbase(den_powers._entries[i], 2) < max_den_bits:
                 max_den_power = i
             else:
                 break
 
-        for i from 0 <= i < n:
+        for i in range(n):
             mpz_set(c1._entries[i], c2._entries[0])
             if den_ui == 2:
                 # x == 1/2
-                for j from 0 <= j < n-i-1:
+                for j in range(n-i-1):
                     mpz_add(c2._entries[j], c2._entries[j], c2._entries[j+1])
             else:
-                for j from 0 <= j < n-i-1:
+                for j in range(n-i-1):
                     if diff_ui != 1:
                         mpz_mul_ui(c2._entries[j], c2._entries[j], diff_ui)
                     if num_ui == 1:
@@ -1178,14 +1190,13 @@ def de_casteljau_intvec(Vector_integer_dense c, int c_bitsize, Rational x, int u
         # this is equal to a + num*(b-a)/den or diff*(a-b)/den + b.
         # If num<diff, we compute the former, otherwise the latter.
 
-
         num_less_diff = (mpz_cmp(num, diff) < 0)
 
         ndivs = n-1
 
-        for i from 0 <= i < n:
+        for i in range(n):
             mpz_set(c1._entries[i], c2._entries[0])
-            for j from 0 <= j < n-i-1:
+            for j in range(n-i-1):
                 if num_less_diff:
                     mpz_sub(tmp, c2._entries[j+1], c2._entries[j])
                     if num_fits_ui and num_ui == 1:
@@ -1248,25 +1259,27 @@ def de_casteljau_intvec(Vector_integer_dense c, int c_bitsize, Rational x, int u
 # and comparison do not require special treatment, since those operations
 # give the same results in double-precision or extended precision.)
 
+
 # This is the value of a half-ULP for numbers in the range 0.5 <= x < 1.
 # This is actually slightly more than a half-ULP because of possible
 # double-rounding on x86 PCs.
 cdef double half_ulp = ldexp(1.0 * 65/64, -54)
 
+
 def intvec_to_doublevec(Vector_integer_dense b, long err):
-    """
+    r"""
     Given a vector of integers A = [a1, ..., an], and an integer
     error bound E, returns a vector of floating-point numbers
     B = [b1, ..., bn], lower and upper error bounds F1 and F2, and
     a scaling factor d, such that
 
-    .. math::
+    .. MATH::
 
        (bk + F1) * 2^d \le ak
 
     and
 
-    .. math::
+    .. MATH::
 
         ak + E \le (bk + F2) * 2^d
 
@@ -1279,9 +1292,6 @@ def intvec_to_doublevec(Vector_integer_dense b, long err):
         sage: intvec_to_doublevec(vector(ZZ, [1, 2, 3, 4, 5]), 3)
         ((0.125, 0.25, 0.375, 0.5, 0.625), -1.1275702593849246e-16, 0.37500000000000017, 3)
     """
-    cdef unsigned int cwf
-    # fpu_fix_start(&cwf)
-
     vs = FreeModule(RDF, len(b))
 
     cdef Vector_real_double_dense db = vs(0)
@@ -1292,7 +1302,7 @@ def intvec_to_doublevec(Vector_integer_dense b, long err):
 
     cdef int i
 
-    for i from 0 <= i < len(b):
+    for i in range(len(b)):
         mpz_get_d_2exp(&cur_exp, b._entries[i])
         if cur_exp > max_exp:
             max_exp = cur_exp
@@ -1300,9 +1310,8 @@ def intvec_to_doublevec(Vector_integer_dense b, long err):
     cdef int delta = -max_exp
     cdef double d
     cdef int new_exp
-    cdef double half = 0.5
 
-    for i from 0 <= i < len(b):
+    for i in range(len(b)):
         d = mpz_get_d_2exp(&cur_exp, b._entries[i])
         # 0.5 <= d < 1; b._entries[i] ~= d*2^cur_exp
         new_exp = cur_exp + delta
@@ -1324,7 +1333,7 @@ def intvec_to_doublevec(Vector_integer_dense b, long err):
 
 cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
     """
-    This is the subclass of interval_bernstein_polynomial where
+    This is the subclass of :class:`interval_bernstein_polynomial` where
     polynomial coefficients are represented using floating-point numbers.
 
     In the floating-point representation, each coefficient is represented
@@ -1335,8 +1344,8 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
     Note that we always have E1 <= 0 <= E2.  Also, each floating-point
     coefficient has absolute value less than one.
 
-    (Note that mk_ibpf is a simple helper function for creating
-    elements of interval_bernstein_polynomial_float in doctests.)
+    (Note that :func:`mk_ibpf` is a simple helper function for creating
+    elements of :class:`interval_bernstein_polynomial_float` in doctests.)
 
     EXAMPLES::
 
@@ -1347,11 +1356,14 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
         <IBP: (0.1, 0.2, 0.3) + [0.0 .. 0.5]>
         sage: bp.variations()
         (0, 0)
-        sage: bp = mk_ibpf([-0.3, -0.1, 0.1, -0.1, -0.3, -0.1], lower=1, upper=5/4, usign=1, pos_err=0.2, scale_log2=-3, level=2, slope_err=RIF(pi)); print(bp)
+        sage: bp = mk_ibpf([-0.3, -0.1, 0.1, -0.1, -0.3, -0.1],                         # needs sage.symbolic
+        ....:              lower=1, upper=5/4, usign=1, pos_err=0.2,
+        ....:              scale_log2=-3, level=2, slope_err=RIF(pi)); print(bp)
         degree 5 IBP with floating-point coefficients
-        sage: bp
-        <IBP: ((-0.3, -0.1, 0.1, -0.1, -0.3, -0.1) + [0.0 .. 0.2]) * 2^-3 over [1 .. 5/4]; usign 1; level 2; slope_err 3.141592653589794?>
-        sage: bp.variations()
+        sage: bp                                                                        # needs sage.symbolic
+        <IBP: ((-0.3, -0.1, 0.1, -0.1, -0.3, -0.1) + [0.0 .. 0.2]) * 2^-3
+              over [1 .. 5/4]; usign 1; level 2; slope_err 3.141592653589794?>
+        sage: bp.variations()                                                           # needs sage.symbolic
         (3, 3)
     """
 
@@ -1389,7 +1401,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
             sage: bp
             <IBP: ((0.5, -0.3, -0.1) + [-0.02 .. 0.17]) * 2^3 over [-3/7 .. 4/7]; usign -1; level 2; slope_err 1.0000000000000000?e-30>
         """
-        assert(len(coeffs) > 0)
+        assert len(coeffs) > 0
         cdef numpy.ndarray[double, ndim=1] coeffs_data = coeffs._vector_numpy
         self.coeffs = coeffs
         self.lower = lower
@@ -1430,7 +1442,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
             sage: repr(bp)
             '<IBP: (-0.11, 0.22, -0.33) + [-0.3 .. 0.1] over [0 .. 1/9]>'
         """
-        base = "%s + [%s .. %s]" % (self.coeffs, self.neg_err, self.pos_err)
+        base = "%s + [%r .. %r]" % (self.coeffs, self.neg_err, self.pos_err)
         if self.scale_log2 != 0:
             base = "(%s) * 2^%d" % (base, self.scale_log2)
         s = "<IBP: %s" % base
@@ -1469,7 +1481,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
         """
         return 'f'
 
-    cdef void _count_variations(self):
+    cdef void _count_variations(self) noexcept:
         """
         A private function that counts the number of sign variations in
         this Bernstein polynomial.  Since the coefficients are represented
@@ -1506,7 +1518,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
             count_maybe_neg = 0
             sign = 0
 
-        for i from 1 <= i < n:
+        for i in range(1, n):
             new_count_maybe_pos = count_maybe_pos
             new_count_maybe_neg = count_maybe_neg
             val = cd[i]
@@ -1541,9 +1553,9 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
         else:
             self.max_variations = max(count_maybe_pos, count_maybe_neg)
 
-    cdef int degree(self):
+    cdef int degree(self) noexcept:
         """
-        Returns the (formal) degree of this polynomial.
+        Return the (formal) degree of this polynomial.
         """
         return len(self.coeffs) - 1
 
@@ -1554,13 +1566,13 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
 
         INPUT:
 
-        - ``mid`` -- where to split the Bernstein basis region; 0 < mid < 1
-        - ``msign`` -- default 0 (unknown); the sign of this polynomial at mid
+        - ``mid`` -- where to split the Bernstein basis region; ``0 < mid < 1``
+        - ``msign`` -- default 0 (unknown); the sign of this polynomial at ``mid``
 
         OUTPUT:
 
         - ``bp1``, ``bp2`` -- the new interval Bernstein polynomials
-        - ``ok`` -- a boolean; True if the sign of the original polynomial at mid is known
+        - ``ok`` -- a boolean; ``True`` if the sign of the original polynomial at ``mid`` is known
 
         EXAMPLES::
 
@@ -1569,19 +1581,19 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
             sage: bp = mk_ibpf([0.5, 0.2, -0.9, -0.7, 0.99], neg_err=-0.1, pos_err=0.01)
             sage: bp1, bp2, ok = bp.de_casteljau(ctx, 1/2)
             sage: bp1
-            <IBP: (0.5, 0.35, 0.0, -0.2875, -0.369375) + [-0.1 .. 0.01] over [0 .. 1/2]>
+            <IBP: (0.5, 0.35, 0.0, -0.2875, -0.369375) + [-0.10000000000000023 .. 0.010000000000000226] over [0 .. 1/2]>
             sage: bp2
-            <IBP: (-0.369375, -0.45125, -0.3275, 0.14500000000000002, 0.99) + [-0.1 .. 0.01] over [1/2 .. 1]>
+            <IBP: (-0.369375, -0.45125, -0.3275, 0.14500000000000002, 0.99) + [-0.10000000000000023 .. 0.010000000000000226] over [1/2 .. 1]>
             sage: bp1, bp2, ok = bp.de_casteljau(ctx, 2/3)
             sage: bp1 # rel tol 2e-16
-            <IBP: (0.5, 0.30000000000000004, -0.2555555555555555, -0.5444444444444444, -0.32172839506172846) + [-0.1 .. 0.01] over [0 .. 2/3]>
+            <IBP: (0.5, 0.30000000000000004, -0.2555555555555555, -0.5444444444444444, -0.32172839506172846) + [-0.10000000000000069 .. 0.010000000000000677] over [0 .. 2/3]>
             sage: bp2  # rel tol 3e-15
-            <IBP: (-0.32172839506172846, -0.21037037037037046, 0.028888888888888797, 0.4266666666666666, 0.99) + [-0.1 .. 0.01] over [2/3 .. 1]>
+            <IBP: (-0.32172839506172846, -0.21037037037037046, 0.028888888888888797, 0.4266666666666666, 0.99) + [-0.10000000000000069 .. 0.010000000000000677] over [2/3 .. 1]>
             sage: bp1, bp2, ok = bp.de_casteljau(ctx, 7/39)
             sage: bp1  # rel tol
-            <IBP: (0.5, 0.4461538461538461, 0.36653517422748183, 0.27328680523946786, 0.1765692706232836) + [-0.1 .. 0.01] over [0 .. 7/39]>
+            <IBP: (0.5, 0.4461538461538461, 0.36653517422748183, 0.27328680523946786, 0.1765692706232836) + [-0.10000000000000069 .. 0.010000000000000677] over [0 .. 7/39]>
             sage: bp2  # rel tol
-            <IBP: (0.1765692706232836, -0.26556803047927313, -0.7802038132807364, -0.3966666666666666, 0.99) + [-0.1 .. 0.01] over [7/39 .. 1]>
+            <IBP: (0.1765692706232836, -0.26556803047927313, -0.7802038132807364, -0.3966666666666666, 0.99) + [-0.10000000000000069 .. 0.010000000000000677] over [7/39 .. 1]>
         """
         (c1_, c2_, err_inc) = de_casteljau_doublevec(self.coeffs, mid)
         cdef Vector_real_double_dense c1 = c1_
@@ -1597,7 +1609,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
         if msign == 0:
             msign = sign
         elif sign != 0:
-            assert(msign == sign)
+            assert msign == sign
 
         # As long as new_neg and new_pos have
         # magnitudes less than 0.5, these computations
@@ -1631,7 +1643,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
 
     def get_msb_bit(self):
         """
-        Returns an approximation of the log2 of the maximum of the
+        Return an approximation of the log2 of the maximum of the
         absolute values of the coefficients, as an integer.
         """
         return self.scale_log2 - 53 + self.bitsize
@@ -1647,9 +1659,6 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
             sage: bp.slope_range().str(style='brackets')
             '[-4.8400000000000017 .. 7.2000000000000011]'
         """
-        cdef unsigned int cwf
-        # fpu_fix_start(&cwf)
-
         width = self.region_width()
         (min_diff, max_diff) = min_max_diff_doublevec(self.coeffs)
         err = self.pos_err - self.neg_err
@@ -1673,7 +1682,7 @@ cdef class interval_bernstein_polynomial_float(interval_bernstein_polynomial):
 def mk_ibpf(coeffs, lower=0, upper=1, lsign=0, usign=0, neg_err=0, pos_err=0,
             scale_log2=0, level=0, slope_err=RIF(0)):
     """
-    A simple wrapper for creating interval_bernstein_polynomial_float
+    A simple wrapper for creating :class:`interval_bernstein_polynomial_float`
     objects with coercions, defaults, etc.
 
     For use in doctests.
@@ -1686,16 +1695,18 @@ def mk_ibpf(coeffs, lower=0, upper=1, lsign=0, usign=0, neg_err=0, pos_err=0,
     """
     return interval_bernstein_polynomial_float(vector(RDF, coeffs), QQ(lower), QQ(upper), lsign, usign, neg_err, pos_err, scale_log2, level, slope_err)
 
-cdef Rational QQ_1_2 = ZZ(1)/2
-cdef Rational QQ_1_32 = QQ(1)/32
-cdef Rational QQ_31_32 = QQ(31)/32
-cdef Rational zero_QQ = QQ(0)
-cdef Rational one_QQ = QQ(1)
-cdef Integer zero_ZZ = ZZ(0)
-cdef Integer one_ZZ = ZZ(1)
+
+cdef Rational QQ_1_2 = QQ((1, 2))
+cdef Rational QQ_1_32 = QQ((1, 32))
+cdef Rational QQ_31_32 = QQ((31, 32))
+cdef Rational zero_QQ = QQ.zero()
+cdef Rational one_QQ = QQ.one()
+cdef Integer zero_ZZ = ZZ.zero()
+cdef Integer one_ZZ = ZZ.one()
 cdef Integer ZZ_2_31 = ZZ(2) ** 31
 cdef Integer ZZ_2_32 = ZZ(2) ** 32
 cdef RealIntervalFieldElement zero_RIF = RIF(0)
+
 
 def de_casteljau_doublevec(Vector_real_double_dense c, Rational x):
     """
@@ -1736,9 +1747,6 @@ def de_casteljau_doublevec(Vector_real_double_dense c, Rational x):
     c1 = Vector_real_double_dense(vs, 0)
     c2 = c.__copy__()
 
-    cdef unsigned int cwf
-    # fpu_fix_start(&cwf)
-
     cdef numpy.ndarray[double, ndim=1] c1d = c1._vector_numpy
     cdef numpy.ndarray[double, ndim=1] c2d = c2._vector_numpy
 
@@ -1747,16 +1755,14 @@ def de_casteljau_doublevec(Vector_real_double_dense c, Rational x):
     cdef int n = len(c)
     cdef int i, j
 
-    cdef int cur_den_steps = 0
-
     cdef double rx, rnx
 
     cdef int extra_err
 
     if x == QQ_1_2:
-        for i from 0 <= i < n:
+        for i in range(n):
             c1d[i] = c2d[0]
-            for j from 0 <= j < n-i-1:
+            for j in range(n-i-1):
                 c2d[j] = (c2d[j] + c2d[j+1]) * half
 
 # The following code lets us avoid O(n^2) floating-point multiplications
@@ -1786,6 +1792,7 @@ def de_casteljau_doublevec(Vector_real_double_dense c, Rational x):
 
     return (c1, c2, extra_err)
 
+
 def max_abs_doublevec(Vector_real_double_dense c):
     """
     Given a floating-point vector, return the maximum of the
@@ -1802,23 +1809,27 @@ def max_abs_doublevec(Vector_real_double_dense c):
     cdef double m = 0
     cdef double a
 
-    for i from 0 <= i < len(c):
+    for i in range(len(c)):
         a = fabs(cd[i])
-        if a > m: m = a
+        if a > m:
+            m = a
 
     return m
 
+
 def wordsize_rational(a, b, wordsize):
     """
-    Given rationals a and b, selects a de Casteljau split point r between
-    a and b.  An attempt is made to select an efficient split point
+    Given rationals a and b, select a de Casteljau split point r between
+    a and b.
+
+    An attempt is made to select an efficient split point
     (according to the criteria mentioned in the documentation
     for de_casteljau_intvec), with a bias towards split points near a.
 
     In full detail:
 
-    Takes as input two rationals, a and b, such that 0<=a<=1, 0<=b<=1,
-    and a!=b.  Returns rational r, such that a<=r<=b or b<=r<=a.
+    This takes as input two rationals, a and b, such that 0<=a<=1, 0<=b<=1,
+    and a!=b. This returns rational r, such that a<=r<=b or b<=r<=a.
     The denominator of r is a power of 2.  Let m be min(r, 1-r),
     nm be numerator(m), and dml be log2(denominator(m)).  The return value
     r is taken from the first of the following classes to have any
@@ -1878,7 +1889,7 @@ def wordsize_rational(a, b, wordsize):
     while True:
         rf = fld(a)
         if cur_size == wordsize:
-            assert(mpfr_number_p(rf.value))
+            assert mpfr_number_p(rf.value)
             exp = mpfr_get_exp(rf.value)
             if rf <= -(fld(-b)):
                 if exp <= -3:
@@ -1895,10 +1906,13 @@ def wordsize_rational(a, b, wordsize):
         fld = RealField(cur_size, rnd='RNDU')
 
     r = rf.exact_rational()
-    if sub_1: r = r + one_QQ
-    if swap_01: r = one_QQ - r
+    if sub_1:
+        r = r + one_QQ
+    if swap_01:
+        r = one_QQ - r
     # assert 0 <= r <= 1
     return r
+
 
 def relative_bounds(a, b):
     """
@@ -1925,7 +1939,8 @@ def relative_bounds(a, b):
     width = ah - al
     return ((bl - al) / width, (bh - al) / width)
 
-cdef int bitsize(Integer a):
+
+cdef int bitsize(Integer a) noexcept:
     """
     Compute the number of bits required to write a given integer
     (the sign is ignored).
@@ -1948,8 +1963,10 @@ cdef int bitsize(Integer a):
     """
     return int(mpz_sizeinbase(a.value, 2))
 
+
 def bitsize_doctest(n):
     return bitsize(n)
+
 
 def degree_reduction_next_size(n):
     """
@@ -1981,10 +1998,13 @@ def degree_reduction_next_size(n):
     # computing the exact inverse of a k by k matrix seems infeasible
     # for k much larger than 30.)
 
-    if n <= 2: return None
+    if n <= 2:
+        return None
     next = n * 3 // 4
-    if next > 30: next = 30
+    if next > 30:
+        next = 30
     return next
+
 
 def precompute_degree_reduction_cache(n):
     """
@@ -2009,7 +2029,8 @@ def precompute_degree_reduction_cache(n):
         )
     """
     while True:
-        if n in dr_cache: return
+        if n in dr_cache:
+            return
         next = degree_reduction_next_size(n)
         if next is None:
             dr_cache[n] = (None, None, 0)
@@ -2032,7 +2053,7 @@ def precompute_degree_reduction_cache(n):
         # polynomial, and be fairly certain (absolutely certain?) that
         # the error in the reduced polynomial will be no better
         # than this product.
-        expected_err = max([sum([abs(x) for x in bd.row(k)]) for k in xrange(next+1)])
+        expected_err = max([sum([abs(x) for x in bd.row(k)]) for k in range(next+1)])
 
         # bdd = bd.denominator()
         # bdi = MatrixSpace(ZZ, next+1, samps, sparse=False)(bd * bdd)
@@ -2040,6 +2061,7 @@ def precompute_degree_reduction_cache(n):
 
         dr_cache[n] = (next, bd, expected_err.floor(), (bdi, bdd))
         n = next
+
 
 def bernstein_down(d1, d2, s):
     """
@@ -2077,9 +2099,11 @@ def bernstein_down(d1, d2, s):
 
     return pseudoinverse(bernstein_up(d1, d2, s))
 
+
 def pseudoinverse(m):
     mt = m.transpose()
     return ~(mt * m) * mt
+
 
 def bernstein_up(d1, d2, s=None):
     """
@@ -2103,22 +2127,24 @@ def bernstein_up(d1, d2, s=None):
         [  8/15     -4   16/3 -13/15]
         [  -2/5      3     -4   12/5]
     """
-    if s is None: s = d1 + 1
+    if s is None:
+        s = d1 + 1
     MS = MatrixSpace(QQ, s, d1+1, sparse=False)
     m = MS()
     scale = factorial(d2)/factorial(d2-d1)
-    for b in range(0, d1+1):
+    for b in range(d1 + 1):
         scale2 = scale / binomial(d1, b)
         if (d1 - b) & 1 == 1:
             scale2 = -scale2
         scale2 = ~scale2
-        for a in range(0, s):
+        for a in range(s):
             ra = ZZ(subsample_vec(a, s, d2 + 1))
-            m[a, b] = prod([ra-i for i in range(0, b)]) * prod([ra-i for i in range(d2-d1+b+1, d2+1)]) * scale2
+            m[a, b] = prod([ra-i for i in range(b)]) * prod([ra-i for i in range(d2-d1+b+1, d2+1)]) * scale2
 
     return m
 
-cdef int subsample_vec(int a, int slen, int llen):
+
+cdef int subsample_vec(int a, int slen, int llen) noexcept:
     """
     Given a vector of length llen, and slen < llen, we want to
     select slen of the elements of the vector, evenly spaced.
@@ -2134,19 +2160,22 @@ cdef int subsample_vec(int a, int slen, int llen):
         sage: [subsample_vec_doctest(a, 3, 4) for a in range(3)]
         [1, 2, 3]
     """
-
     # round((a + 0.5) * (llen - 1) / slen)
     # round((2*a + 1) * (llen - 1) / (2 * slen)
     # floor(((2*a + 1) * (llen - 1) + slen) / (2 * slen))
     return ((2*a + 1) * (llen - 1) + slen) // (2 * slen)
 
+
 def subsample_vec_doctest(a, slen, llen):
     return subsample_vec(a, slen, llen)
 
+
 def maximum_root_first_lambda(p):
-    """
+    r"""
     Given a polynomial with real coefficients, computes an upper bound
-    on its largest real root, using the first-\lambda algorithm from
+    on its largest real root.
+
+    This is using the first-\lambda algorithm from
     "Implementations of a New Theorem for Computing Bounds for Positive
     Roots of Polynomials", by Akritas, Strzebo\'nski, and Vigklas.
 
@@ -2162,9 +2191,11 @@ def maximum_root_first_lambda(p):
         1.00000000000000
     """
     n = p.degree()
-    if p[n] < 0: p = -p
+    if p[n] < 0:
+        p = -p
     cl = [RIF(x) for x in p.list()]
     return cl_maximum_root_first_lambda(cl)
+
 
 def cl_maximum_root_first_lambda(cl):
     r"""
@@ -2184,13 +2215,13 @@ def cl_maximum_root_first_lambda(cl):
 
     TESTS::
 
-        sage: bnd = cl_maximum_root_first_lambda(map(RIF, [0, 0, 0, 14, 1]))
+        sage: bnd = cl_maximum_root_first_lambda(list(map(RIF, [0, 0, 0, 14, 1])))
         sage: bnd, bnd.parent()
         (0.000000000000000,
         Real Field with 53 bits of precision and rounding RNDU)
     """
     n = len(cl) - 1
-    assert(cl[n] > 0)
+    assert cl[n] > 0
     pending_pos_coeff = cl[n]
     pending_pos_exp = n
     lastPos = True
@@ -2198,7 +2229,7 @@ def cl_maximum_root_first_lambda(cl):
     negCounter = 0
     pos = []
     neg = []
-    for j in xrange(n-1, -2, -1):
+    for j in range(n-1, -2, -1):
         if j < 0:
             coeff = 1
         else:
@@ -2218,15 +2249,16 @@ def cl_maximum_root_first_lambda(cl):
             pending_pos_exp = j
             posCounter = posCounter+1
 
-    if len(neg) == 0:
-        return RIF._upper_field().zero()
+    if not neg:
+        return RIF.upper_field().zero()
 
     max_ub_log = RIF('-infinity')
-    for j in xrange(len(neg)):
+    for j in range(len(neg)):
         cur_ub_log = (-neg[j][0] / pos[j][0]).log() / (pos[j][1] - neg[j][1])
         max_ub_log = max_ub_log.union(cur_ub_log)
 
     return max_ub_log.upper().exp()
+
 
 def maximum_root_local_max(p):
     r"""
@@ -2247,9 +2279,11 @@ def maximum_root_local_max(p):
         1.41421356237310
     """
     n = p.degree()
-    if p[n] < 0: p = -p
+    if p[n] < 0:
+        p = -p
     cl = [RIF(x) for x in p.list()]
     return cl_maximum_root_local_max(cl)
+
 
 def cl_maximum_root_local_max(cl):
     r"""
@@ -2268,13 +2302,13 @@ def cl_maximum_root_local_max(cl):
         1.41421356237310
     """
     n = len(cl) - 1
-    assert(cl[n] > 0)
+    assert cl[n] > 0
     max_pos_coeff = cl[n]
     max_pos_exp = n
     max_pos_uses = 0
     max_ub_log = RIF('-infinity')
 
-    for j in xrange(n-1, -1, -1):
+    for j in range(n-1, -1, -1):
         if cl[j] < 0:
             max_pos_uses = max_pos_uses+1
             cur_ub_log = (-cl[j] / (max_pos_coeff >> max_pos_uses)).log() / (max_pos_exp - j)
@@ -2285,6 +2319,7 @@ def cl_maximum_root_local_max(cl):
             max_pos_uses = 0
 
     return max_ub_log.upper().exp()
+
 
 def cl_maximum_root(cl):
     r"""
@@ -2306,6 +2341,7 @@ def cl_maximum_root(cl):
         cl = [-x for x in cl]
     return min(cl_maximum_root_first_lambda(cl),
                cl_maximum_root_local_max(cl))
+
 
 def root_bounds(p):
     r"""
@@ -2336,7 +2372,8 @@ def root_bounds(p):
         True
     """
     n = p.degree()
-    if p[n] < 0: p = -p
+    if p[n] < 0:
+        p = -p
     cl = [RIF(x) for x in p.list()]
 
     cdef int zero_roots = 0
@@ -2348,12 +2385,12 @@ def root_bounds(p):
     if n == 0:
         # not RIF.zero().endpoints() because of MPFI's convention that the
         # upper bound is -0.
-        return RIF._lower_field().zero(), RIF._upper_field().zero()
+        return RIF.lower_field().zero(), RIF.upper_field().zero()
 
     ub = cl_maximum_root(cl)
 
     neg_cl = copy(cl)
-    for j in xrange(n-1, -1, -2):
+    for j in range(n-1, -1, -2):
         neg_cl[j] = -neg_cl[j]
 
     lb = -cl_maximum_root(neg_cl)
@@ -2375,6 +2412,7 @@ def root_bounds(p):
         lb = (~RIF(cl_maximum_root(swap_cl))).lower()
 
     return (lb, ub)
+
 
 def rational_root_bounds(p):
     """
@@ -2483,8 +2521,10 @@ def rational_root_bounds(p):
 
     return (rlb, rub)
 
+
 class PrecisionError(ValueError):
     pass
+
 
 class bernstein_polynomial_factory:
     """
@@ -2505,23 +2545,26 @@ class bernstein_polynomial_factory:
     """
 
     def _sign(self, v):
-        if v > 0: return 1
-        if v < 0: return -1
+        if v > 0:
+            return 1
+        if v < 0:
+            return -1
         return 0
 
     def lsign(self):
         """
-        Returns the sign of the first coefficient of this
+        Return the sign of the first coefficient of this
         Bernstein polynomial.
         """
         return self._sign(self.coeffs[0])
 
     def usign(self):
         """
-        Returns the sign of the last coefficient of this
+        Return the sign of the last coefficient of this
         Bernstein polynomial.
         """
         return self._sign(self.coeffs[-1])
+
 
 class bernstein_polynomial_factory_intlist(bernstein_polynomial_factory):
     """
@@ -2600,6 +2643,7 @@ class bernstein_polynomial_factory_intlist(bernstein_polynomial_factory):
 
         return interval_bernstein_polynomial_integer((ZZ ** len(b))(intv_b), zero_QQ, one_QQ, self.lsign(), self.usign(), 1, scale_log2, 0, zero_RIF)
 #        return bp_of_intlist(self.coeffs, scale_log2)
+
 
 class bernstein_polynomial_factory_ratlist(bernstein_polynomial_factory):
     """
@@ -2684,6 +2728,7 @@ class bernstein_polynomial_factory_ratlist(bernstein_polynomial_factory):
 
         return interval_bernstein_polynomial_integer((ZZ ** len(b))(intv_b), zero_QQ, one_QQ, self.lsign(), self.usign(), 1, scale_log2, 0, zero_RIF)
 #        return bp_of_ratlist(self.coeffs, scale_log2)
+
 
 class bernstein_polynomial_factory_ar(bernstein_polynomial_factory):
     """
@@ -2846,7 +2891,7 @@ def split_for_targets(context ctx, interval_bernstein_polynomial bp, target_list
     cdef rr_gap r
 
     split_targets = []
-    for (l,r,_) in target_list:
+    for l, r, _ in target_list:
         if l is None:
             split_targets += [(QQ(0), None, 0)]
         else:
@@ -2855,7 +2900,7 @@ def split_for_targets(context ctx, interval_bernstein_polynomial bp, target_list
             if lbounds[0] > 0:
                 out_of_bounds = True
         if r is None:
-            split_targets += [(QQ(1), None, 0)]
+            split_targets += [(QQ.one(), None, 0)]
         else:
             rbounds = relative_bounds(bounds, r.region())
             split_targets += [(rbounds[0], rbounds[1], r.sign)]
@@ -2881,7 +2926,7 @@ def split_for_targets(context ctx, interval_bernstein_polynomial bp, target_list
     split = wordsize_rational(split_targets[best_index][0], split_targets[best_index][1], ctx.wordsize)
 
     (p1_, p2_, ok) = bp.de_casteljau(ctx, split, msign=split_targets[best_index][2])
-    assert(ok)
+    assert ok
 
     cdef interval_bernstein_polynomial p1 = p1_
     cdef interval_bernstein_polynomial p2 = p2_
@@ -2904,17 +2949,15 @@ def split_for_targets(context ctx, interval_bernstein_polynomial bp, target_list
     tl1 = target_list[:target_list_splitpoint]
     tl2 = target_list[target_list_splitpoint:]
 
-    tiny = ~Integer(32)
-
     if len(tl1) > 0:
-        if True: # p1.region_width() / bp.region_width() < tiny:
+        if True:  # p1.region_width() / bp.region_width() < tiny:
             max_lsb = max([t[2] for t in tl1])
             p1 = p1.down_degree_iter(ctx, max_lsb)
         r1 = split_for_targets(ctx, p1, tl1)
     else:
         r1 = []
     if len(tl2) > 0:
-        if True: # p2.region_width() / bp.region_width() < tiny:
+        if True:  # p2.region_width() / bp.region_width() < tiny:
             max_lsb = max([t[2] for t in tl2])
             p2 = p2.down_degree_iter(ctx, max_lsb)
         r2 = split_for_targets(ctx, p2, tl2)
@@ -2922,6 +2965,7 @@ def split_for_targets(context ctx, interval_bernstein_polynomial bp, target_list
         r2 = []
 
     return r1 + r2
+
 
 cdef class ocean:
     """
@@ -3036,7 +3080,7 @@ cdef class ocean:
 
     def approx_bp(self, scale_log2):
         """
-        Returns an approximation to our Bernstein polynomial with the
+        Return an approximation to our Bernstein polynomial with the
         given scale_log2.
 
         EXAMPLES::
@@ -3119,7 +3163,7 @@ cdef class ocean:
 
     def all_done(self):
         """
-        Returns true iff all islands are known to contain exactly one root.
+        Return ``True`` iff all islands are known to contain exactly one root.
 
         EXAMPLES::
 
@@ -3210,6 +3254,7 @@ cdef class ocean:
                 bp = bps[i]
                 isle = active_islands[i]
                 isle.bp = bp
+
 
 cdef class island:
     """
@@ -3516,7 +3561,7 @@ cdef class island:
                         return
                 else:
                     self.refine_recurse(ctx, p1, ancestors, history, False)
-                    assert(self.lgap.upper == p2.lower)
+                    assert self.lgap.upper == p2.lower
                     bp = p2
                     # return to top of function (tail recursion optimization)
 
@@ -3553,7 +3598,8 @@ cdef class island:
         """
         cur_msb = bp.scale_log2 + bp.bitsize
         extra_bits = bp.bitsize // 2
-        if extra_bits < 30: extra_bits = 30
+        if extra_bits < 30:
+            extra_bits = 30
 
         target_lsb_h = cur_msb - 3*extra_bits
         target_lsb = cur_msb - 4*extra_bits
@@ -3570,8 +3616,6 @@ cdef class island:
         for i in range(len(ancestors)-1, -1, -1):
             anc = ancestors[i]
             if target_lsb_h >= anc.scale_log2:
-                ancestor_bitsize = anc.bitsize
-                ancestor_msb = anc.scale_log2 + ancestor_bitsize
                 ancestor_val = anc
                 first_lsb = ancestor_val.scale_log2
                 first_msb = first_lsb + ancestor_val.bitsize
@@ -3615,7 +3659,7 @@ cdef class island:
                             ancestor_val = ancestor_val.down_degree_iter(ctx, target_lsb_h)
 
                     rel_bounds = relative_bounds(ancestor_val.region(), bp.region())
-                    assert(rel_bounds[1] == 1)
+                    assert rel_bounds[1] == 1
 
                 ancestor_val = split_for_targets(ctx, ancestor_val, [(self.lgap, maybe_rgap, target_lsb_h)])[0]
 #                 if rel_lbounds[1] > 0:
@@ -3627,7 +3671,7 @@ cdef class island:
                 ancestor_val.usign = bp.usign
 
                 new_rel_bounds = relative_bounds(ancestor_val.region(), bp.region())
-                assert(new_rel_bounds[1] - new_rel_bounds[0] >= Integer(255)/256)
+                assert new_rel_bounds[1] - new_rel_bounds[0] >= Integer(255)/256
 
                 while ancestor_val.scale_log2 < target_lsb_l:
                     ancestors = ancestors + [ancestor_val]
@@ -3687,7 +3731,6 @@ cdef class island:
             return True
         return False
 
-
     def done(self, context ctx):
         """
         Check to see if the island is known to contain zero roots or
@@ -3711,10 +3754,10 @@ cdef class island:
         Assuming that the island is done (has either 0 or 1 roots),
         reports whether the island has a root.
         """
-
-        assert(self.known_done)
+        assert self.known_done
 
         return bool(self.bp.max_variations)
+
 
 cdef class rr_gap:
     """
@@ -3733,6 +3776,7 @@ cdef class rr_gap:
 
     def region(self):
         return (self.lower, self.upper)
+
 
 class linear_map:
     """
@@ -3754,7 +3798,9 @@ class linear_map:
         (l, u) = region
         return ((l - self.lower) / self.width, (u - self.lower) / self.width)
 
+
 lmap = linear_map(0, 1)
+
 
 class warp_map:
     """
@@ -3784,12 +3830,13 @@ class warp_map:
         else:
             return (l/(l+1), u/(u+1))
 
+
 def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=False, wordsize=32, retval='rational', strategy=None, max_diameter=None):
     """
-    Compute the real roots of a given polynomial with exact
-    coefficients (integer, rational, and algebraic real coefficients
-    are supported).  Returns a list of pairs of a root and its
-    multiplicity.
+    Compute the real roots of a given polynomial with exact coefficients
+    (integer, rational, and algebraic real coefficients are supported).
+
+    This returns a list of pairs of a root and its multiplicity.
 
     The root itself can be returned in one of three different ways.
     If retval=='rational', then it is returned as a pair of rationals
@@ -3982,12 +4029,14 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
     if ar_input and bounds is not None:
         raise NotImplementedError("Cannot set your own bounds with algebraic real input")
 
-    if ar_input: strategy = 'warp'
+    if ar_input:
+        strategy = 'warp'
 
-    if bounds is not None and strategy=='warp':
+    if bounds is not None and strategy == 'warp':
         raise NotImplementedError("Cannot set your own bounds with strategy=warp")
 
-    if seed is None: seed = 1
+    if seed is None:
+        seed = 1
 
     if skip_squarefree:
         factors = [(p, 1)]
@@ -4004,7 +4053,7 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
 
     cdef ocean oc
 
-    for (factor, exp) in factors:
+    for factor, exp in factors:
         if strategy=='warp':
             if factor.constant_coefficient() == 0:
                 x = factor.parent().gen()
@@ -4059,7 +4108,7 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
     while True:
         all_roots = copy(extra_roots)
 
-        for (oc, factor, exp) in oceans:
+        for oc, factor, exp in oceans:
             rel_roots = oc.roots()
 
             cur_roots = [oc.mapping.from_ocean(r) for r in rel_roots]
@@ -4071,7 +4120,6 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
         ok = True
 
         target_widths = [None] * len(all_roots)
-
 
         if max_diameter is not None:
             # Check to make sure that no intervals are too wide.
@@ -4094,7 +4142,6 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
                         target_widths[i] = (root[1] - root[0]) / cur_diam * half_diameter
                         ok = False
 
-
         for i in range(len(all_roots) - 1):
             # Check to be sure that all intervals are disjoint.
             if all_roots[i][0][1] >= all_roots[i+1][0][0]:
@@ -4115,14 +4162,16 @@ def real_roots(p, bounds=None, seed=None, skip_squarefree=False, do_logging=Fals
                 ocean_target = oc.mapping.to_ocean(target_region)
                 oc.reset_root_width(all_roots[i][4], ocean_target[1] - ocean_target[0])
 
-        if ok: break
+        if ok:
+            break
 
-        for (oc, factor, exp) in oceans: oc.find_roots()
+        for oc, factor, exp in oceans:
+            oc.find_roots()
 
     if do_logging:
         return ctx, all_roots
 
-    if retval=='rational':
+    if retval == 'rational':
         return [(r[0], r[2]) for r in all_roots]
 
     for i in range(1000):
@@ -4185,6 +4234,7 @@ def scale_intvec_var(Vector_integer_dense c, k):
         c[i] = c[i] * factor
         factor = (factor * kn) // kd
 
+
 def taylor_shift1_intvec(Vector_integer_dense c):
     """
     Given a vector of integers c of length d+1, representing the
@@ -4215,6 +4265,7 @@ def taylor_shift1_intvec(Vector_integer_dense c):
         for k from degree-i <= k < degree:
             mpz_add(c._entries[k], c._entries[k], c._entries[k+1])
 
+
 def reverse_intvec(Vector_integer_dense c):
     """
     Given a vector of integers, reverse the vector (like the reverse()
@@ -4236,7 +4287,9 @@ def reverse_intvec(Vector_integer_dense c):
     for i from 0 <= i < c_len // 2:
         mpz_swap(c._entries[i], c._entries[c_len - 1 - i])
 
+
 realfield_rndu_cache = {}
+
 
 def get_realfield_rndu(n):
     """
@@ -4260,6 +4313,7 @@ def get_realfield_rndu(n):
         realfield_rndu_cache[n] = fld
         return fld
 
+
 cdef class context:
     """
     A simple context class, which is passed through parts of the
@@ -4273,9 +4327,8 @@ cdef class context:
         """
         Initialize a context class.
         """
-        self.seed = seed # saved to make context printable
-        self.random = Random()
-        self.random.seed(seed)
+        self.seed = seed  # saved to make context printable
+        self.random = randstate().python_random(seed=seed)
         self.do_logging = do_logging
         self.wordsize = wordsize
         self.dc_log = []
@@ -4301,14 +4354,14 @@ cdef class context:
             s = s + "; wordsize=%d" % self.wordsize
         return s
 
-    cdef void dc_log_append(self, x):
+    cdef void dc_log_append(self, x) noexcept:
         """
         Optional logging for the root isolation algorithm.
         """
         if self.do_logging:
             self.dc_log.append(x)
 
-    cdef void be_log_append(self, x):
+    cdef void be_log_append(self, x) noexcept:
         """
         Optional logging for degree reduction in the root isolation algorithm.
         """
@@ -4320,6 +4373,7 @@ cdef class context:
 
     def get_be_log(self):
         return self.be_log
+
 
 def mk_context(do_logging=False, seed=0, wordsize=32):
     """
@@ -4335,6 +4389,7 @@ def mk_context(do_logging=False, seed=0, wordsize=32):
         root isolation context: seed=3; do_logging=True; wordsize=64
     """
     return context(do_logging, seed, wordsize)
+
 
 def to_bernstein(p, low=0, high=1, degree=None):
     """
@@ -4361,14 +4416,13 @@ def to_bernstein(p, low=0, high=1, degree=None):
         sage: to_bernstein(x^3 + x^2 - x - 1, low=3, high=22/7)
         ([296352, 310464, 325206, 340605], 9261)
     """
-
     if degree is None:
         degree = p.degree()
     elif degree < p.degree():
         raise ValueError('Bernstein degree must be at least polynomial degree')
     vs = ZZ ** (degree + 1)
     c = vs(0)
-    for i in range(0, p.degree() + 1):
+    for i in range(p.degree() + 1):
         c[i] = p[i]
     scale = ZZ(1)
     if low == 0:
@@ -4384,7 +4438,8 @@ def to_bernstein(p, low=0, high=1, degree=None):
     reverse_intvec(c)
     taylor_shift1_intvec(c)
     reverse_intvec(c)
-    return ([c[k] / binomial(degree, k) for k in range(0, degree+1)], scale)
+    return ([c[k] / binomial(degree, k) for k in range(degree + 1)], scale)
+
 
 def to_bernstein_warp(p):
     """
@@ -4398,13 +4453,11 @@ def to_bernstein_warp(p):
         sage: to_bernstein_warp(1 + x + x^2 + x^3 + x^4 + x^5)
         [1, 1/5, 1/10, 1/10, 1/5, 1]
     """
-
     c = p.list()
-
     for i in range(len(c)):
         c[i] = c[i] / binomial(len(c) - 1, i)
-
     return c
+
 
 def bernstein_expand(Vector_integer_dense c, int d2):
     """
@@ -4417,7 +4470,7 @@ def bernstein_expand(Vector_integer_dense c, int d2):
     multiplies, but in this version all the multiplies are by single
     machine words).
 
-    Returns a pair consisting of the expanded polynomial, and the maximum
+    This returns a pair consisting of the expanded polynomial, and the maximum
     error E.  (So if an element of the returned polynomial is a, and the
     true value of that coefficient is b, then a <= b < a + E.)
 
@@ -4450,7 +4503,8 @@ def bernstein_expand(Vector_integer_dense c, int d2):
 
     # XXX do experimentation here on how to decide when to divide
     cdef int max_bits = max_bitsize_intvec(c) / 2
-    if max_bits < 64: max_bits = 64
+    if max_bits < 64:
+        max_bits = 64
 
     for i from 0 <= i <= d1:
         mpz_set(c2._entries[i], c._entries[i])
@@ -4474,7 +4528,8 @@ def bernstein_expand(Vector_integer_dense c, int d2):
 
     return (c2, ndivides)
 
-cdef int max_bitsize_intvec(Vector_integer_dense b):
+
+cdef int max_bitsize_intvec(Vector_integer_dense b) noexcept:
     """
     Given an integer vector, find the approximate log2 of the maximum
     of the absolute values of the elements.
@@ -4489,14 +4544,17 @@ cdef int max_bitsize_intvec(Vector_integer_dense b):
     cdef int i
     cdef int size
 
-    for i from 0 <= i < len(b):
+    for i in range(len(b)):
         size = mpz_sizeinbase(b._entries[i], 2)
-        if size > max_bits: max_bits = size
+        if size > max_bits:
+            max_bits = size
 
     return max_bits
 
+
 def max_bitsize_intvec_doctest(b):
     return max_bitsize_intvec(b)
+
 
 def dprod_imatrow_vec(Matrix_integer_dense m, Vector_integer_dense v, int k):
     """
@@ -4527,9 +4585,8 @@ def dprod_imatrow_vec(Matrix_integer_dense m, Vector_integer_dense v, int k):
         sage: dprod_imatrow_vec(m, vector(ZZ, [1, 2, 3]), 1)
         26
     """
-
-    assert(0 <= k < m.nrows())
-    assert(m.ncols() <= len(v))
+    assert 0 <= k < m.nrows()
+    assert m.ncols() <= len(v)
 
     cdef Integer sum = Integer(0)
 
@@ -4540,12 +4597,13 @@ def dprod_imatrow_vec(Matrix_integer_dense m, Vector_integer_dense v, int k):
     cdef int ra
     cdef int a
     mpz_init(tmp)
-    for a from 0 <= a < msize:
+    for a in range(msize):
         ra = subsample_vec(a, msize, vsize)
-        m.get_unsafe_mpz(k,a,tmp)
+        m.get_unsafe_mpz(k, a, tmp)
         mpz_addmul(sum.value, tmp, v._entries[ra])
     mpz_clear(tmp)
     return sum
+
 
 def min_max_delta_intvec(Vector_integer_dense a, Vector_integer_dense b):
     """
@@ -4560,9 +4618,8 @@ def min_max_delta_intvec(Vector_integer_dense a, Vector_integer_dense b):
         sage: min_max_delta_intvec(a, b)
         (30, -5)
     """
-
-    assert(len(a) == len(b))
-    assert(len(a) > 0)
+    assert len(a) == len(b)
+    assert len(a) > 0
 
     cdef Integer max = Integer()
     cdef Integer min = Integer()
@@ -4582,6 +4639,7 @@ def min_max_delta_intvec(Vector_integer_dense a, Vector_integer_dense b):
 
     return (max, min)
 
+
 def min_max_diff_intvec(Vector_integer_dense b):
     """
     Given an integer vector b = (b0, ..., bn), compute the
@@ -4594,7 +4652,7 @@ def min_max_diff_intvec(Vector_integer_dense b):
         (-9, 6)
     """
     l = len(b)
-    assert(l > 1)
+    assert l > 1
 
     cdef Integer min_diff = b[1] - b[0]
     cdef Integer max_diff = Integer()
@@ -4612,6 +4670,7 @@ def min_max_diff_intvec(Vector_integer_dense b):
 
     return (min_diff, max_diff)
 
+
 def min_max_diff_doublevec(Vector_real_double_dense c):
     """
     Given a floating-point vector b = (b0, ..., bn), compute the
@@ -4626,7 +4685,7 @@ def min_max_diff_doublevec(Vector_real_double_dense c):
     cdef numpy.ndarray[double, ndim=1] cd = c._vector_numpy
 
     l = len(c)
-    assert(l > 1)
+    assert l > 1
 
     cdef double min_diff = cd[1] - cd[0]
     cdef double max_diff = min_diff

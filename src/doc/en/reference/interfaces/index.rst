@@ -58,11 +58,12 @@ exact actual program available (especially useful for tab completion
 and testing to make sure nothing funny is going on).
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    sage/interfaces/interface
    sage/interfaces/expect
    sage/interfaces/sagespawn
+   sage/interfaces/abc
    sage/interfaces/axiom
    sage/interfaces/ecm
    sage/interfaces/four_ti_2
@@ -76,6 +77,8 @@ and testing to make sure nothing funny is going on).
    sage/interfaces/gp
    sage/interfaces/jmoldata
    sage/interfaces/kash
+   sage/interfaces/kenzo
+   sage/interfaces/latte
    sage/interfaces/lie
    sage/interfaces/lisp
    sage/interfaces/macaulay2
@@ -83,6 +86,7 @@ and testing to make sure nothing funny is going on).
    sage/interfaces/magma_free
    sage/interfaces/maple
    sage/interfaces/mathematica
+   sage/interfaces/mathics
    sage/interfaces/matlab
    sage/interfaces/maxima
    sage/interfaces/maxima_abstract
@@ -91,15 +95,16 @@ and testing to make sure nothing funny is going on).
    sage/interfaces/mwrank
    sage/interfaces/octave
    sage/interfaces/phc
+   sage/interfaces/polymake
    sage/interfaces/povray
    sage/interfaces/psage
    sage/interfaces/qepcad
-   sage/interfaces/qsieve
    sage/interfaces/r
    sage/interfaces/rubik
    sage/interfaces/sage0
    sage/interfaces/scilab
    sage/interfaces/singular
+   sage/interfaces/sympy
    sage/interfaces/tachyon
    sage/interfaces/tides
 

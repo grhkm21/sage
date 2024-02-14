@@ -1,19 +1,19 @@
 """
-q-expansions of Theta Series
+`q`-expansions of theta series
 
 AUTHOR:
 
-William Stein
+- William Stein
 """
-
-from sage.rings.all  import Integer, ZZ, PowerSeriesRing
+from sage.rings.integer import Integer
+from sage.rings.integer_ring import ZZ
+from sage.rings.power_series_ring import PowerSeriesRing
 
 from math import sqrt
 
 def theta2_qexp(prec=10, var='q', K=ZZ, sparse=False):
     r"""
-    Return the `q`-expansion of the series
-    ` \theta_2 = \sum_{n odd} q^{n^2}. `
+    Return the `q`-expansion of the series `\theta_2 = \sum_{n \text{ odd}} q^{n^2}`.
 
     INPUT:
 
@@ -55,7 +55,7 @@ def theta2_qexp(prec=10, var='q', K=ZZ, sparse=False):
     n = int(sqrt(prec))
     if n*n < prec:
         n += 1
-    for m in xrange(1, n, 2):
+    for m in range(1, n, 2):
         v[m*m] = one
     R = PowerSeriesRing(K, sparse=sparse, names=var)
     return R(v, prec=prec)
@@ -63,7 +63,7 @@ def theta2_qexp(prec=10, var='q', K=ZZ, sparse=False):
 def theta_qexp(prec=10, var='q', K=ZZ, sparse=False):
     r"""
     Return the `q`-expansion of the standard `\theta` series
-    ` \theta = 1 + 2\sum_{n=1}{^\infty} q^{n^2}. `
+    `\theta = 1 + 2\sum_{n=1}^{\infty} q^{n^2}`.
 
     INPUT:
 
@@ -105,10 +105,8 @@ def theta_qexp(prec=10, var='q', K=ZZ, sparse=False):
     n = int(sqrt(prec))
     if n*n != prec:
         n += 1
-    for m in xrange(1, n):
+    for m in range(1, n):
         v[m*m] = two
 
     R = PowerSeriesRing(K, sparse=sparse, names=var)
     return R(v, prec=prec)
-
-

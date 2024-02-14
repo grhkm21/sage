@@ -1,16 +1,26 @@
 """
-Base class for Jacobians of curves
+Jacobians of curves
+
+This module defines the base class of Jacobians as an abstract scheme.
+
+AUTHORS:
+
+- William Stein (2005)
+
 """
-
-#*******************************************************************************
-#  Copyright (C) 2005 William Stein
+#*****************************************************************************
+#       Copyright (C) 2005 William Stein <wstein@gmail.com>
+#
 #  Distributed under the terms of the GNU General Public License (GPL)
+#  as published by the Free Software Foundation; either version 2 of
+#  the License, or (at your option) any later version.
 #                  http://www.gnu.org/licenses/
-#*******************************************************************************
-
+#*****************************************************************************
 from sage.categories.fields import Fields
 _Fields = Fields()
 from sage.schemes.generic.scheme import Scheme, is_Scheme
+from sage.structure.richcmp import richcmp_method, richcmp
+
 
 def is_Jacobian(J):
     """
@@ -33,6 +43,7 @@ def is_Jacobian(J):
     """
     return isinstance(J, Jacobian_generic)
 
+
 def Jacobian(C):
     """
     EXAMPLES::
@@ -48,6 +59,8 @@ def Jacobian(C):
     except AttributeError:
         return Jacobian_generic(C)
 
+
+@richcmp_method
 class Jacobian_generic(Scheme):
     """
     Base class for Jacobians of projective curves.
@@ -64,6 +77,8 @@ class Jacobian_generic(Scheme):
     """
     def __init__(self, C):
         """
+        Initialize.
+
         TESTS::
 
             sage: from sage.schemes.jacobians.abstract_jacobian import Jacobian_generic
@@ -93,27 +108,32 @@ class Jacobian_generic(Scheme):
             sage: Jacobian_generic(P2)
             Traceback (most recent call last):
             ...
-            ValueError: C (=Projective Space of dimension 2 over Rational Field) must have dimension 1.
+            ValueError: C (=Projective Space of dimension 2 over Rational Field)
+            must have dimension 1.
+
+        ::
+
             sage: P2.<x, y, z> = ProjectiveSpace(Zmod(6), 2)
-            sage: C = Curve(x + y + z)
+            sage: C = Curve(x + y + z, P2)
             sage: Jacobian_generic(C)
             Traceback (most recent call last):
             ...
-            TypeError: C (=Projective Plane Curve over Ring of integers modulo 6 defined by x + y + z) must be defined over a field.
+            TypeError: C (=Projective Plane Curve over Ring of integers modulo 6
+            defined by x + y + z) must be defined over a field.
         """
         if not is_Scheme(C):
-            raise TypeError("Argument (=%s) must be a scheme."%C)
+            raise TypeError("Argument (=%s) must be a scheme." % C)
         if C.base_ring() not in _Fields:
-            raise TypeError("C (=%s) must be defined over a field."%C)
+            raise TypeError("C (=%s) must be defined over a field." % C)
         if C.dimension() != 1:
-            raise ValueError("C (=%s) must have dimension 1."%C)
+            raise ValueError("C (=%s) must have dimension 1." % C)
         self.__curve = C
         Scheme.__init__(self, C.base_scheme())
 
-    def __cmp__(self, J):
+    def __richcmp__(self, J, op):
         """
-        Compare the Jacobian self to `J`.  If `J` is a Jacobian, then
-        self and `J` are equal if and only if their curves are equal.
+        Compare the Jacobian ``self`` to `J`.  If `J` is a Jacobian, then
+        ``self`` and `J` are equal if and only if their curves are equal.
 
         EXAMPLES::
 
@@ -133,8 +153,8 @@ class Jacobian_generic(Scheme):
             True
         """
         if not is_Jacobian(J):
-            return cmp(type(self), type(J))
-        return cmp(self.curve(), J.curve())
+            return NotImplemented
+        return richcmp(self.curve(), J.curve(), op)
 
     def _repr_(self):
         """
@@ -149,7 +169,7 @@ class Jacobian_generic(Scheme):
             sage: J._repr_()
             'Jacobian of Projective Plane Curve over Rational Field defined by x^3 + y^3 + z^3'
         """
-        return "Jacobian of %s"%self.__curve
+        return "Jacobian of %s" % self.__curve
 
     def _point(self):
         """
@@ -157,7 +177,7 @@ class Jacobian_generic(Scheme):
 
         OUTPUT:
 
-        This method always raises a ``NotImplementedError``; it is
+        This method always raises a :class:`NotImplementedError`; it is
         only abstract.
 
         EXAMPLES::
@@ -174,7 +194,7 @@ class Jacobian_generic(Scheme):
 
     def curve(self):
         """
-        Return the curve of which self is the Jacobian.
+        Return the curve of which ``self`` is the Jacobian.
 
         EXAMPLES::
 
@@ -194,48 +214,45 @@ class Jacobian_generic(Scheme):
 
         - ``R`` -- a field. The new base ring.
 
-        OUTPUT:
-
-        The Jacobian over the ring `R`.
+        OUTPUT: The Jacobian over the ring `R`.
 
         EXAMPLES::
 
             sage: R.<x> = QQ['x']
-            sage: H = HyperellipticCurve(x^3-10*x+9)
+            sage: H = HyperellipticCurve(x^3 - 10*x + 9)
             sage: Jac = H.jacobian();   Jac
-            Jacobian of Hyperelliptic Curve over Rational
-            Field defined by y^2 = x^3 - 10*x + 9
+            Jacobian of Hyperelliptic Curve over Rational Field
+             defined by y^2 = x^3 - 10*x + 9
             sage: Jac.change_ring(RDF)
-            Jacobian of Hyperelliptic Curve over Real Double
-            Field defined by y^2 = x^3 - 10.0*x + 9.0
+            Jacobian of Hyperelliptic Curve over Real Double Field
+             defined by y^2 = x^3 - 10.0*x + 9.0
         """
         return self.curve().change_ring(R).jacobian()
 
     def base_extend(self, R):
         r"""
-        Return the natural extension of ``self`` over `R`
+        Return the natural extension of ``self`` over `R`.
 
         INPUT:
 
         - ``R`` -- a field. The new base field.
 
-        OUTPUT:
-
-        The Jacobian over the ring `R`.
+        OUTPUT: The Jacobian over the ring `R`.
 
         EXAMPLES::
 
             sage: R.<x> = QQ['x']
-            sage: H = HyperellipticCurve(x^3-10*x+9)
+            sage: H = HyperellipticCurve(x^3 - 10*x + 9)
             sage: Jac = H.jacobian();   Jac
-            Jacobian of Hyperelliptic Curve over Rational Field defined by y^2 = x^3 - 10*x + 9
-            sage: F.<a> = QQ.extension(x^2+1)
-            sage: Jac.base_extend(F)
+            Jacobian of Hyperelliptic Curve over Rational Field
+             defined by y^2 = x^3 - 10*x + 9
+            sage: F.<a> = QQ.extension(x^2 + 1)                                         # needs sage.rings.number_field
+            sage: Jac.base_extend(F)                                                    # needs sage.rings.number_field
             Jacobian of Hyperelliptic Curve over Number Field in a with defining
-            polynomial x^2 + 1 defined by y^2 = x^3 - 10*x + 9
+             polynomial x^2 + 1 defined by y^2 = x^3 - 10*x + 9
         """
         if R not in _Fields:
-            raise ValueError('Not a field: '+str(R))
+            raise ValueError('Not a field: ' + str(R))
         if self.base_ring() is R:
             return self
         if not R.has_coerce_map_from(self.base_ring()):

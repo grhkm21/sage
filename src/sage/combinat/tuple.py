@@ -1,7 +1,7 @@
 r"""
 Tuples
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2007 Mike Hansen <mhansen@gmail.com>,
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -13,19 +13,20 @@ Tuples
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import absolute_import
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+from itertools import product, combinations_with_replacement
 
-from .combinat import CombinatorialClass
-from sage.interfaces.all import gap
-from sage.rings.all import ZZ
+from sage.arith.misc import binomial
+from sage.categories.finite_enumerated_sets import FiniteEnumeratedSets
+from sage.rings.integer_ring import ZZ
+from sage.structure.parent import Parent
+from sage.structure.unique_representation import UniqueRepresentation
 
 
-def Tuples(S, k):
+class Tuples(Parent, UniqueRepresentation):
     """
-    Returns the combinatorial class of ordered tuples of S of length
-    k.
+    Return the enumerated set of ordered tuples of S of length k.
 
     An ordered tuple of length k of set is an ordered selection with
     repetition and is represented by a list of length k containing
@@ -35,24 +36,37 @@ def Tuples(S, k):
 
         sage: S = [1,2]
         sage: Tuples(S,3).list()
-        [[1, 1, 1], [2, 1, 1], [1, 2, 1], [2, 2, 1], [1, 1, 2], [2, 1, 2], [1, 2, 2], [2, 2, 2]]
+        [(1, 1, 1), (2, 1, 1), (1, 2, 1), (2, 2, 1), (1, 1, 2),
+         (2, 1, 2), (1, 2, 2), (2, 2, 2)]
         sage: mset = ["s","t","e","i","n"]
         sage: Tuples(mset,2).list()
-        [['s', 's'], ['t', 's'], ['e', 's'], ['i', 's'], ['n', 's'], ['s', 't'], ['t', 't'],
-         ['e', 't'], ['i', 't'], ['n', 't'], ['s', 'e'], ['t', 'e'], ['e', 'e'], ['i', 'e'],
-         ['n', 'e'], ['s', 'i'], ['t', 'i'], ['e', 'i'], ['i', 'i'], ['n', 'i'], ['s', 'n'],
-         ['t', 'n'], ['e', 'n'], ['i', 'n'], ['n', 'n']]
+        [('s', 's'), ('t', 's'), ('e', 's'), ('i', 's'), ('n', 's'),
+         ('s', 't'), ('t', 't'), ('e', 't'), ('i', 't'), ('n', 't'),
+         ('s', 'e'), ('t', 'e'), ('e', 'e'), ('i', 'e'), ('n', 'e'),
+         ('s', 'i'), ('t', 'i'), ('e', 'i'), ('i', 'i'), ('n', 'i'),
+         ('s', 'n'), ('t', 'n'), ('e', 'n'), ('i', 'n'), ('n', 'n')]
 
     ::
 
-        sage: K.<a> = GF(4, 'a')
-        sage: mset = [x for x in K if x!=0]
-        sage: Tuples(mset,2).list()
-        [[a, a], [a + 1, a], [1, a], [a, a + 1], [a + 1, a + 1], [1, a + 1], [a, 1], [a + 1, 1], [1, 1]]
+        sage: K.<a> = GF(4, 'a')                                                        # needs sage.rings.finite_rings
+        sage: mset = sorted((x for x in K if x != 0), key=str)                          # needs sage.rings.finite_rings
+        sage: Tuples(mset, 2).list()                                                    # needs sage.rings.finite_rings
+        [(1, 1),     (a, 1),     (a + 1, 1),
+         (1, a),     (a, a),     (a + 1, a),
+         (1, a + 1), (a, a + 1), (a + 1, a + 1)]
     """
-    return Tuples_sk(S,k)
+    @staticmethod
+    def __classcall_private__(cls, S, k):
+        """
+        Normalize input to ensure a unique representation.
 
-class Tuples_sk(CombinatorialClass):
+        EXAMPLES::
+
+            sage: T = Tuples(['l','i','t'],2); T
+            Tuples of ('l', 'i', 't') of length 2
+        """
+        return super().__classcall__(cls, tuple(S), k)
+
     def __init__(self, S, k):
         """
         TESTS::
@@ -63,16 +77,18 @@ class Tuples_sk(CombinatorialClass):
         """
         self.S = S
         self.k = k
-        self._index_list = [S.index(_) for _ in S]
+        self._index_list = list(set(S.index(s) for s in S))
+        category = FiniteEnumeratedSets()
+        Parent.__init__(self, category=category)
 
     def __repr__(self):
         """
         TESTS::
 
             sage: repr(Tuples([1,2,3],2))
-            'Tuples of [1, 2, 3] of length 2'
+            'Tuples of (1, 2, 3) of length 2'
         """
-        return "Tuples of %s of length %s"%(self.S, self.k)
+        return "Tuples of %s of length %s" % (self.S, self.k)
 
     def __iter__(self):
         """
@@ -80,30 +96,21 @@ class Tuples_sk(CombinatorialClass):
 
             sage: S = [1,2]
             sage: Tuples(S,3).list()
-            [[1, 1, 1], [2, 1, 1], [1, 2, 1], [2, 2, 1], [1, 1, 2], [2, 1, 2], [1, 2, 2], [2, 2, 2]]
+            [(1, 1, 1), (2, 1, 1), (1, 2, 1), (2, 2, 1), (1, 1, 2),
+             (2, 1, 2), (1, 2, 2), (2, 2, 2)]
             sage: mset = ["s","t","e","i","n"]
             sage: Tuples(mset,2).list()
-            [['s', 's'], ['t', 's'], ['e', 's'], ['i', 's'], ['n', 's'], ['s', 't'], ['t', 't'],
-            ['e', 't'], ['i', 't'], ['n', 't'], ['s', 'e'], ['t', 'e'], ['e', 'e'], ['i', 'e'],
-            ['n', 'e'], ['s', 'i'], ['t', 'i'], ['e', 'i'], ['i', 'i'], ['n', 'i'], ['s', 'n'],
-            ['t', 'n'], ['e', 'n'], ['i', 'n'], ['n', 'n']]
+            [('s', 's'), ('t', 's'), ('e', 's'), ('i', 's'), ('n', 's'),
+             ('s', 't'), ('t', 't'), ('e', 't'), ('i', 't'), ('n', 't'),
+             ('s', 'e'), ('t', 'e'), ('e', 'e'), ('i', 'e'), ('n', 'e'),
+             ('s', 'i'), ('t', 'i'), ('e', 'i'), ('i', 'i'), ('n', 'i'),
+             ('s', 'n'), ('t', 'n'), ('e', 'n'), ('i', 'n'), ('n', 'n')]
+            sage: Tuples((1,1,2),3).list()
+            [(1, 1, 1), (2, 1, 1), (1, 2, 1), (2, 2, 1), (1, 1, 2),
+             (2, 1, 2), (1, 2, 2), (2, 2, 2)]
         """
-        S = self.S
-        k = self.k
-        import copy
-        if k<=0:
-            yield []
-            return
-        if k==1:
-            for x in S:
-                yield [x]
-            return
-
-        for s in S:
-            for x in Tuples_sk(S,k-1):
-                y = copy.copy(x)
-                y.append(s)
-                yield y
+        for p in product(self._index_list, repeat=self.k):
+            yield tuple(self.S[i] for i in reversed(p))
 
     def cardinality(self):
         """
@@ -116,15 +123,15 @@ class Tuples_sk(CombinatorialClass):
             sage: Tuples(S,2).cardinality()
             25
         """
-        ans=gap.eval("NrTuples(%s,%s)"%(self._index_list,ZZ(self.k)))
-        return ZZ(ans)
+        return ZZ(len(self._index_list)).__pow__(self.k)
 
 
+Tuples_sk = Tuples
 
-def UnorderedTuples(S,k):
+
+class UnorderedTuples(Parent, UniqueRepresentation):
     """
-    Returns the combinatorial class of unordered tuples of S of length
-    k.
+    Return the enumerated set of unordered tuples of S of length k.
 
     An unordered tuple of length k of set is a unordered selection with
     repetitions of set and is represented by a sorted list of length k
@@ -134,14 +141,23 @@ def UnorderedTuples(S,k):
 
         sage: S = [1,2]
         sage: UnorderedTuples(S,3).list()
-        [[1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]]
+        [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
         sage: UnorderedTuples(["a","b","c"],2).list()
-        [['a', 'a'], ['a', 'b'], ['a', 'c'], ['b', 'b'], ['b', 'c'], ['c', 'c']]
+        [('a', 'a'), ('a', 'b'), ('a', 'c'), ('b', 'b'), ('b', 'c'),
+         ('c', 'c')]
     """
-    return UnorderedTuples_sk(S,k)
+    @staticmethod
+    def __classcall_private__(cls, S, k):
+        """
+        Normalize input to ensure a unique representation.
 
+        EXAMPLES::
 
-class UnorderedTuples_sk(CombinatorialClass):
+            sage: T = UnorderedTuples(['l','i','t'],2); T
+            Unordered tuples of ('l', 'i', 't') of length 2
+        """
+        return super().__classcall__(cls, tuple(S), k)
+
     def __init__(self, S, k):
         """
         TESTS::
@@ -152,29 +168,34 @@ class UnorderedTuples_sk(CombinatorialClass):
         """
         self.S = S
         self.k = k
-        self._index_list = [S.index(_) for _ in S]
+        self._index_list = list(set(S.index(s) for s in S))
+        category = FiniteEnumeratedSets()
+        Parent.__init__(self, category=category)
 
     def __repr__(self):
         """
         TESTS::
 
             sage: repr(UnorderedTuples([1,2,3],2))
-            'Unordered tuples of [1, 2, 3] of length 2'
+            'Unordered tuples of (1, 2, 3) of length 2'
         """
-        return "Unordered tuples of %s of length %s"%(self.S, self.k)
+        return "Unordered tuples of %s of length %s" % (self.S, self.k)
 
-    def list(self):
+    def __iter__(self):
         """
         EXAMPLES::
 
             sage: S = [1,2]
             sage: UnorderedTuples(S,3).list()
-            [[1, 1, 1], [1, 1, 2], [1, 2, 2], [2, 2, 2]]
+            [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
             sage: UnorderedTuples(["a","b","c"],2).list()
-            [['a', 'a'], ['a', 'b'], ['a', 'c'], ['b', 'b'], ['b', 'c'], ['c', 'c']]
+            [('a', 'a'), ('a', 'b'), ('a', 'c'), ('b', 'b'), ('b', 'c'),
+             ('c', 'c')]
+            sage: UnorderedTuples([1,1,2],3).list()
+            [(1, 1, 1), (1, 1, 2), (1, 2, 2), (2, 2, 2)]
         """
-        ans=gap.eval("UnorderedTuples(%s,%s)"%(self._index_list,ZZ(self.k)))
-        return [[self.S[i] for i in l] for l in eval(ans)]
+        for ans in combinations_with_replacement(self._index_list, self.k):
+            yield tuple(self.S[i] for i in ans)
 
     def cardinality(self):
         """
@@ -184,5 +205,7 @@ class UnorderedTuples_sk(CombinatorialClass):
             sage: UnorderedTuples(S,2).cardinality()
             15
         """
-        ans=gap.eval("NrUnorderedTuples(%s,%s)"%(self._index_list,ZZ(self.k)))
-        return ZZ(ans)
+        return binomial(len(self._index_list) + self.k - 1, self.k)
+
+
+UnorderedTuples_sk = UnorderedTuples

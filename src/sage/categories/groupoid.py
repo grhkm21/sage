@@ -1,7 +1,7 @@
+# sage.doctest: needs sage.groups
 r"""
 Groupoid
 """
-from __future__ import absolute_import
 #*****************************************************************************
 #  Copyright (C) 2008 David Kohel <kohel@maths.usyd.edu> and
 #                     William Stein <wstein@math.ucsd.edu>
@@ -12,26 +12,26 @@ from __future__ import absolute_import
 #******************************************************************************
 
 from sage.categories.category import CategoryWithParameters
-from .sets_cat import Sets
+from sage.categories.sets_cat import Sets
+
 
 class Groupoid(CategoryWithParameters):
     """
-    The category of groupoids, for a set (usually a group) $G$.
+    The category of groupoids, for a set (usually a group) `G`.
 
     FIXME:
 
      - Groupoid or Groupoids ?
-     - definition and link with http://en.wikipedia.org/wiki/Groupoid
+     - definition and link with :wikipedia:`Groupoid`
      - Should Groupoid inherit from Category_over_base?
 
     EXAMPLES::
 
         sage: Groupoid(DihedralGroup(3))
         Groupoid with underlying set Dihedral group of order 6 as a permutation group
-
     """
 
-    def __init__(self, G = None):
+    def __init__(self, G=None):
         """
         TESTS::
 
@@ -53,7 +53,7 @@ class Groupoid(CategoryWithParameters):
             sage: Groupoid(S8)
             Groupoid with underlying set Symmetric group of order 8! as a permutation group
         """
-        return "Groupoid with underlying set %s"%self.__G
+        return "Groupoid with underlying set %s" % self.__G
 
     #def construction(self):
     #    return (self.__class__, self.__G)

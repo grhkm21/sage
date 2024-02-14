@@ -1,4 +1,4 @@
-# coding=utf-8
+# sage.doctest: needs sage.rings.finite_rings
 r"""
 Evenly distributed sets in finite fields
 
@@ -15,16 +15,15 @@ might want to update this database with more values.
 Classes and methods
 -------------------
 """
-from __future__ import print_function
 
 cimport cython
 
 from libc.limits cimport UINT_MAX
 from libc.string cimport memset, memcpy
 
-include "cysignals/memory.pxi"
+from cysignals.memory cimport check_malloc, check_calloc, sig_free
 
-from sage.rings.integer cimport Integer,smallInteger
+from sage.rings.integer cimport smallInteger
 
 cdef class EvenlyDistributedSetsBacktracker:
     r"""
@@ -213,7 +212,7 @@ cdef class EvenlyDistributedSetsBacktracker:
         self.up_to_isom = bool(up_to_isomorphism)
         self.count      = 0
 
-        cdef unsigned int i,j,ell
+        cdef unsigned int i,j
 
         if not K.is_field():
             raise ValueError("{} is not a field".format(K))
@@ -311,7 +310,7 @@ cdef class EvenlyDistributedSetsBacktracker:
         xe = self.K.multiplicative_generator() ** (self.e)
         df = [[xe**j*b for b in B] for j in range((self.q-1)/(2*self.e))]
         if check:
-            from difference_family import is_difference_family
+            from sage.combinat.designs.difference_family import is_difference_family
             if not is_difference_family(self.K, df, self.q, self.k, 1):
                 raise RuntimeError("a wrong evenly distributed set was "
                         "produced by the Sage library for the parameters:\n"
@@ -360,7 +359,8 @@ cdef class EvenlyDistributedSetsBacktracker:
 
             sage: EvenlyDistributedSetsBacktracker(GF(25,'a'), 4)
             4-evenly distributed sets (up to isomorphism) in Finite Field in a of size 5^2
-            sage: EvenlyDistributedSetsBacktracker(GF(25,'a'), 4, up_to_isomorphism=False)
+            sage: EvenlyDistributedSetsBacktracker(GF(25,'a'), 4,
+            ....:                                  up_to_isomorphism=False)
             4-evenly distributed sets in Finite Field in a of size 5^2
         """
         return "{}-evenly distributed sets {} in {}".format(
@@ -379,13 +379,14 @@ cdef class EvenlyDistributedSetsBacktracker:
 
             sage: from sage.combinat.designs.evenly_distributed_sets import EvenlyDistributedSetsBacktracker
 
-            sage: E = EvenlyDistributedSetsBacktracker(GF(25,'a'),4)
-            sage: E
-            4-evenly distributed sets (up to isomorphism) in Finite Field in a of size 5^2
+            sage: E = EvenlyDistributedSetsBacktracker(GF(25,'a'), 4); E
+            4-evenly distributed sets (up to isomorphism)
+             in Finite Field in a of size 5^2
             sage: E.cardinality()
             4
 
-            sage: E = EvenlyDistributedSetsBacktracker(GF(25,'a'), 4, up_to_isomorphism=False)
+            sage: E = EvenlyDistributedSetsBacktracker(GF(25,'a'), 4,
+            ....:                                      up_to_isomorphism=False)
             sage: E.cardinality()
             40
         """
@@ -413,14 +414,13 @@ cdef class EvenlyDistributedSetsBacktracker:
 
         - ``False`` if ``self.B`` is not minimal
 
-        - the list of evenly distributed sets isomorphs to ``self.B`` given as a
-          list of tuples if ``self.up_to_isom=0`` or list containing only
-          ``self.B`` as a tuple if ``self.up_to_isom=1``.
+        - the list of evenly distributed sets isomorphic to ``self.B``
+          given as a list of tuples if ``self.up_to_isom=0`` or list
+          containing only ``self.B`` as a tuple if ``self.up_to_isom=1``.
 
         TESTS::
 
-            sage: from sage.combinat.designs.evenly_distributed_sets import \
-            ....:     EvenlyDistributedSetsBacktracker
+            sage: from sage.combinat.designs.evenly_distributed_sets import EvenlyDistributedSetsBacktracker
             sage: E = EvenlyDistributedSetsBacktracker(Zmod(13), 4, up_to_isomorphism=True)
             sage: E.cardinality()   # indirect doctest
             1

@@ -1,10 +1,11 @@
+# sage.doctest: needs sage.modules sage.rings.finite_rings
 r"""
 Small Scale Variants of the AES (SR) Polynomial System Generator
 
 Sage supports polynomial system generation for small scale (and full
 scale) AES variants over `\GF{2}` and `\GF{2^e}`. Also, Sage supports
-both the specification of SR as given in the papers [CMR05]_ and
-[CMR06]_ and a variant of SR* which is equivalent to AES.
+both the specification of SR as given in the papers [CMR2005]_ and
+[CMR2006]_ and a variant of SR* which is equivalent to AES.
 
 SR is a family of parameterizable variants of the AES suitable as a
 framework for comparing different cryptanalytic techniques that can be
@@ -19,7 +20,7 @@ AUTHORS:
 
 - Martin Albrecht (2007-09): initial version
 
-- Niles Johnson (2010-08): Trac #3893: ``random_element()`` should pass on ``*args`` and ``**kwds``.
+- Niles Johnson (2010-08): (:trac:`3893`) ``random_element()`` should pass on ``*args`` and ``**kwds``.
 
 EXAMPLES:
 
@@ -103,8 +104,8 @@ instances to recover all solutions to the system.::
     sage: a = K.gen()
     sage: K = [a]
     sage: P = [1]
-    sage: F,s = sr.polynomial_system(P=P, K=K)
-    sage: F.groebner_basis()
+    sage: F,s = sr.polynomial_system(P=P, K=K)                                          # needs sage.rings.polynomial.pbori
+    sage: F.groebner_basis()                                                            # needs sage.rings.polynomial.pbori
     [k100, k101 + 1, k102, k103 + k003,
      x100 + 1, x101 + k003 + 1, x102 + k003 + 1,
      x103 + k003, w100, w101, w102 + 1, w103 + k003 + 1,
@@ -123,9 +124,9 @@ to the same ciphertext::
 
 All solutions can easily be recovered using the variety function for ideals.::
 
-   sage: I = F.ideal()
-   sage: for V in I.variety():
-   ....:    for k,v in sorted(V.iteritems()):
+   sage: I = F.ideal()                                                                  # needs sage.rings.polynomial.pbori
+   sage: for V in I.variety():                                                          # needs sage.rings.polynomial.pbori sage.symbolic
+   ....:    for k,v in sorted(V.items()):
    ....:       print("{} {}".format(k, v))
    ....:    print("\n")
    k003 0
@@ -173,7 +174,7 @@ All solutions can easily be recovered using the variety function for ideals.::
 We can also verify the correctness of the variety by evaluating all
 ideal generators on all points.::
 
-   sage: for V in I.variety():
+   sage: for V in I.variety():                                                          # needs sage.rings.polynomial.pbori sage.symbolic
    ....:     for f in I.gens():
    ....:         if f.subs(V) != 0:
    ....:            print("epic fail")
@@ -184,9 +185,9 @@ Note that the S-Box object for SR can be constructed with a call to ``sr.sbox()`
    sage: sr = mq.SR(1,1,1,4, gf2=True, polybori=True)
    sage: S = sr.sbox()
 
-For example, we can now study the difference distribution matrix of ``S``::
+For example, we can now study the difference distribution table of ``S``::
 
-   sage: S.difference_distribution_matrix()
+   sage: S.difference_distribution_table()
    [16  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0]
    [ 0  2  2  2  2  0  0  0  2  0  0  0  2  4  0  0]
    [ 0  2  0  4  2  2  2  0  0  2  0  0  0  0  0  2]
@@ -206,7 +207,7 @@ For example, we can now study the difference distribution matrix of ``S``::
 
 or use ``S`` to find alternative polynomial representations for the S-Box.::
 
-   sage: S.polynomials(degree=3)
+   sage: S.polynomials(degree=3)                                                        # needs sage.libs.singular
    [x0*x1 + x1*x2 + x0*x3 + x0*y2 + x1 + y0 + y1 + 1,
     x0*x1 + x0*x2 + x0*y0 + x0*y1 + x0*y2 + x1 + x2 + y0 + y1 + y2,
     x0*x1 + x0*x2 + x0*x3 + x1*x3 + x0*y0 + x1*y0 + x0*y1 + x0*y3,
@@ -286,7 +287,9 @@ or use ``S`` to find alternative polynomial representations for the S-Box.::
     y1*y2*y3 + x0*x1 + x0*x2 + x1*x3 + x0*y0 + x0*y3 + x0 + x1 + x2 + x3 + y0 + y1 + y3 + 1]
 
    sage: S.interpolation_polynomial()
-   (a^2 + 1)*x^14 + x^13 + (a^3 + a^2)*x^11 + (a^2 + 1)*x^7 + a^2 + a
+   (a^2 + 1)*x^14 + a^2*x^13 + x^12 + a^2*x^11 + a*x^10 + (a^3 + a)*x^9 +
+   (a^3 + 1)*x^7 + (a^3 + a^2 + a)*x^6 + a^2*x^5 + (a + 1)*x^4 + a^2*x^3 +
+   (a^3 + a^2 + a)*x^2 + (a^3 + 1)*x + a^2 + a
 
 The :class:`SR_gf2_2` gives an example how use alternative polynomial
 representations of the S-Box for construction of polynomial systems.
@@ -298,38 +301,29 @@ TESTS::
 
 REFERENCES:
 
-.. [CMR05] C\. Cid, S\. Murphy, M\. Robshaw *Small Scale Variants of
-  the AES*\; in Proceedings of Fast Software Encryption 2005\; LNCS
-  3557\; Springer Verlag 2005\; available at
-  http://www.isg.rhul.ac.uk/~sean/smallAES-fse05.pdf
+- [CMR2005]_
 
-.. [CMR06] C\. Cid, S\. Murphy, and M\. Robshaw *Algebraic Aspects of
-  the Advanced Encryption Standard*\; Springer Verlag 2006
+- [CMR2006]_
 
-.. [MR02] S\. Murphy, M\. Robshaw *Essential Algebraic Structure
-  Within the AES*\; in Advances in Cryptology \- CRYPTO 2002\; LNCS
-  2442\; Springer Verlag 2002
+- [MR2002]_
 """
-# python3
-from __future__ import division, print_function
 
-from sage.rings.finite_rings.finite_field_constructor import FiniteField as GF
-from sage.rings.integer_ring import ZZ
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing, BooleanPolynomialRing_constructor as BooleanPolynomialRing
-
-from sage.matrix.matrix import is_Matrix
 from sage.matrix.constructor import Matrix, random_matrix
 from sage.matrix.matrix_space import MatrixSpace
-
-from sage.misc.misc import get_verbose
 from sage.misc.flatten import flatten
-
+from sage.misc.verbose import get_verbose
 from sage.modules.vector_modn_dense import Vector_modn_dense
-
+from sage.rings.finite_rings.finite_field_constructor import FiniteField as GF
+from sage.rings.integer_ring import ZZ
 from sage.rings.polynomial.multi_polynomial_sequence import PolynomialSequence
-from mpolynomialsystemgenerator import MPolynomialSystemGenerator
-
+from sage.rings.polynomial.polynomial_ring_constructor import \
+    BooleanPolynomialRing_constructor as BooleanPolynomialRing
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.polynomial.term_order import TermOrder
+from sage.structure.element import is_Matrix
+
+from .mpolynomialsystemgenerator import MPolynomialSystemGenerator
+
 
 def SR(n=1, r=1, c=1, e=4, star=False, **kwargs):
     r"""
@@ -422,6 +416,7 @@ def SR(n=1, r=1, c=1, e=4, star=False, **kwargs):
     else:
         return SR_gf2(n, r, c, e, star, **kwargs)
 
+
 class SR_generic(MPolynomialSystemGenerator):
     def __init__(self, n=1, r=1, c=1, e=4, star=False, **kwargs):
         """
@@ -468,7 +463,7 @@ class SR_generic(MPolynomialSystemGenerator):
         self._reverse_variables = bool(kwargs.get("reverse_variables", True))
 
         with AllowZeroInversionsContext(self):
-            sub_byte_lookup = dict([(e, self.sub_byte(e)) for e in self._base])
+            sub_byte_lookup = dict([(v, self.sub_byte(v)) for v in self._base])
         self._sub_byte_lookup = sub_byte_lookup
 
         if self._gf2:
@@ -484,7 +479,7 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``**kwds`` - see the ``SR`` constructor for accepted
           parameters
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2,1,1,4); sr
             SR(2,1,1,4)
@@ -540,7 +535,7 @@ class SR_generic(MPolynomialSystemGenerator):
 
     def __getattr__(self, attr):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 1, 4, gf2=True)
             sage: sr.Mstar
@@ -589,7 +584,7 @@ class SR_generic(MPolynomialSystemGenerator):
             self.Mstar = self.ShiftRows * self.Lin
             return self.Mstar
 
-        raise AttributeError("%s has no attribute %s"%(type(self), attr))
+        raise AttributeError("%s has no attribute %s" % (type(self), attr))
 
     def _repr_(self):
         """
@@ -601,16 +596,16 @@ class SR_generic(MPolynomialSystemGenerator):
             SR*(1,2,2,4)
         """
         if self._star:
-            return "SR*(%d,%d,%d,%d)"%(self._n, self._r, self._c, self._e)
+            return "SR*(%d,%d,%d,%d)" % (self._n, self._r, self._c, self._e)
         else:
-            return "SR(%d,%d,%d,%d)"%(self._n, self._r, self._c, self._e)
+            return "SR(%d,%d,%d,%d)" % (self._n, self._r, self._c, self._e)
 
     def base_ring(self):
         r"""
         Return the base field of self as determined by
         ``self.e``.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 2, 2, 4)
             sage: sr.base_ring().polynomial()
@@ -632,27 +627,44 @@ class SR_generic(MPolynomialSystemGenerator):
 
             return self._base
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         """
         Two generators are considered equal if they agree on all parameters
         passed to them during construction.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr1 = mq.SR(2, 2, 2, 4)
-            sage: sr2 = mq.SR(2, 2, 2, 4)
-            sage: sr1 == sr2
+            sage: sr1 == sr1
             True
 
-        ::
-
-            sage: sr1 = mq.SR(2, 2, 2, 4)
             sage: sr2 = mq.SR(2, 2, 2, 4, gf2=True)
             sage: sr1 == sr2
             False
         """
-        return cmp( (self.n, self.r, self.c, self.e, self._postfix, self._order, self._allow_zero_inversions, self._aes_mode, self._gf2, self._star ),
-                    (other.n, other.r, other.c, other.e, other._postfix, other._order, other._allow_zero_inversions, other._aes_mode, other._gf2, other._star ) )
+        for name in ['n', 'r', 'c', 'e', '_postfix', '_order',
+                     '_allow_zero_inversions', '_aes_mode', '_gf2', '_star']:
+            lx = getattr(self, name)
+            rx = getattr(other, name)
+            if lx != rx:
+                return False
+        return True
+
+    def __ne__(self, other):
+        """
+        Return whether ``self`` is not equal to ``other``.
+
+        EXAMPLES::
+
+            sage: sr1 = mq.SR(2, 2, 2, 4)
+            sage: sr1 != sr1
+            False
+
+            sage: sr2 = mq.SR(2, 2, 2, 4, gf2=True)
+            sage: sr1 != sr2
+            True
+        """
+        return not (self == other)
 
     def sub_bytes(self, d):
         r"""
@@ -662,7 +674,7 @@ class SR_generic(MPolynomialSystemGenerator):
 
         -  ``d`` - state array or something coercible to a state array
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 1, 2, 8, gf2=True)
             sage: k = sr.base_ring()
@@ -688,7 +700,7 @@ class SR_generic(MPolynomialSystemGenerator):
         -  ``b`` - an element in ``self.base_ring()``
 
 
-        EXAMPLE:
+        EXAMPLES:
 
         The S-Box table for `\GF{2^4}`::
 
@@ -734,7 +746,7 @@ class SR_generic(MPolynomialSystemGenerator):
                                                 [1, 0, 1, 1],
                                                 [1, 1, 0, 1]])
 
-            elif e==8:
+            elif e == 8:
                 if not hasattr(self, "_L"):
                     self._L = Matrix(GF(2), 8, 8, [[1, 0, 0, 0, 1, 1, 1, 1],
                                                 [1, 1, 0, 0, 0, 1, 1, 1],
@@ -749,9 +761,9 @@ class SR_generic(MPolynomialSystemGenerator):
 
             # constant addition
             if e == 4:
-                b = b + k.fetch_int(6)
+                b = b + k.from_integer(6)
             elif e == 8:
-                b = b + k.fetch_int(99)
+                b = b + k.from_integer(99)
 
             return b
 
@@ -761,7 +773,7 @@ class SR_generic(MPolynomialSystemGenerator):
         performed. That is ``0x63`` if ``e == 8`` or ``0x6`` if ``e ==
         4``.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 1, 1, 8)
             sage: sr.sbox_constant()
@@ -769,9 +781,9 @@ class SR_generic(MPolynomialSystemGenerator):
         """
         k = self.k
         if self.e == 4:
-            return k.fetch_int(6)
+            return k.from_integer(6)
         elif self.e == 8:
-            return k.fetch_int(99)
+            return k.from_integer(99)
         else:
             raise TypeError("sbox constant only defined for e in (4, 8)")
 
@@ -784,7 +796,7 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``inversion_only`` - do not include the `\GF{2}` affine map when
           computing the S-Box (default: ``False``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1,2,2,4, allow_zero_inversions=True)
             sage: S = sr.sbox(); S
@@ -855,19 +867,19 @@ class SR_generic(MPolynomialSystemGenerator):
             1
 
             sage: S(sr.k.gen())
-            a^3 + 1
+            a^3 + a + 1
         """
-        from sage.crypto.mq.sbox import SBox
+        from sage.crypto.sbox import SBox
 
         k = self.base_ring()
         if not inversion_only:
             with AllowZeroInversionsContext(self):
                 S = [self.sub_byte(elem) for elem in sorted(k)]
-            return  SBox(S)
+            return SBox(S)
         else:
             e = self.e
             S = [elem ** (2**e - 2) for elem in sorted(k)]
-            return  SBox(S)
+            return SBox(S)
 
     def shift_rows(self, d):
         r"""
@@ -897,7 +909,7 @@ class SR_generic(MPolynomialSystemGenerator):
         d = self.state_array(d)
         ret = []
         for i in range(d.nrows()):
-            ret += list(d.row(i)[i%d.ncols():]) + list(d.row(i)[:i%d.ncols()])
+            ret += list(d.row(i)[i % d.ncols():]) + list(d.row(i)[:i % d.ncols()])
         return Matrix(self.base_ring(), self._r, self._c, ret)
 
     def mix_columns(self, d):
@@ -944,12 +956,11 @@ class SR_generic(MPolynomialSystemGenerator):
                                               [1, a, a+1, 1],
                                               [1, 1, a, a+1],
                                               [a+1, 1, 1, a]])
-        ret =[]
+        ret = []
         for column in d.columns():
             ret.append(M * column)
         # AES uses the column major ordering
         return Matrix(k, d.ncols(), d.nrows(), ret).transpose()
-
 
     def add_round_key(self, d, key):
         r"""
@@ -966,7 +977,7 @@ class SR_generic(MPolynomialSystemGenerator):
            state array
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 4, 4, 4)
             sage: D = sr.random_state_array()
@@ -993,7 +1004,7 @@ class SR_generic(MPolynomialSystemGenerator):
 
             sage: sr = mq.SR(2, 2, 2, 4)
             sage: k = sr.base_ring()
-            sage: e1 = [k.fetch_int(e) for e in range(2*2)]; e1
+            sage: e1 = [k.from_integer(e) for e in range(2*2)]; e1
             [0, 1, a, a + 1]
             sage: e2 = sr.phi( Matrix(k, 2*2, 1, e1) )
             sage: sr.state_array(e1) # note the column major ordering
@@ -1031,7 +1042,7 @@ class SR_generic(MPolynomialSystemGenerator):
         Return ``True`` if ``d`` is a state array, i.e. has the correct
         dimensions and base field.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 2, 4, 8)
             sage: k = sr.base_ring()
@@ -1055,40 +1066,23 @@ class SR_generic(MPolynomialSystemGenerator):
         Return a random element in ``MatrixSpace(self.base_ring(),
         self.r, self.c)``.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 2, 2, 4)
-            sage: sr.random_state_array()
-            [              a^2       a^3 + a + 1]
-            [a^3 + a^2 + a + 1             a + 1]
+            sage: sr.random_state_array().parent()
+            Full MatrixSpace of 2 by 2 dense matrices over Finite Field in a of size 2^4
         """
         return random_matrix(self.base_ring(), self._r, self._c, *args, **kwds)
 
     def random_vector(self, *args, **kwds):
-        """
+        r"""
         Return a random vector as it might appear in the algebraic
         expression of self.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: sr = mq.SR(2, 2, 2, 4)
-            sage: sr.random_vector()
-            [              a^2]
-            [            a + 1]
-            [          a^2 + 1]
-            [                a]
-            [a^3 + a^2 + a + 1]
-            [          a^3 + a]
-            [              a^3]
-            [        a^3 + a^2]
-            [      a^3 + a + 1]
-            [          a^3 + 1]
-            [    a^3 + a^2 + 1]
-            [    a^3 + a^2 + a]
-            [            a + 1]
-            [          a^2 + 1]
-            [                a]
-            [              a^2]
+            sage: mq.SR(2, 2, 2, 4).random_vector().parent()
+            Full MatrixSpace of 16 by 1 dense matrices over Finite Field in a of size 2^4
 
         .. note::
 
@@ -1096,7 +1090,7 @@ class SR_generic(MPolynomialSystemGenerator):
         """
         return self.vector(self.random_state_array(*args, **kwds))
 
-    def random_element(self, elem_type = "vector", *args, **kwds):
+    def random_element(self, elem_type="vector", *args, **kwds):
         """
         Return a random element for self.  Other arguments and keywords are
         passed to random_* methods.
@@ -1108,16 +1102,13 @@ class SR_generic(MPolynomialSystemGenerator):
            (default: ``'vector'``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR()
-            sage: sr.random_element()
-            [    a^2]
-            [  a + 1]
-            [a^2 + 1]
-            [      a]
-            sage: sr.random_element('state_array')
-            [a^3 + a + 1]
+            sage: sr.random_element().parent()
+            Full MatrixSpace of 4 by 1 dense matrices over Finite Field in a of size 2^4
+            sage: sr.random_element('state_array').parent()
+            Full MatrixSpace of 1 by 1 dense matrices over Finite Field in a of size 2^4
 
         Passes extra positional or keyword arguments through::
 
@@ -1144,7 +1135,7 @@ class SR_generic(MPolynomialSystemGenerator):
             sage: sr = mq.SR(10, 4, 4, 8, star=True, allow_zero_inversions=True)
             sage: ki = sr.state_array()
             sage: for i in range(10):
-            ...  ki = sr.key_schedule(ki, i+1)
+            ....:     ki = sr.key_schedule(ki, i+1)
             sage: print(sr.hex_str_matrix(ki))
             B4 3E 23 6F
             EF 92 E9 8F
@@ -1236,8 +1227,8 @@ class SR_generic(MPolynomialSystemGenerator):
 
             sage: sr = mq.SR(10, 4, 4, 8, star=True, allow_zero_inversions=True)
             sage: k = sr.base_ring()
-            sage: plaintext = sr.state_array([k.fetch_int(e) for e in range(16)])
-            sage: key = sr.state_array([k.fetch_int(e) for e in range(16)])
+            sage: plaintext = sr.state_array([k.from_integer(e) for e in range(16)])
+            sage: key = sr.state_array([k.from_integer(e) for e in range(16)])
             sage: print(sr.hex_str_matrix( sr(plaintext, key) ))
             0A 41 F1 C6
             94 6E C3 53
@@ -1250,6 +1241,7 @@ class SR_generic(MPolynomialSystemGenerator):
             sage: k = sr.base_ring()
             sage: plain = '3243f6a8885a308d313198a2e0370734'
             sage: key = '2b7e151628aed2a6abf7158809cf4f3c'
+            sage: from sage.misc.verbose import set_verbose
             sage: set_verbose(2)
             sage: cipher = sr(plain, key)
             R[01].start   193DE3BEA0F4E22B9AC68D2AE9F84808
@@ -1303,15 +1295,13 @@ class SR_generic(MPolynomialSystemGenerator):
             R[10].output  3925841D02DC09FBDC118597196A0B32
             sage: set_verbose(0)
         """
-        r,c,e = self.r,self.c,self.e
+        r, c, e = self.r, self.c, self.e
         F = self.base_ring()
 
-        _type = self.state_array
-
         if isinstance(P, str):
-            P = self.state_array([F.fetch_int(ZZ(P[i:i+2], 16)) for i in range(0, len(P), 2)])
+            P = self.state_array([F.from_integer(ZZ(P[i: i + 2], 16)) for i in range(0, len(P), 2)])
         if isinstance(K, str):
-            K = self.state_array([F.fetch_int(ZZ(K[i:i+2], 16)) for i in range(0, len(K), 2)])
+            K = self.state_array([F.from_integer(ZZ(K[i: i + 2], 16)) for i in range(0, len(K), 2)])
 
         if self.is_state_array(P) and self.is_state_array(K):
             _type = self.state_array
@@ -1323,7 +1313,7 @@ class SR_generic(MPolynomialSystemGenerator):
             elif len(P) == len(K) == r*c*e:
                 _type = self.vector
             else:
-                raise TypeError("length %d or %d doesn't match either %d or %d"%(len(P),len(K),r*c,r*c*e))
+                raise TypeError("length %d or %d doesn't match either %d or %d" % (len(P),len(K),r*c,r*c*e))
         else:
             raise TypeError("plaintext or key parameter not understood")
 
@@ -1340,46 +1330,46 @@ class SR_generic(MPolynomialSystemGenerator):
 
         for r in range(self._n-1):
             if get_verbose() >= 2:
-                print("R[%02d].start   %s"%(r+1, self.hex_str_vector(P)))
+                print("R[%02d].start   %s" % (r+1, self.hex_str_vector(P)))
 
             P = SubBytes(P)
             if get_verbose() >= 2:
-                print("R[%02d].s_box   %s"%(r+1, self.hex_str_vector(P)))
+                print("R[%02d].s_box   %s" % (r+1, self.hex_str_vector(P)))
 
             P = ShiftRows(P)
             if get_verbose() >= 2:
-                print("R[%02d].s_row   %s"%(r+1, self.hex_str_vector(P)))
+                print("R[%02d].s_row   %s" % (r+1, self.hex_str_vector(P)))
 
             P = MixColumns(P)
             if get_verbose() >= 2:
-                print("R[%02d].m_col   %s"%(r+1, self.hex_str_vector(P)))
+                print("R[%02d].m_col   %s" % (r+1, self.hex_str_vector(P)))
 
             K = KeyExpansion(K, r+1)
             if get_verbose() >= 2:
-                print("R[%02d].k_sch   %s"%(r+1, self.hex_str_vector(K)))
+                print("R[%02d].k_sch   %s" % (r+1, self.hex_str_vector(K)))
 
             P = AddRoundKey(P, K)
 
         P = SubBytes(P)
         if get_verbose() >= 2:
-            print("R[%02d].s_box   %s"%(self.n, self.hex_str_vector(P)))
+            print("R[%02d].s_box   %s" % (self.n, self.hex_str_vector(P)))
 
         P = ShiftRows(P)
         if get_verbose() >= 2:
-            print("R[%02d].s_row   %s"%(self.n, self.hex_str_vector(P)))
+            print("R[%02d].s_row   %s" % (self.n, self.hex_str_vector(P)))
 
         if not self._star:
             P = MixColumns(P)
             if get_verbose() >= 2:
-                print("R[%02d].m_col   %s"%(self.n, self.hex_str_vector(P)))
+                print("R[%02d].m_col   %s" % (self.n, self.hex_str_vector(P)))
 
         K = KeyExpansion(K, self._n)
         if get_verbose() >= 2:
-            print("R[%02d].k_sch   %s"%(self.n, self.hex_str_vector(K)))
+            print("R[%02d].k_sch   %s" % (self.n, self.hex_str_vector(K)))
 
         P = AddRoundKey(P, K)
         if get_verbose() >= 2:
-            print("R[%02d].output  %s"%(self.n, self.hex_str_vector(P)))
+            print("R[%02d].output  %s" % (self.n, self.hex_str_vector(P)))
 
         return _type(P)
 
@@ -1396,7 +1386,7 @@ class SR_generic(MPolynomialSystemGenerator):
            or 'vector' (default: ``'matrix'``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 2, 2, 4)
             sage: k = sr.base_ring()
@@ -1428,7 +1418,7 @@ class SR_generic(MPolynomialSystemGenerator):
         -  ``M`` - an AES state array
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 2, 2, 4)
             sage: k = sr.base_ring()
@@ -1441,9 +1431,9 @@ class SR_generic(MPolynomialSystemGenerator):
         for x in range(M.nrows()):
             for y in range(M.ncols()):
                 if e == 8:
-                    st.append("%02X" % M[x, y].integer_representation())
+                    st.append("%02X" % M[x, y].to_integer())
                 else:
-                    st.append("%X" % M[x, y].integer_representation())
+                    st.append("%X" % M[x, y].to_integer())
             st.append("\n")
         return " ".join(st)
 
@@ -1459,7 +1449,7 @@ class SR_generic(MPolynomialSystemGenerator):
         -  ``M`` - an AES state array
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 2, 2, 4)
             sage: k = sr.base_ring()
@@ -1472,9 +1462,9 @@ class SR_generic(MPolynomialSystemGenerator):
         for y in range(M.ncols()):
             for x in range(M.nrows()):
                 if e == 8:
-                    st.append("%02X" % M[x, y].integer_representation())
+                    st.append("%02X" % M[x, y].to_integer())
                 else:
-                    st.append("%X" % M[x, y].integer_representation())
+                    st.append("%X" % M[x, y].to_integer())
             #st.append("\n")
         return "".join(st)
 
@@ -1494,7 +1484,7 @@ class SR_generic(MPolynomialSystemGenerator):
         -  ``col`` - offset columns
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 4, 4, 4)
             sage: a = sr.k.gen()
@@ -1517,9 +1507,8 @@ class SR_generic(MPolynomialSystemGenerator):
                 dst[row+i, col+j] = src[i, j]
         return dst
 
-
     def varformatstr(self, name, n=None, rc=None, e=None):
-        """
+        r"""
         Return a format string which is understood by print et al.
 
         If a numerical value is omitted, the default value of ``self``
@@ -1535,7 +1524,7 @@ class SR_generic(MPolynomialSystemGenerator):
         -  ``e`` - exponent of base field (default: ``None``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 2, 4)
             sage: sr.varformatstr('x')
@@ -1570,7 +1559,7 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``rc`` - row*column index in state array
         - ``e`` - exponent of base field
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 1, 2, 4)
             sage: sr.varstr('x', 2, 1, 1)
@@ -1579,7 +1568,7 @@ class SR_generic(MPolynomialSystemGenerator):
         format_string = self.varformatstr(name, self.n, self.r*self.c, self.e)
         return format_string % (nr, rc, e)
 
-    def varstrs(self, name, nr, rc = None, e = None):
+    def varstrs(self, name, nr, rc=None, e=None):
         """
         Return a list of strings representing variables in ``self``.
 
@@ -1590,7 +1579,7 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``rc`` - number of rows * number of columns in the state array (default: ``None``)
         - ``e`` - exponent of base field (default: ``None``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 1, 2, 4)
             sage: sr.varstrs('x', 2)
@@ -1620,7 +1609,7 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``rc`` - number of rounds * number of columns in the state array (default: ``None``)
         - ``e`` - exponent of base field (default: ``None``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(10, 1, 2, 4)
             sage: sr.vars('x', 2)
@@ -1628,14 +1617,14 @@ class SR_generic(MPolynomialSystemGenerator):
 
         """
         gd = self.variable_dict()
-        return tuple([gd[e] for e in self.varstrs(name, nr, rc, e)])
+        return tuple([gd[s] for s in self.varstrs(name, nr, rc, e)])
 
     def variable_dict(self):
         """
         Return a dictionary to access variables in ``self.R`` by their
         names.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1,1,1,4)
             sage: sr.variable_dict()
@@ -1661,7 +1650,7 @@ class SR_generic(MPolynomialSystemGenerator):
              'x103': x103}
 
             sage: sr = mq.SR(1,1,1,4,gf2=True)
-            sage: sr.variable_dict()
+            sage: sr.variable_dict()                                                    # needs sage.rings.polynomial.pbori
             {'k000': k000,
              'k001': k001,
              'k002': k002,
@@ -1701,7 +1690,7 @@ class SR_generic(MPolynomialSystemGenerator):
         """
         Return a block order for self where each round is a block.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 1, 1, 4)
             sage: sr.block_order()
@@ -1765,7 +1754,7 @@ class SR_generic(MPolynomialSystemGenerator):
         `r=2` and `c=2` then refers to the *most* significant bit of
         the entry in the position (1,0) in the state array matrix.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 1, 1, 4)
             sage: P = sr.ring(order='block')
@@ -1798,7 +1787,7 @@ class SR_generic(MPolynomialSystemGenerator):
             reverse_variables = self._reverse_variables
 
         if reverse_variables:
-            process = lambda x: reversed(x)
+            process = reversed
         else:
             process = lambda x: x
 
@@ -1807,17 +1796,16 @@ class SR_generic(MPolynomialSystemGenerator):
         else:
             names = self.varstrs("k", 0, r*c, e)
 
-
-        for _n in process(xrange(n)):
+        for _n in process(list(range(n))):
             names += self.varstrs("k", _n+1, r*c, e)
             names += self.varstrs("x", _n+1, r*c, e)
             names += self.varstrs("w", _n+1, r*c, e)
             names += self.varstrs("s", _n, r, e)
 
         if reverse_variables:
-            names +=  self.varstrs("k", 0, r*c, e)
+            names += self.varstrs("k", 0, r*c, e)
 
-        #from sage.rings.polynomial.pbori import BooleanPolynomialRing
+        #from sage.rings.polynomial.pbori.pbori import BooleanPolynomialRing
 
         if self._gf2 and self._polybori:
             return BooleanPolynomialRing(2*n*r*c*e + (n+1)*r*c*e + n*r*e, names, order=self._order)
@@ -1845,13 +1833,13 @@ class SR_generic(MPolynomialSystemGenerator):
 
         OUTPUT: tuple
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 4)
             sage: k = sr.base_ring()
             sage: p = [k.random_element() for _ in range(sr.r*sr.c)]
             sage: sr.round_polynomials(0, plaintext=p)
-            (w100 + k000 + (a^2 + 1), w101 + k001 + (a), w102 + k002 + (a^2), w103 + k003 + (a + 1))
+            (w100 + k000..., w101 + k001..., w102 + k002..., w103 + k003...)
         """
         r = self._r
         c = self._c
@@ -1870,7 +1858,7 @@ class SR_generic(MPolynomialSystemGenerator):
                 plaintext = Matrix(R, r*c*e, 1, self.phi(plaintext))
             return tuple((w1 + k0 + plaintext).list())
 
-        elif i>0 and i<=n:
+        elif i > 0 and i <= n:
 
             if self._star and i == n:
                 M = self.Mstar
@@ -1888,7 +1876,6 @@ class SR_generic(MPolynomialSystemGenerator):
 
             lin = (wj + ki + M * xj + rcon).list()
 
-
             wi = Matrix(R, r*c*e, 1, _vars("w", i, r*c, e))
             xi = Matrix(R, r*c*e, 1, _vars("x", i, r*c, e))
             sbox = []
@@ -1898,7 +1885,7 @@ class SR_generic(MPolynomialSystemGenerator):
             return tuple(lin + sbox)
 
     def key_schedule_polynomials(self, i):
-        """
+        r"""
         Return polynomials for the `i`-th round of the key
         schedule.
 
@@ -1906,7 +1893,7 @@ class SR_generic(MPolynomialSystemGenerator):
 
         -  ``i`` - round (`0 \leq i \leq n`)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 4, gf2=True, polybori=False)
 
@@ -1958,7 +1945,7 @@ class SR_generic(MPolynomialSystemGenerator):
             si = Matrix(R, r*e, 1, self.vars("s", i-1, r, e))
 
             rc = Matrix(R, r*e, 1, self.phi([a**(i-1)] + [k(0)]*(r-1)) )
-            d  = Matrix(R, r*e, 1, self.phi([self.sbox_constant()]*r) )
+            d = Matrix(R, r*e, 1, self.phi([self.sbox_constant()]*r) )
 
             sbox = []
 
@@ -1968,8 +1955,8 @@ class SR_generic(MPolynomialSystemGenerator):
             if r == 1:
                 sbox += self.inversion_polynomials(kj[(c - 1)*e:(c - 1)*e + e], si[0:e], e)
             if r == 2:
-                sbox += self.inversion_polynomials( kj[(2*c -1)*e : (2*c -1)*e + e] , si[0:1*e], e )
-                sbox += self.inversion_polynomials( kj[(2*c -2)*e : (2*c -2)*e + e] , si[e:2*e], e )
+                sbox += self.inversion_polynomials( kj[(2*c - 1)*e : (2*c - 1)*e + e] , si[0:1*e], e )
+                sbox += self.inversion_polynomials( kj[(2*c - 2)*e : (2*c - 2)*e + e] , si[e:2*e], e )
             if r == 4:
                 if self._aes_mode:
                     sbox += self.inversion_polynomials( kj[(4*c-3)*e  : (4*c-3)*e + e] , si[0*e : 1*e] , e )
@@ -1982,12 +1969,12 @@ class SR_generic(MPolynomialSystemGenerator):
                     sbox += self.inversion_polynomials( kj[(4*c-3)*e  : (4*c-3)*e + e] , si[2*e : 3*e] , e )
                     sbox += self.inversion_polynomials( kj[(4*c-4)*e  : (4*c-4)*e + e] , si[3*e : 4*e] , e )
 
-            si =  L * si + d + rc
+            si = L * si + d + rc
             Sum = Matrix(R, r*e, 1)
             lin = []
             if c > 1:
                 for q in range(c):
-                    t = range(r*e*(q) , r*e*(q+1) )
+                    t = list(range(r*e*(q) , r*e*(q+1)))
                     Sum += kj.matrix_from_rows(t)
                     lin += (ki.matrix_from_rows(t) + si + Sum).list()
 
@@ -2010,21 +1997,21 @@ class SR_generic(MPolynomialSystemGenerator):
         - ``K`` - vector, list, or tuple (default: ``None``)
         - ``C`` - vector, list, or tuple (default: ``None``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 4, gf2=True, polybori=True)
             sage: P = sr.vector([0, 0, 1, 0])
             sage: K = sr.vector([1, 0, 0, 1])
-            sage: F, s = sr.polynomial_system(P, K)
+            sage: F, s = sr.polynomial_system(P, K)                                     # needs sage.rings.polynomial.pbori
 
         This returns a polynomial system::
 
-            sage: F
+            sage: F                                                                     # needs sage.rings.polynomial.pbori
             Polynomial Sequence with 36 Polynomials in 20 Variables
 
         and a solution::
 
-            sage: s # random -- maybe we need a better doctest here?
+            sage: s  # random -- maybe we need a better doctest here?                   # needs sage.rings.polynomial.pbori
             {k000: 1, k001: 0, k003: 1, k002: 0}
 
         This solution is not the only solution that we can learn from the
@@ -2032,24 +2019,25 @@ class SR_generic(MPolynomialSystemGenerator):
 
         ::
 
-            sage: F.groebner_basis()[-3:]
+            sage: F.groebner_basis()[-3:]                                               # needs sage.rings.polynomial.pbori
             [k000 + 1, k001, k003 + 1]
 
         In particular we have two solutions::
 
-            sage: len(F.ideal().variety())
+            sage: len(F.ideal().variety())                                              # needs sage.rings.polynomial.pbori
             2
 
         In the following example we provide ``C`` explicitly::
 
            sage: C = sr(P,K)
-           sage: F,s = sr.polynomial_system(P=P, C=C)
-           sage: F
+           sage: F,s = sr.polynomial_system(P=P, C=C)                                   # needs sage.rings.polynomial.pbori
+           sage: F                                                                      # needs sage.rings.polynomial.pbori
            Polynomial Sequence with 36 Polynomials in 20 Variables
 
         Alternatively, we can use symbols for the ``P`` and
         ``C``. First, we have to create a polynomial ring::
 
+            sage: # needs sage.rings.polynomial.pbori
             sage: sr = mq.SR(1, 1, 1, 4, gf2=True, polybori=True)
             sage: R = sr.R
             sage: vn = sr.varstrs("P",0,1,4) + R.variable_names() + sr.varstrs("C",0,1,4)
@@ -2059,12 +2047,11 @@ class SR_generic(MPolynomialSystemGenerator):
 
         Now, we can construct the purely symbolic equation system::
 
+            sage: # needs sage.rings.polynomial.pbori
             sage: C = sr.vars("C",0); C
             (C000, C001, C002, C003)
             sage: P = sr.vars("P",0)
             sage: F,s = sr.polynomial_system(P=P,C=C)
-            sage: [(k,v) for k,v in sorted(s.iteritems())] # this can be ignored
-            [(k003, 1), (k002, 1), (k001, 0), (k000, 1)]
             sage: F
             Polynomial Sequence with 36 Polynomials in 28 Variables
             sage: F.part(0)
@@ -2075,8 +2062,13 @@ class SR_generic(MPolynomialSystemGenerator):
         We show that the (returned) key is a solution to the returned system::
 
             sage: sr = mq.SR(3,4,4,8, star=True, gf2=True, polybori=True)
-            sage: F,s = sr.polynomial_system()
-            sage: F.subs(s).groebner_basis() # long time
+            sage: while True:  # workaround (see :trac:`31891`)                         # needs sage.rings.polynomial.pbori
+            ....:     try:
+            ....:         F, s = sr.polynomial_system()
+            ....:         break
+            ....:     except ZeroDivisionError:
+            ....:         pass
+            sage: F.subs(s).groebner_basis()    # long time                             # needs sage.rings.polynomial.pbori
             Polynomial Sequence with 1248 Polynomials in 1248 Variables
         """
         plaintext = P
@@ -2095,7 +2087,7 @@ class SR_generic(MPolynomialSystemGenerator):
             if d is None:
                 data.append( None )
             elif isinstance(d, (tuple, list)):
-                if isinstance(d[0], (int,long)):
+                if isinstance(d[0], int):
                     d = [GF(2)(_) for _ in d]
                 if len(d) == r*c*e and (d[0].parent() is R or d[0].parent() == R):
                     data.append( Matrix(R,r*c*e,1,d) )
@@ -2114,19 +2106,19 @@ class SR_generic(MPolynomialSystemGenerator):
         plaintext, key, ciphertext = data
 
         if plaintext is False:
-            raise TypeError("type %s of P not understood"%(type(plaintext)))
+            raise TypeError("type %s of P not understood" % (type(plaintext)))
         elif plaintext is None:
             plaintext = self.random_element("vector")
 
         if key is None:
             key = self.random_element("vector")
         elif key is False and ciphertext is False:
-            raise TypeError("type %s of K not understood"%(type(key)))
+            raise TypeError("type %s of K not understood" % (type(key)))
 
         if ciphertext is None:
             ciphertext = self(plaintext, key)
         elif ciphertext is False:
-            raise TypeError("type %s of C not understood"%(type(ciphertext)))
+            raise TypeError("type %s of C not understood" % (type(ciphertext)))
 
         for i in range(n+1):
             system.append( self.round_polynomials(i, plaintext, ciphertext) )
@@ -2153,7 +2145,7 @@ class SR_gf2n(SR_generic):
 
         -  ``d`` - values for vector, must be understood by ``self.phi`` (default:``None``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR()
             sage: sr
@@ -2180,7 +2172,7 @@ class SR_gf2n(SR_generic):
         """
         Return ``True`` if ``d`` can be used as a vector for ``self``.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR()
             sage: sr
@@ -2200,7 +2192,7 @@ class SR_gf2n(SR_generic):
 
     def phi(self, l):
         r"""
-        The operation `\phi` from [MR02]_
+        The operation `\phi` from [MR2002]_
 
         Projects state arrays to their algebraic representation.
 
@@ -2208,7 +2200,7 @@ class SR_gf2n(SR_generic):
 
         -  ``l`` - element to perform `\phi` on.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 1, 2, 4)
             sage: k = sr.base_ring()
@@ -2236,19 +2228,17 @@ class SR_gf2n(SR_generic):
             raise TypeError
 
     def antiphi(self, l):
-        """
-        The operation `\phi^{-1}` from [MR02]_ or the inverse of ``self.phi``.
+        r"""
+        The operation `\phi^{-1}` from [MR2002]_ or the inverse of ``self.phi``.
 
         INPUT:
 
         - ``l`` -- a vector in the sense of :meth:`is_vector`
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR()
             sage: A = sr.random_state_array()
-            sage: A
-            [a^2]
             sage: sr.antiphi(sr.phi(A)) == A
             True
         """
@@ -2271,7 +2261,7 @@ class SR_gf2n(SR_generic):
         """
         Return the ``ShiftRows`` matrix.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 2, 4)
             sage: s = sr.random_state_array()
@@ -2295,7 +2285,7 @@ class SR_gf2n(SR_generic):
 
         return shift_rows
 
-    def lin_matrix(self, length = None):
+    def lin_matrix(self, length=None):
         """
         Return the ``Lin`` matrix.
 
@@ -2309,7 +2299,7 @@ class SR_gf2n(SR_generic):
         -  ``length`` - length of state space (default: ``None``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 4)
             sage: sr.lin_matrix()
@@ -2328,17 +2318,17 @@ class SR_gf2n(SR_generic):
 
         lin = Matrix(self.base_ring(), length*e, length*e)
         if e == 4:
-            l = [ k.fetch_int(x) for x in  (5, 1, 12, 5) ]
+            l = [k.from_integer(x) for x in (5, 1, 12, 5)]
             for k in range( 0, length ):
                 for i in range(0, 4):
                     for j in range(0, 4):
-                        lin[k*4+j, k*4+i] = l[(i-j)%4] ** (2**j)
+                        lin[k*4+j, k*4+i] = l[(i-j) % 4] ** (2**j)
         elif e == 8:
-            l = [ k.fetch_int(x) for x in  (5, 9, 249, 37, 244, 1, 181, 143) ]
+            l = [k.from_integer(x) for x in (5, 9, 249, 37, 244, 1, 181, 143)]
             for k in range( 0, length ):
                 for i in range(0, 8):
                     for j in range(0, 8):
-                        lin[k*8+j, k*8+i] = l[(i-j)%8] ** (2**j)
+                        lin[k*8+j, k*8+i] = l[(i-j) % 8] ** (2**j)
 
         return lin
 
@@ -2346,7 +2336,7 @@ class SR_gf2n(SR_generic):
         """
         Return the ``MixColumns`` matrix.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 2, 4)
             sage: s = sr.random_state_array()
@@ -2361,7 +2351,7 @@ class SR_gf2n(SR_generic):
             Return the `e x e` matrix `D` with `b^i` along the
             diagonal.
 
-            EXAMPLE::
+            EXAMPLES::
 
                 sage: sr = mq.SR(1, 2, 1, 4)
                 sage: sr.mix_columns_matrix() # indirect doctest
@@ -2438,7 +2428,7 @@ class SR_gf2n(SR_generic):
         -  ``length`` - length of both lists
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 8)
             sage: R = sr.ring()
@@ -2457,7 +2447,7 @@ class SR_gf2n(SR_generic):
         return [xi[j, 0]*wi[j, 0] + 1 for j in range(length)]
 
     def field_polynomials(self, name, i, l=None):
-        """
+        r"""
         Return list of conjugacy polynomials for a given round ``i``
         and name ``name``.
 
@@ -2467,7 +2457,7 @@ class SR_gf2n(SR_generic):
         -  ``i`` - round number
         -  ``l`` - r\*c (default: ``None``)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(3, 1, 1, 8)
             sage: sr.field_polynomials('x', 2)
@@ -2483,13 +2473,12 @@ class SR_gf2n(SR_generic):
         r = self._r
         c = self._c
         e = self._e
-        n = self._n
 
         if l is None:
             l = r*c
 
         _vars = self.vars(name, i, l, e)
-        return [_vars[e*j+i]**2 - _vars[e*j+(i+1)%e]   for j in range(l)  for i in range(e)]
+        return [_vars[e*j+k]**2 - _vars[e*j+(k+1) % e]   for j in range(l)  for k in range(e)]
 
 class SR_gf2(SR_generic):
     def __init__(self, n=1, r=1, c=1, e=4, star=False, **kwargs):
@@ -2497,7 +2486,7 @@ class SR_gf2(SR_generic):
         Small Scale Variants of the AES polynomial system constructor over
         `\GF{2}`. See help for SR.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: sr
@@ -2517,7 +2506,7 @@ class SR_gf2(SR_generic):
         -  ``d`` - values for vector (default: ``None``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: sr
@@ -2563,7 +2552,7 @@ class SR_gf2(SR_generic):
         -  ``d`` - matrix
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: sr
@@ -2583,7 +2572,7 @@ class SR_gf2(SR_generic):
 
     def phi(self, l, diffusion_matrix=False):
         r"""
-        The operation `\phi` from [MR02]_
+        The operation `\phi` from [MR2002]_
 
         Given a list/matrix of elements in `\GF{2^e}`, return a
         matching list/matrix of elements in `\GF{2}`.
@@ -2595,12 +2584,12 @@ class SR_gf2(SR_generic):
           transformed to a matrix which performs the same operation
           over `\GF{2}` as ``l`` over `\GF{2^n}` (default: ``False``).
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(2, 1, 2, 4, gf2=True)
             sage: k = sr.base_ring()
             sage: A = matrix(k, 1, 2, [k.gen(), 0] )
-            sage: sr.phi(A)
+            sage: sr.phi(A)                                                             # needs sage.libs.gap
             [0 0]
             [0 0]
             [1 0]
@@ -2639,27 +2628,26 @@ class SR_gf2(SR_generic):
             return tuple(ret)
         elif is_Matrix(l):
             return Matrix(GF(2), l.ncols(), l.nrows()*self.e, ret).transpose()
-        else: raise TypeError
+        else:
+            raise TypeError
 
     def antiphi(self, l):
-        """
-        The operation `\phi^{-1}` from [MR02]_ or the inverse of ``self.phi``.
+        r"""
+        The operation `\phi^{-1}` from [MR2002]_ or the inverse of ``self.phi``.
 
         INPUT:
 
         - ``l`` - a vector in the sense of ``self.is_vector``
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: A = sr.random_state_array()
-            sage: A
-            [a^2]
-            sage: sr.antiphi(sr.phi(A)) == A
+            sage: sr.antiphi(sr.phi(A)) == A                                            # needs sage.libs.gap
             True
         """
         e = self.e
-        V = self.k.vector_space()
+        V = self.k.vector_space(map=False)
 
         if is_Matrix(l):
             l2 = l.transpose().list()
@@ -2675,7 +2663,7 @@ class SR_gf2(SR_generic):
         elif isinstance(l, tuple):
             return tuple(ret)
         elif is_Matrix(l):
-            return Matrix(self.base_ring(), self.r *self.c, 1, ret)
+            return Matrix(self.base_ring(), self.r * self.c, 1, ret)
         else:
             raise TypeError
 
@@ -2683,7 +2671,7 @@ class SR_gf2(SR_generic):
         """
         Return the ``ShiftRows`` matrix.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 2, 4, gf2=True)
             sage: s = sr.random_state_array()
@@ -2708,7 +2696,7 @@ class SR_gf2(SR_generic):
         """
         Return the ``MixColumns`` matrix.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 2, 2, 4, gf2=True)
             sage: s = sr.random_state_array()
@@ -2722,8 +2710,6 @@ class SR_gf2(SR_generic):
         k = self.k
         a = k.gen()
 
-
-
         if r == 1:
             M = Matrix(k, r, r, 1)
 
@@ -2731,9 +2717,9 @@ class SR_gf2(SR_generic):
             M = Matrix(k, r, r, [a+1, a, a, a+1])
 
         elif r == 4:
-            M = Matrix(k, r, [a, a+1, 1, 1, \
-                             1, a, a+1, 1, \
-                             1, 1, a, a+1, \
+            M = Matrix(k, r, [a, a+1, 1, 1,
+                             1, a, a+1, 1,
+                             1, 1, a, a+1,
                              a+1, 1, 1, a])
 
         mix_columns = Matrix(k, r*c, r*c)
@@ -2757,7 +2743,7 @@ class SR_gf2(SR_generic):
         -  ``length`` - length of state space (default: ``None``)
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 4, gf2=True)
             sage: sr.lin_matrix()
@@ -2772,20 +2758,19 @@ class SR_gf2(SR_generic):
             length = r*c
 
         if e == 8:
-            Z = Matrix(GF(2), 8, 8, [1, 0, 0, 0, 1, 1, 1, 1, \
-                                  1, 1, 0, 0, 0, 1, 1, 1, \
-                                  1, 1, 1, 0, 0, 0, 1, 1, \
-                                  1, 1, 1, 1, 0, 0, 0, 1, \
-                                  1, 1, 1, 1, 1, 0, 0, 0, \
-                                  0, 1, 1, 1, 1, 1, 0, 0, \
-                                  0, 0, 1, 1, 1, 1, 1, 0, \
+            Z = Matrix(GF(2), 8, 8, [1, 0, 0, 0, 1, 1, 1, 1,
+                                  1, 1, 0, 0, 0, 1, 1, 1,
+                                  1, 1, 1, 0, 0, 0, 1, 1,
+                                  1, 1, 1, 1, 0, 0, 0, 1,
+                                  1, 1, 1, 1, 1, 0, 0, 0,
+                                  0, 1, 1, 1, 1, 1, 0, 0,
+                                  0, 0, 1, 1, 1, 1, 1, 0,
                                   0, 0, 0, 1, 1, 1, 1, 1])
         else:
-            Z = Matrix(GF(2), 4, 4, [1, 1, 1, 0, \
-                                  0, 1, 1, 1, \
-                                  1, 0, 1, 1, \
+            Z = Matrix(GF(2), 4, 4, [1, 1, 1, 0,
+                                  0, 1, 1, 1,
+                                  1, 0, 1, 1,
                                   1, 1, 0, 1])
-
 
         Z = Z.transpose() # account for endianess mismatch
 
@@ -2807,7 +2792,7 @@ class SR_gf2(SR_generic):
         -  ``x`` - an element in self.base_ring()
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: a = sr.k.gen()
@@ -2820,14 +2805,12 @@ class SR_gf2(SR_generic):
             sage: (a^2 + 1)*(a+1)
             a^3 + a^2 + a + 1
         """
-        a = self.k.gen()
         k = self.k
         e = self.e
         a = k.gen()
 
-        columns = []
-        for i in reversed(range(e)):
-            columns.append( list(reversed((x * a**i)._vector_())) )
+        columns = [list(reversed((x * a**i)._vector_()))
+                   for i in reversed(range(e))]
         return Matrix(GF(2), e, e, columns).transpose()
 
     def _square_matrix(self):
@@ -2835,7 +2818,7 @@ class SR_gf2(SR_generic):
         Return a matrix of dimension self.e x self.e which performs the
         squaring operation over `GF(2^n)` on vectors of length e.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(gf2=True)
             sage: a = sr.k.gen()
@@ -2926,7 +2909,7 @@ class SR_gf2(SR_generic):
 
         if x is None and w is None:
             # make sure it prints like in the book.
-            names = ["w%d" % i for i in reversed(range(e))] + ["x%d"%i for i in reversed(range(e))]
+            names = ["w%d" % i for i in reversed(range(e))] + ["x%d" % i for i in reversed(range(e))]
             P = PolynomialRing(GF(2), e*2, names, order='lex')
             x = P.gens()[e:]
             w = P.gens()[:e]
@@ -2981,36 +2964,36 @@ class SR_gf2(SR_generic):
                  w7*x6 + w7*x4 + w7*x3 + w6*x7 + w6*x5 + w6*x4 + w6*x0 + w5*x6 + w5*x5 + w5*x1 + w4*x7 + w4*x6 + w4*x2 + w3*x7 + w3*x3 + w2*x4 + w1*x5 + w0*x6,
                  w7*x5 + w7*x3 + w7*x2 + w6*x6 + w6*x4 + w6*x3 + w5*x7 + w5*x5 + w5*x4 + w5*x0 + w4*x6 + w4*x5 + w4*x1 + w3*x7 + w3*x6 + w3*x2 + w2*x7 + w2*x3 + w1*x4 + w0*x5,
                  w7*x7 + w7*x4 + w7*x2 + w7*x1 + w6*x5 + w6*x3 + w6*x2 + w5*x6 + w5*x4 + w5*x3 + w4*x7 + w4*x5 + w4*x4 + w4*x0 + w3*x6 + w3*x5 + w3*x1 + w2*x7 + w2*x6 + w2*x2 + w1*x7 + w1*x3 + w0*x4,
-                 w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w4*x7 + w4*x6 + w4*x4 + w3*x7 + w3*x5 + w3*x0 + w2*x6 + w2*x1 \
+                 w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w4*x7 + w4*x6 + w4*x4 + w3*x7 + w3*x5 + w3*x0 + w2*x6 + w2*x1
                      + w1*x7 + w1*x2 + w0*x3,
                  w7*x6 + w7*x3 + w7*x2 + w6*x7 + w6*x4 + w6*x3 + w5*x5 + w5*x4 + w4*x6 + w4*x5 + w3*x7 + w3*x6 + w2*x7 + w2*x0 + w1*x1 + w0*x2,
                  w7*x7 + w7*x5 + w7*x2 + w7*x1 + w6*x6 + w6*x3 + w6*x2 + w5*x7 + w5*x4 + w5*x3 + w4*x5 + w4*x4 + w3*x6 + w3*x5 + w2*x7 + w2*x6 + w1*x7 + w1*x0 + w0*x1,
                  w7*x6 + w7*x5 + w7*x2 + w7*x0 + w6*x7 + w6*x4 + w6*x3 + w5*x7 + w5*x6 + w5*x3 + w5*x1 + w4*x5 + w4*x4 + w3*x7 + w3*x4 + w3*x2 + w2*x6 + w2*x5 + w1*x5 + w1*x3 + w0*x7 + w0*x6 + x7,
-                 w7*x6 + w7*x3 + w7*x2 + w6*x6 + w6*x5 + w6*x2 + w6*x0 + w5*x7 + w5*x4 + w5*x3 + w4*x7 + w4*x6 + w4*x3 + w4*x1 + w3*x5 + w3*x4 + w2*x7 + w2*x4 + w2*x2 + w1*x6 + w1*x5 + w0*x5 + w0*x3 \
+                 w7*x6 + w7*x3 + w7*x2 + w6*x6 + w6*x5 + w6*x2 + w6*x0 + w5*x7 + w5*x4 + w5*x3 + w4*x7 + w4*x6 + w4*x3 + w4*x1 + w3*x5 + w3*x4 + w2*x7 + w2*x4 + w2*x2 + w1*x6 + w1*x5 + w0*x5 + w0*x3
                      + x6,
-                 w7*x7 + w7*x5 + w7*x4 + w7*x1 + w6*x6 + w6*x3 + w6*x2 + w5*x6 + w5*x5 + w5*x2 + w5*x0 + w4*x7 + w4*x4 + w4*x3 + w3*x7 + w3*x6 + w3*x3 + w3*x1 + w2*x5 + w2*x4 + w1*x7 + w1*x4 + w1*x2 \
+                 w7*x7 + w7*x5 + w7*x4 + w7*x1 + w6*x6 + w6*x3 + w6*x2 + w5*x6 + w5*x5 + w5*x2 + w5*x0 + w4*x7 + w4*x4 + w4*x3 + w3*x7 + w3*x6 + w3*x3 + w3*x1 + w2*x5 + w2*x4 + w1*x7 + w1*x4 + w1*x2
                      + w0*x6 + w0*x5 + x5,
-                 w7*x7 + w7*x5 + w7*x2 + w7*x1 + w6*x7 + w6*x5 + w6*x4 + w6*x1 + w5*x6 + w5*x3 + w5*x2 + w4*x6 + w4*x5 + w4*x2 + w4*x0 + w3*x7 + w3*x4 + w3*x3 + w2*x7 + w2*x6 + w2*x3 + w2*x1 + w1*x5 \
+                 w7*x7 + w7*x5 + w7*x2 + w7*x1 + w6*x7 + w6*x5 + w6*x4 + w6*x1 + w5*x6 + w5*x3 + w5*x2 + w4*x6 + w4*x5 + w4*x2 + w4*x0 + w3*x7 + w3*x4 + w3*x3 + w2*x7 + w2*x6 + w2*x3 + w2*x1 + w1*x5
                      + w1*x4 + w0*x7 + w0*x4 + w0*x2 + x4,
-                 w7*x5 + w7*x4 + w7*x3 + w7*x2 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w4*x6 + w4*x5 + w4*x4 + w4*x3 + w4*x2 + w3*x7 + w3*x6 + w3*x5 + w3*x4 + w3*x0 \
+                 w7*x5 + w7*x4 + w7*x3 + w7*x2 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w4*x6 + w4*x5 + w4*x4 + w4*x3 + w4*x2 + w3*x7 + w3*x6 + w3*x5 + w3*x4 + w3*x0
                      + w2*x7 + w2*x6 + w2*x5 + w2*x4 + w2*x3 + w1*x7 + w1*x6 + w1*x5 + w1*x1 + w0*x7 + w0*x6 + w0*x5 + w0*x4 + x3,
-                 w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x7 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x6 + w4*x3 + w3*x7 + w3*x6 + w3*x5 + w3*x3 + w2*x7 + w2*x4 + w2*x0 \
+                 w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x7 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x6 + w4*x3 + w3*x7 + w3*x6 + w3*x5 + w3*x3 + w2*x7 + w2*x4 + w2*x0
                      + w1*x7 + w1*x6 + w1*x4 + w0*x5 + w0*x1 + x2,
-                 w7*x6 + w7*x4 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x7 + w5*x5 + w5*x2 + w4*x7 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w3*x6 + w3*x3 + w2*x7 + w2*x6 + w2*x5 + w2*x3 \
+                 w7*x6 + w7*x4 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x7 + w5*x5 + w5*x2 + w4*x7 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w3*x6 + w3*x3 + w2*x7 + w2*x6 + w2*x5 + w2*x3
                      + w1*x7 + w1*x4 + w1*x0 + w0*x7 + w0*x6 + w0*x4 + x1,
                  w7*x7 + w7*x4 + w7*x3 + w6*x7 + w6*x6 + w6*x3 + w6*x1 + w5*x5 + w5*x4 + w4*x7 + w4*x4 + w4*x2 + w3*x6 + w3*x5 + w2*x5 + w2*x3 + w1*x7 + w1*x6 + w0*x6 + w0*x4 + w0*x0 + x0,
                  w7*x6 + w7*x5 + w7*x3 + w7*x0 + w7 + w6*x7 + w6*x5 + w6*x2 + w6*x0 + w5*x7 + w5*x4 + w5*x2 + w5*x1 + w4*x6 + w4*x4 + w4*x3 + w3*x6 + w3*x5 + w3*x1 + w2*x7 + w2*x3 + w1*x5 + w0*x7,
-                 w7*x5 + w7*x4 + w7*x2 + w6*x7 + w6*x6 + w6*x4 + w6*x1 + w6 + w5*x6 + w5*x3 + w5*x1 + w5*x0 + w4*x5 + w4*x3 + w4*x2 + w3*x7 + w3*x5 + w3*x4 + w3*x0 + w2*x7 + w2*x6 + w2*x2 + w1*x4 \
+                 w7*x5 + w7*x4 + w7*x2 + w6*x7 + w6*x6 + w6*x4 + w6*x1 + w6 + w5*x6 + w5*x3 + w5*x1 + w5*x0 + w4*x5 + w4*x3 + w4*x2 + w3*x7 + w3*x5 + w3*x4 + w3*x0 + w2*x7 + w2*x6 + w2*x2 + w1*x4
                      + w0*x6,
-                 w7*x7 + w7*x4 + w7*x3 + w7*x1 + w6*x6 + w6*x5 + w6*x3 + w6*x0 + w5*x7 + w5*x5 + w5*x2 + w5*x0 + w5 + w4*x7 + w4*x4 + w4*x2 + w4*x1 + w3*x6 + w3*x4 + w3*x3 + w2*x6 + w2*x5 + w2*x1 \
+                 w7*x7 + w7*x4 + w7*x3 + w7*x1 + w6*x6 + w6*x5 + w6*x3 + w6*x0 + w5*x7 + w5*x5 + w5*x2 + w5*x0 + w5 + w4*x7 + w4*x4 + w4*x2 + w4*x1 + w3*x6 + w3*x4 + w3*x3 + w2*x6 + w2*x5 + w2*x1
                      + w1*x7 + w1*x3 + w0*x5,
-                 w7*x7 + w7*x6 + w7*x3 + w7*x2 + w7*x0 + w6*x5 + w6*x4 + w6*x2 + w5*x7 + w5*x6 + w5*x4 + w5*x1 + w4*x6 + w4*x3 + w4*x1 + w4*x0 + w4 + w3*x5 + w3*x3 + w3*x2 + w2*x7 + w2*x5 + w2*x4 \
+                 w7*x7 + w7*x6 + w7*x3 + w7*x2 + w7*x0 + w6*x5 + w6*x4 + w6*x2 + w5*x7 + w5*x6 + w5*x4 + w5*x1 + w4*x6 + w4*x3 + w4*x1 + w4*x0 + w4 + w3*x5 + w3*x3 + w3*x2 + w2*x7 + w2*x5 + w2*x4
                      + w2*x0 + w1*x7 + w1*x6 + w1*x2 + w0*x4,
-                 w7*x3 + w7*x2 + w7*x1 + w7*x0 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w6*x0 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x2 + w5*x1 + w5*x0 + w4*x7 + w4*x6 + w4*x5 + w4*x4 \
+                 w7*x3 + w7*x2 + w7*x1 + w7*x0 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w6*x0 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x2 + w5*x1 + w5*x0 + w4*x7 + w4*x6 + w4*x5 + w4*x4
                      + w4*x3 + w4*x2 + w4*x0 + w3*x7 + w3*x6 + w3*x5 + w3*x4 + w3*x2 + w3 + w2*x7 + w2*x6 + w2*x4 + w1*x6 + w1*x1 + w0*x3,
-                 w7*x7 + w7*x6 + w7*x5 + w7*x3 + w7*x2 + w7*x1 + w6*x7 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w5*x0 + w4*x7 + w4*x5 + w4*x2 + w4*x1 + w3*x7 + w3*x4 \
+                 w7*x7 + w7*x6 + w7*x5 + w7*x3 + w7*x2 + w7*x1 + w6*x7 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w5*x0 + w4*x7 + w4*x5 + w4*x2 + w4*x1 + w3*x7 + w3*x4
                      + w3*x3 + w2*x6 + w2*x5 + w2 + w1*x7 + w1*x0 + w0*x2,
-                 w7*x6 + w7*x5 + w7*x4 + w7*x2 + w7*x1 + w7*x0 + w6*x7 + w6*x6 + w6*x4 + w6*x3 + w6*x2 + w6*x0 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x7 + w4*x6 + w4*x4 + w4*x1 + w4*x0 + w3*x6 \
+                 w7*x6 + w7*x5 + w7*x4 + w7*x2 + w7*x1 + w7*x0 + w6*x7 + w6*x6 + w6*x4 + w6*x3 + w6*x2 + w6*x0 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x7 + w4*x6 + w4*x4 + w4*x1 + w4*x0 + w3*x6
                      + w3*x3 + w3*x2 + w2*x5 + w2*x4 + w1*x7 + w1*x6 + w1 + w0*x1,
                  w7*x7 + w7*x6 + w7*x4 + w7*x1 + w6*x6 + w6*x3 + w6*x1 + w6*x0 + w5*x5 + w5*x3 + w5*x2 + w4*x7 + w4*x5 + w4*x4 + w4*x0 + w3*x7 + w3*x6 + w3*x2 + w2*x4 + w1*x6 + w0*x0 + w0]
 
@@ -3018,58 +3001,58 @@ class SR_gf2(SR_generic):
                 l.append(w7*x6 + w7*x5 + w7*x1 + w6*x7 + w6*x6 + w6*x2 + w5*x7 + w5*x3 + w4*x4 + w3*x5 + w2*x6 + w1*x7 + w0*x0 + 1)
 
             if not biaffine_only:
-                l.extend([w7**2 + w7*w6 + w7*w3 + w7*w1 + w7*x7 + w7*x6 + w7*x5 + w7*x2 + w7*x1 + w7*x0 + w6**2 + w6*w0 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w6*x0 + w5**2 + w5*w4 + w5*w3 \
-                              + w5*w2 + w5*x7 + w5*x5 + w5*x4 + w5*x1 + w5*x0 + w4**2 + w4*w2 + w4*w0 + w4*x5 + w4*x4 + w4*x2 + w3*w2 + w3*x6 + w3*x3 + w3*x1 + w3*x0 + w2*x7 + w2*x5 + w2*x4 \
+                l.extend([w7**2 + w7*w6 + w7*w3 + w7*w1 + w7*x7 + w7*x6 + w7*x5 + w7*x2 + w7*x1 + w7*x0 + w6**2 + w6*w0 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w6*x0 + w5**2 + w5*w4 + w5*w3
+                              + w5*w2 + w5*x7 + w5*x5 + w5*x4 + w5*x1 + w5*x0 + w4**2 + w4*w2 + w4*w0 + w4*x5 + w4*x4 + w4*x2 + w3*w2 + w3*x6 + w3*x3 + w3*x1 + w3*x0 + w2*x7 + w2*x5 + w2*x4
                               + w2*x0 + w1*x4 + w0**2 + w0*x0,
-                          w7*x6 + w7*x4 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w4*x5 + w4*x4 + w4*x3 + w4*x1 + w4*x0 + w3*x7 + w3*x5 + w3*x2 \
-                              + w2*x7 + w2*x6 + w2*x3 + w1*x7 + w1*x6 + w1*x5 + w1*x4 + w1*x2 + w0*x6 + w0*x5 + w0*x4 + w0*x2 + w0*x1 + x7**2 + x7*x6 + x7*x5 + x7*x3 + x7*x1 + x7*x0 + x6*x2 \
+                          w7*x6 + w7*x4 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w4*x5 + w4*x4 + w4*x3 + w4*x1 + w4*x0 + w3*x7 + w3*x5 + w3*x2
+                              + w2*x7 + w2*x6 + w2*x3 + w1*x7 + w1*x6 + w1*x5 + w1*x4 + w1*x2 + w0*x6 + w0*x5 + w0*x4 + w0*x2 + w0*x1 + x7**2 + x7*x6 + x7*x5 + x7*x3 + x7*x1 + x7*x0 + x6*x2
                               + x6*x1 + x5*x4 + x5*x3 + x5*x2 + x5*x1 + x4*x3 + x4*x2 + x4*x1 + x3**2 + x3*x2 + x2*x1 + x2*x0,
-                          w7*x5 + w7*x4 + w7*x3 + w7*x1 + w7*x0 + w6*x7 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x3 + w4*x7 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w3*x6 + w3*x5 + w3*x4 + w3*x2 + w3*x1 \
-                              + w2*x6 + w2*x3 + w1*x7 + w1*x4 + w0*x7 + w0*x6 + w0*x5 + w0*x3 + x7*x3 + x7*x2 + x6*x5 + x6*x4 + x6*x3 + x6*x2 + x6*x0 + x5*x4 + x5*x3 + x5*x2 + x4**2 + x4*x3 \
+                          w7*x5 + w7*x4 + w7*x3 + w7*x1 + w7*x0 + w6*x7 + w6*x5 + w6*x2 + w5*x7 + w5*x6 + w5*x3 + w4*x7 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w3*x6 + w3*x5 + w3*x4 + w3*x2 + w3*x1
+                              + w2*x6 + w2*x3 + w1*x7 + w1*x4 + w0*x7 + w0*x6 + w0*x5 + w0*x3 + x7*x3 + x7*x2 + x6*x5 + x6*x4 + x6*x3 + x6*x2 + x6*x0 + x5*x4 + x5*x3 + x5*x2 + x4**2 + x4*x3
                               + x3*x2 + x3*x1,
-                          w7*w3 + w7*w2 + w7*x6 + w7*x5 + w7*x4 + w7*x1 + w7*x0 + w6*w5 + w6*w4 + w6*w3 + w6*w2 + w6*w0 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x0 + w5*w4 + w5*w3 + w5*w2 + w5*x7 \
-                              + w5*x6 + w5*x4 + w5*x3 + w5*x0 + w4**2 + w4*w3 + w4*x7 + w4*x4 + w4*x3 + w4*x1 + w3*w2 + w3*w1 + w3*x7 + w3*x5 + w3*x2 + w3*x0 + w2*x6 + w2*x4 + w2*x3 + w1*x7 \
+                          w7*w3 + w7*w2 + w7*x6 + w7*x5 + w7*x4 + w7*x1 + w7*x0 + w6*w5 + w6*w4 + w6*w3 + w6*w2 + w6*w0 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w6*x0 + w5*w4 + w5*w3 + w5*w2 + w5*x7
+                              + w5*x6 + w5*x4 + w5*x3 + w5*x0 + w4**2 + w4*w3 + w4*x7 + w4*x4 + w4*x3 + w4*x1 + w3*w2 + w3*w1 + w3*x7 + w3*x5 + w3*x2 + w3*x0 + w2*x6 + w2*x4 + w2*x3 + w1*x7
                               + w1*x3 + w0*x7,
-                          w7*x5 + w7*x2 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x2 + w6*x1 + w5*x5 + w5*x3 + w5*x2 + w4*x3 + w4*x2 + w4*x1 + w3*x6 + w3*x3 + w3*x2 + w3*x0 + w2*x7 + w2*x6 \
-                              + w2*x5 + w2*x3 + w2*x2 + w1*x6 + w1*x4 + w1*x3 + w0*x4 + w0*x3 + w0*x2 + x7*x5 + x7*x4 + x7*x1 + x7*x0 + x6*x0 + x5**2 + x5*x2 + x5*x1 + x5*x0 + x4**2 + x4*x0 \
+                          w7*x5 + w7*x2 + w7*x1 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x2 + w6*x1 + w5*x5 + w5*x3 + w5*x2 + w4*x3 + w4*x2 + w4*x1 + w3*x6 + w3*x3 + w3*x2 + w3*x0 + w2*x7 + w2*x6
+                              + w2*x5 + w2*x3 + w2*x2 + w1*x6 + w1*x4 + w1*x3 + w0*x4 + w0*x3 + w0*x2 + x7*x5 + x7*x4 + x7*x1 + x7*x0 + x6*x0 + x5**2 + x5*x2 + x5*x1 + x5*x0 + x4**2 + x4*x0
                               + x3*x2 + x3*x0 + x1**2,
-                          w7*w6 + w7*w5 + w7*w4 + w7*w3 + w7*x7 + w7*x5 + w7*x4 + w7*x3 + w7*x0 + w6**2 + w6*w5 + w6*w4 + w6*w2 + w6*w1 + w6*w0 + w6*x7 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w5*w4 \
-                              + w5*w1 + w5*w0 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w5*x2 + w4*w2 + w4*w1 + w4*x7 + w4*x6 + w4*x3 + w4*x2 + w4*x0 + w3*w0 + w3*x7 + w3*x6 + w3*x4 + w3*x1 + w2**2 \
+                          w7*w6 + w7*w5 + w7*w4 + w7*w3 + w7*x7 + w7*x5 + w7*x4 + w7*x3 + w7*x0 + w6**2 + w6*w5 + w6*w4 + w6*w2 + w6*w1 + w6*w0 + w6*x7 + w6*x4 + w6*x3 + w6*x2 + w6*x1 + w5*w4
+                              + w5*w1 + w5*w0 + w5*x7 + w5*x6 + w5*x5 + w5*x3 + w5*x2 + w4*w2 + w4*w1 + w4*x7 + w4*x6 + w4*x3 + w4*x2 + w4*x0 + w3*w0 + w3*x7 + w3*x6 + w3*x4 + w3*x1 + w2**2
                               + w2*x5 + w2*x3 + w2*x2 + w1*x7 + w1*x6 + w1*x2 + w0*x6,
-                          w7*w5 + w7*w4 + w7*w1 + w7*w0 + w7*x6 + w7*x2 + w6*w0 + w6*x6 + w6*x3 + w6*x2 + w6*x1 + w5**2 + w5*w2 + w5*w1 + w5*w0 + w5*x7 + w5*x6 + w5*x5 + w5*x2 + w4**2 + w4*w0 \
-                              + w4*x6 + w4*x1 + w4*x0 + w3*w2 + w3*w0 + w3*x5 + w3*x4 + w3*x3 + w3*x2 + w3*x1 + w3*x0 + w2*x7 + w2*x6 + w2*x5 + w2*x4 + w2*x3 + w2*x2 + w2*x0 + w1**2 + w1*x7 \
+                          w7*w5 + w7*w4 + w7*w1 + w7*w0 + w7*x6 + w7*x2 + w6*w0 + w6*x6 + w6*x3 + w6*x2 + w6*x1 + w5**2 + w5*w2 + w5*w1 + w5*w0 + w5*x7 + w5*x6 + w5*x5 + w5*x2 + w4**2 + w4*w0
+                              + w4*x6 + w4*x1 + w4*x0 + w3*w2 + w3*w0 + w3*x5 + w3*x4 + w3*x3 + w3*x2 + w3*x1 + w3*x0 + w2*x7 + w2*x6 + w2*x5 + w2*x4 + w2*x3 + w2*x2 + w2*x0 + w1**2 + w1*x7
                               + w1*x6 + w1*x4 + w0*x3,
-                          w7*x7 + w7*x6 + w7*x5 + w7*x2 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w5*x0 + w4*x7 + w4*x5 + w4*x2 + w3*x7 + w3*x6 + w3*x3 \
-                              + w2*x7 + w2*x6 + w2*x5 + w2*x4 + w2*x2 + w1*x6 + w1*x5 + w1*x4 + w1*x2 + w1*x1 + w0*x6 + w0*x3 + x7**2 + x7*x5 + x7*x3 + x6**2 + x6*x5 + x6*x2 + x6*x0 + x5**2 \
+                          w7*x7 + w7*x6 + w7*x5 + w7*x2 + w6*x7 + w6*x6 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w5*x0 + w4*x7 + w4*x5 + w4*x2 + w3*x7 + w3*x6 + w3*x3
+                              + w2*x7 + w2*x6 + w2*x5 + w2*x4 + w2*x2 + w1*x6 + w1*x5 + w1*x4 + w1*x2 + w1*x1 + w0*x6 + w0*x3 + x7**2 + x7*x5 + x7*x3 + x6**2 + x6*x5 + x6*x2 + x6*x0 + x5**2
                               + x4**2 + x4*x3 + x4*x2 + x4*x1 + x3**2 + x3*x1 + x2*x1,
-                          w7**2 + w7*w6 + w7*w5 + w7*w3 + w7*w1 + w7*w0 + w7*x6 + w7*x5 + w7*x3 + w7*x2 + w7*x1 + w6*w2 + w6*w1 + w6*x7 + w6*x6 + w6*x5 + w6*x2 + w6*x1 + w6*x0 + w5*w4 + w5*w3 \
-                              + w5*w2 + w5*w1 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w5*x0 + w4*w3 + w4*w2 + w4*w1 + w4*x7 + w4*x5 + w4*x4 + w4*x1 + w4*x0 + w3**2 + w3*w2 + w3*x5 + w3*x4 \
+                          w7**2 + w7*w6 + w7*w5 + w7*w3 + w7*w1 + w7*w0 + w7*x6 + w7*x5 + w7*x3 + w7*x2 + w7*x1 + w6*w2 + w6*w1 + w6*x7 + w6*x6 + w6*x5 + w6*x2 + w6*x1 + w6*x0 + w5*w4 + w5*w3
+                              + w5*w2 + w5*w1 + w5*x6 + w5*x5 + w5*x4 + w5*x3 + w5*x1 + w5*x0 + w4*w3 + w4*w2 + w4*w1 + w4*x7 + w4*x5 + w4*x4 + w4*x1 + w4*x0 + w3**2 + w3*w2 + w3*x5 + w3*x4
                               + w3*x2 + w2*w1 + w2*w0 + w2*x6 + w2*x3 + w2*x1 + w2*x0 + w1*x7 + w1*x5 + w1*x4 + w1*x0 + w0*x4,
-                          w7*x7 + w7*x5 + w7*x2 + w6*x7 + w6*x6 + w6*x3 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w4*x1 + w3*x6 + w3*x3 + w2*x7 + w2*x4 + w1*x7 \
-                              + w1*x6 + w1*x5 + w1*x3 + w0*x7 + w0*x6 + w0*x5 + w0*x3 + w0*x2 + w0*x0 + x7**2 + x7*x6 + x7*x3 + x7*x1 + x6**2 + x6*x0 + x5**2 + x5*x4 + x5*x3 + x5*x2 + x4**2 \
+                          w7*x7 + w7*x5 + w7*x2 + w6*x7 + w6*x6 + w6*x3 + w5*x7 + w5*x6 + w5*x5 + w5*x4 + w5*x2 + w4*x6 + w4*x5 + w4*x4 + w4*x2 + w4*x1 + w3*x6 + w3*x3 + w2*x7 + w2*x4 + w1*x7
+                              + w1*x6 + w1*x5 + w1*x3 + w0*x7 + w0*x6 + w0*x5 + w0*x3 + w0*x2 + w0*x0 + x7**2 + x7*x6 + x7*x3 + x7*x1 + x6**2 + x6*x0 + x5**2 + x5*x4 + x5*x3 + x5*x2 + x4**2
                               + x4*x2 + x4*x0 + x3*x2 + x0**2,
-                          w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w6*x0 + w5*x7 + w5*x5 + w5*x2 + w4*x7 + w4*x6 + w4*x3 + w3*x7 + w3*x6 + w3*x5 + w3*x4 \
-                              + w3*x2 + w2*x6 + w2*x5 + w2*x4 + w2*x2 + w2*x1 + w1*x6 + w1*x3 + w0*x7 + w0*x4 + x7*x6 + x7*x5 + x7*x4 + x7*x3 + x6**2 + x6*x5 + x6*x4 + x6*x2 + x6*x1 + x6*x0 \
+                          w7*x7 + w7*x6 + w7*x5 + w7*x4 + w7*x3 + w7*x1 + w6*x5 + w6*x4 + w6*x3 + w6*x1 + w6*x0 + w5*x7 + w5*x5 + w5*x2 + w4*x7 + w4*x6 + w4*x3 + w3*x7 + w3*x6 + w3*x5 + w3*x4
+                              + w3*x2 + w2*x6 + w2*x5 + w2*x4 + w2*x2 + w2*x1 + w1*x6 + w1*x3 + w0*x7 + w0*x4 + x7*x6 + x7*x5 + x7*x4 + x7*x3 + x6**2 + x6*x5 + x6*x4 + x6*x2 + x6*x1 + x6*x0
                               + x5*x4 + x5*x1 + x5*x0 + x4*x2 + x4*x1 + x3*x0 + x2**2,
-                          w7*x5 + w7*x4 + w7*x3 + w7*x2 + w6*x7 + w6*x1 + w5*x5 + w5*x4 + w5*x3 + w5*x2 + w5*x1 + w4*x7 + w4*x6 + w4*x4 + w4*x3 + w3*x6 + w3*x5 + w3*x4 + w3*x3 + w2*x2 + w2*x0 \
-                              + w1*x6 + w1*x5 + w1*x4 + w1*x3 + w1*x2 + w0*x7 + w0*x5 + w0*x4 + x7**2 + x7*x4 + x7*x2 + x6*x4 + x6*x3 + x6*x2 + x6*x1 + x5**2 + x5*x4 + x5*x3 + x5*x2 + x5*x0 \
+                          w7*x5 + w7*x4 + w7*x3 + w7*x2 + w6*x7 + w6*x1 + w5*x5 + w5*x4 + w5*x3 + w5*x2 + w5*x1 + w4*x7 + w4*x6 + w4*x4 + w4*x3 + w3*x6 + w3*x5 + w3*x4 + w3*x3 + w2*x2 + w2*x0
+                              + w1*x6 + w1*x5 + w1*x4 + w1*x3 + w1*x2 + w0*x7 + w0*x5 + w0*x4 + x7**2 + x7*x4 + x7*x2 + x6*x4 + x6*x3 + x6*x2 + x6*x1 + x5**2 + x5*x4 + x5*x3 + x5*x2 + x5*x0
                               + x4*x3 + x4*x2 + x4*x1 + x3**2 + x2*x0 + x1*x0,
-                          w7*x6 + w7*x5 + w7*x3 + w7*x2 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w5*x7 + w5*x1 + w4*x5 + w4*x4 + w4*x3 + w4*x2 + w4*x1 + w3*x7 + w3*x6 + w3*x4 + w3*x3 + w2*x6 + w2*x5 \
-                              + w2*x4 + w2*x3 + w1*x2 + w1*x0 + w0*x6 + w0*x5 + w0*x4 + w0*x3 + w0*x2 + x7*x5 + x7*x2 + x7*x0 + x6**2 + x6*x5 + x6*x2 + x6*x1 + x6*x0 + x5**2 + x5*x4 + x4**2 \
+                          w7*x6 + w7*x5 + w7*x3 + w7*x2 + w6*x5 + w6*x4 + w6*x3 + w6*x2 + w5*x7 + w5*x1 + w4*x5 + w4*x4 + w4*x3 + w4*x2 + w4*x1 + w3*x7 + w3*x6 + w3*x4 + w3*x3 + w2*x6 + w2*x5
+                              + w2*x4 + w2*x3 + w1*x2 + w1*x0 + w0*x6 + w0*x5 + w0*x4 + w0*x3 + w0*x2 + x7*x5 + x7*x2 + x7*x0 + x6**2 + x6*x5 + x6*x2 + x6*x1 + x6*x0 + x5**2 + x5*x4 + x4**2
                               + x4*x2 + x4*x1 + x4*x0 + x3**2 + x3*x2 + x1*x0,
-                          w7**2 + w7*w5 + w7*w3 + w7*x7 + w7*x6 + w7*x4 + w7*x3 + w7*x2 + w6**2 + w6*w5 + w6*w2 + w6*w0 + w6*x7 + w6*x6 + w6*x3 + w6*x2 + w6*x1 + w6*x0 + w5**2 + w5*x7 + w5*x6 \
-                              + w5*x5 + w5*x4 + w5*x2 + w5*x1 + w4**2 + w4*w3 + w4*w2 + w4*w1 + w4*x6 + w4*x5 + w4*x2 + w4*x1 + w3**2 + w3*w1 + w3*x6 + w3*x5 + w3*x3 + w3*x0 + w2*w1 + w2*x7 \
+                          w7**2 + w7*w5 + w7*w3 + w7*x7 + w7*x6 + w7*x4 + w7*x3 + w7*x2 + w6**2 + w6*w5 + w6*w2 + w6*w0 + w6*x7 + w6*x6 + w6*x3 + w6*x2 + w6*x1 + w6*x0 + w5**2 + w5*x7 + w5*x6
+                              + w5*x5 + w5*x4 + w5*x2 + w5*x1 + w4**2 + w4*w3 + w4*w2 + w4*w1 + w4*x6 + w4*x5 + w4*x2 + w4*x1 + w3**2 + w3*w1 + w3*x6 + w3*x5 + w3*x3 + w3*x0 + w2*w1 + w2*x7
                               + w2*x4 + w2*x2 + w2*x1 + w1*x6 + w1*x5 + w1*x1 + w0*x5,
-                          w7*w5 + w7*w2 + w7*w0 + w7*x5 + w7*x3 + w6**2 + w6*w5 + w6*w2 + w6*w1 + w6*w0 + w6*x7 + w6*x3 + w6*x2 + w6*x0 + w5**2 + w5*w4 + w5*x7 + w5*x6 + w5*x4 + w5*x2 + w5*x0 \
-                              + w4**2 + w4*w2 + w4*w1 + w4*w0 + w4*x6 + w4*x4 + w4*x3 + w4*x2 + w4*x0 + w3**2 + w3*w2 + w3*x7 + w3*x6 + w3*x4 + w3*x3 + w3*x2 + w3*x0 + w2*x7 + w2*x6 + w2*x4 \
+                          w7*w5 + w7*w2 + w7*w0 + w7*x5 + w7*x3 + w6**2 + w6*w5 + w6*w2 + w6*w1 + w6*w0 + w6*x7 + w6*x3 + w6*x2 + w6*x0 + w5**2 + w5*w4 + w5*x7 + w5*x6 + w5*x4 + w5*x2 + w5*x0
+                              + w4**2 + w4*w2 + w4*w1 + w4*w0 + w4*x6 + w4*x4 + w4*x3 + w4*x2 + w4*x0 + w3**2 + w3*w2 + w3*x7 + w3*x6 + w3*x4 + w3*x3 + w3*x2 + w3*x0 + w2*x7 + w2*x6 + w2*x4
                               + w2*x1 + w2*x0 + w1*w0 + w1*x5 + w1*x4 + w0*x1,
-                          w7**2 + w7*w4 + w7*w2 + w7*x6 + w7*x4 + w7*x0 + w6*w4 + w6*w3 + w6*w2 + w6*w1 + w6*x4 + w6*x3 + w6*x1 + w5**2 + w5*w4 + w5*w3 + w5*w2 + w5*w0 + w5*x7 + w5*x5 + w5*x3 \
-                              + w5*x1 + w5*x0 + w4*w3 + w4*w2 + w4*w1 + w4*x7 + w4*x5 + w4*x4 + w4*x3 + w4*x1 + w4*x0 + w3**2 + w3*x7 + w3*x5 + w3*x4 + w3*x3 + w3*x1 + w2*w0 + w2*x7 + w2*x5 \
+                          w7**2 + w7*w4 + w7*w2 + w7*x6 + w7*x4 + w7*x0 + w6*w4 + w6*w3 + w6*w2 + w6*w1 + w6*x4 + w6*x3 + w6*x1 + w5**2 + w5*w4 + w5*w3 + w5*w2 + w5*w0 + w5*x7 + w5*x5 + w5*x3
+                              + w5*x1 + w5*x0 + w4*w3 + w4*w2 + w4*w1 + w4*x7 + w4*x5 + w4*x4 + w4*x3 + w4*x1 + w4*x0 + w3**2 + w3*x7 + w3*x5 + w3*x4 + w3*x3 + w3*x1 + w2*w0 + w2*x7 + w2*x5
                               + w2*x2 + w2*x1 + w1*w0 + w1*x6 + w1*x5 + w0*x2])
 
         return l
 
-    def _inversion_polynomials_single_sbox(self, x= None, w=None, biaffine_only=None, correct_only=None):
+    def _inversion_polynomials_single_sbox(self, x=None, w=None, biaffine_only=None, correct_only=None):
         """
         Generate inversion polynomials of a single S-box.
 
@@ -3101,7 +3084,7 @@ class SR_gf2(SR_generic):
 
         if x is None and w is None:
             # make sure it prints like in the book.
-            names = ["w%d" % i for i in reversed(range(e))] + ["x%d"%i for i in reversed(range(e))]
+            names = ["w%d" % i for i in reversed(range(e))] + ["x%d" % i for i in reversed(range(e))]
             P = PolynomialRing(GF(2), e*2, names, order='lex')
             x = Matrix(P, e, 1, P.gens()[e:])
             w = Matrix(P, e, 1, P.gens()[:e])
@@ -3138,8 +3121,8 @@ class SR_gf2(SR_generic):
             l.append( (Cw * x + o).list()[:-1] )
         else:
             l.append( (Cw * x + o).list() )
-        l.append( (Cw * S *x  + x).list() )
-        l.append( (Cx * S *w  + w).list() )
+        l.append( (Cw * S * x + x).list() )
+        l.append( (Cx * S * w + w).list() )
         if not biaffine_only:
             l.append( ((Cw * S**2 + Cx*S)*x).list() )
             l.append( ((Cx * S**2 + Cw*S)*w).list() )
@@ -3160,12 +3143,12 @@ class SR_gf2(SR_generic):
         -  ``length`` - length of both lists
 
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(1, 1, 1, 8, gf2=True)
-            sage: xi = sr.vars('x', 1)
-            sage: wi = sr.vars('w', 1)
-            sage: sr.inversion_polynomials(xi, wi, len(xi))[:3]
+            sage: xi = sr.vars('x', 1)                                                  # needs sage.rings.polynomial.pbori
+            sage: wi = sr.vars('w', 1)                                                  # needs sage.rings.polynomial.pbori
+            sage: sr.inversion_polynomials(xi, wi, len(xi))[:3]                         # needs sage.rings.polynomial.pbori
             [x100*w100 + x100*w102 + x100*w103 + x100*w107 + x101*w101 + x101*w102 + x101*w106 + x102*w100 + x102*w101 + x102*w105 + x103*w100 + x103*w104 + x104*w103 + x105*w102 + x106*w101 + x107*w100,
              x100*w101 + x100*w103 + x100*w104 + x101*w100 + x101*w102 + x101*w103 + x101*w107 + x102*w101 + x102*w102 + x102*w106 + x103*w100 + x103*w101 + x103*w105 + x104*w100 + x104*w104 + x105*w103 + x106*w102 + x107*w101,
              x100*w102 + x100*w104 + x100*w105 + x101*w101 + x101*w103 + x101*w104 + x102*w100 + x102*w102 + x102*w103 + x102*w107 + x103*w101 + x103*w102 + x103*w106 + x104*w100 + x104*w101 + x104*w105 + x105*w100 + x105*w104 + x106*w103 + x107*w102]
@@ -3182,7 +3165,7 @@ class SR_gf2(SR_generic):
         return l
 
     def field_polynomials(self, name, i, l=None):
-        """
+        r"""
         Return list of field polynomials for a given round ``i`` and
         name ``name``.
 
@@ -3192,7 +3175,7 @@ class SR_gf2(SR_generic):
         -  ``i`` - round number
         -  ``l`` - length of variable list (default: ``None`` = r\*c)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: sr = mq.SR(3, 1, 1, 8, gf2=True, polybori=False)
             sage: sr.field_polynomials('x', 2)
@@ -3210,7 +3193,6 @@ class SR_gf2(SR_generic):
         r = self._r
         c = self._c
         e = self._e
-        n = self._n
 
         if l is None:
             l = r*c
@@ -3218,7 +3200,7 @@ class SR_gf2(SR_generic):
         if self._polybori:
             return []
         _vars = self.vars(name, i, l, e)
-        return [_vars[e*j+i]**2 - _vars[e*j+i]   for j in range(l)  for i in range(e)]
+        return [_vars[e*j+k]**2 - _vars[e*j+k]   for j in range(l)  for k in range(e)]
 
 class SR_gf2_2(SR_gf2):
     """
@@ -3246,7 +3228,7 @@ class SR_gf2_2(SR_gf2):
             sage: sr = SR_gf2_2(1, 1, 1, e)
             sage: P = PolynomialRing(GF(2),['x%d'%i for i in range(e)] + ['w%d'%i for i in range(e)],order='lex')
             sage: X,W = P.gens()[:e],P.gens()[e:]
-            sage: sr.inversion_polynomials_single_sbox(X, W, groebner=True)
+            sage: sr.inversion_polynomials_single_sbox(X, W, groebner=True)             # needs sage.libs.singular
             [x0 + w0*w1*w2 + w0*w1 + w0*w2 + w0*w3 + w0 + w1 + w2,
              x1 + w0*w1*w3 + w0*w3 + w0 + w1*w3 + w1 + w2*w3,
              x2 + w0*w2*w3 + w0*w2 + w0 + w1*w2 + w1*w3 + w2*w3,
@@ -3255,7 +3237,7 @@ class SR_gf2_2(SR_gf2):
             sage: from sage.crypto.mq.sr import SR_gf2_2
             sage: e = 4
             sage: sr = SR_gf2_2(1, 1, 1, e)
-            sage: sr.inversion_polynomials_single_sbox()
+            sage: sr.inversion_polynomials_single_sbox()                                # needs sage.libs.singular
             [w3*w1 + w3*w0 + w3*x2 + w3*x1 + w3 + w2*w1 + w1 + x3 + x2 + x1,
              w3*w2 + w3*w1 + w3*x3 + w2 + w1 + x3,
              w3*w2 + w3*w1 + w3*x2 + w3 + w2*x3 + x2 + x1,
@@ -3288,21 +3270,21 @@ class SR_gf2_2(SR_gf2):
             sage: from sage.crypto.mq.sr import SR_gf2_2
             sage: e = 4
             sage: sr = SR_gf2_2(1, 1, 1, e)
-            sage: l = sr.inversion_polynomials_single_sbox()
-            sage: l == sr.inversion_polynomials_single_sbox(biaffine_only=True, correct_only=False)
+            sage: l = sr.inversion_polynomials_single_sbox()                            # needs sage.libs.singular
+            sage: l == sr.inversion_polynomials_single_sbox(biaffine_only=True, correct_only=False)                     # needs sage.libs.singular
             True
 
-       """
+        """
         e = self.e
         if x is None and w is None:
             # make sure it prints like in the book.
-            names = ["w%d" % i for i in reversed(range(e))] + ["x%d"%i for i in reversed(range(e))]
+            names = ["w%d" % i for i in reversed(range(e))] + ["x%d" % i for i in reversed(range(e))]
             P = PolynomialRing(GF(2), e*2, names, order='lex')
             x = P.gens()[e:]
             w = P.gens()[:e]
 
         S = self.sbox(inversion_only=True)
-        F =  S.polynomials(w, x, degree=e-2, groebner=groebner)
+        F = S.polynomials(w, x, degree=e-2, groebner=groebner)
         return F
 
 class AllowZeroInversionsContext:
@@ -3311,18 +3293,19 @@ class AllowZeroInversionsContext:
     """
     def __init__(self, sr):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.crypto.mq.sr import AllowZeroInversionsContext
             sage: sr = mq.SR(1,2,2,4)
             sage: with AllowZeroInversionsContext(sr):
-            ...    sr.sub_byte(0)
+            ....:     sr.sub_byte(0)
             a^2 + a
         """
         self.sr = sr
+
     def __enter__(self):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.crypto.mq.sr import AllowZeroInversionsContext
             sage: sr = mq.SR(1,2,2,4)
@@ -3332,19 +3315,20 @@ class AllowZeroInversionsContext:
             ZeroDivisionError: A zero inversion occurred during an encryption or key schedule.
 
             sage: with AllowZeroInversionsContext(sr):
-            ...    sr.sub_byte(0)
+            ....:     sr.sub_byte(0)
             a^2 + a
         """
         self.allow_zero_inversions = self.sr._allow_zero_inversions
         self.sr._allow_zero_inversions = True
+
     def __exit__(self, typ, value, tb):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.crypto.mq.sr import AllowZeroInversionsContext
             sage: sr = mq.SR(1,2,2,4)
             sage: with AllowZeroInversionsContext(sr):
-            ...    sr.sub_byte(0)
+            ....:     sr.sub_byte(0)
             a^2 + a
             sage: sr._allow_zero_inversions
             False

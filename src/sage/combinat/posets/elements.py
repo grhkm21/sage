@@ -1,7 +1,8 @@
+# sage.doctest: needs sage.modules
 r"""
 Elements of posets, lattices, semilattices, etc.
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2008 Peter Jipsen <jipsen@chapman.edu>,
 #                          Franco Saliola <saliola@gmail.com>
 #
@@ -14,26 +15,27 @@ Elements of posets, lattices, semilattices, etc.
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 from sage.structure.element import Element
 from sage.structure.element import have_same_parent
 
+
 class PosetElement(Element):
 
-    def __init__(self, poset, element, vertex):
+    def __init__(self, poset, element, vertex) -> None:
         r"""
-        Establishes the parent-child relationship between ``poset``
+        Establish the parent-child relationship between ``poset``
         and ``element``, where ``element`` is associated to the
         vertex ``vertex`` of the Hasse diagram of the poset.
 
         INPUT:
 
-        - ``poset`` - a poset object
+        - ``poset`` -- a poset object
 
-        - ``element`` - any object
+        - ``element`` -- any object
 
-        - ``vertex`` - a vertex of the Hasse diagram of the poset
+        - ``vertex`` -- a vertex of the Hasse diagram of the poset
 
         TESTS::
 
@@ -69,7 +71,7 @@ class PosetElement(Element):
             sage: Poset([[1,2],[4],[3],[4],[]], facade = False)(0)._repr_()
             '0'
         """
-        return "%s" %str(self.element)
+        return "%s" % str(self.element)
 
     def _latex_(self):
         r"""
@@ -77,12 +79,12 @@ class PosetElement(Element):
 
         EXAMPLES::
 
-            sage: m = matrix(2,[1,2,3,4])
+            sage: m = matrix(2, [1,2,3,4])
             sage: m.set_immutable()
-            sage: P = Poset(([m],[]), facade = False)
+            sage: P = Poset(([m],[]), facade=False)
             sage: [e] = P
             sage: type(e)
-            <class 'sage.combinat.posets.elements.FinitePoset_with_category.element_class'>
+            <class 'sage.combinat.posets.posets.FinitePoset_with_category.element_class'>
             sage: latex(e)                 #indirect doctest
             \left(\begin{array}{rr}
             1 & 2 \\
@@ -92,7 +94,7 @@ class PosetElement(Element):
         from sage.misc.latex import latex
         return latex(self.element)
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         """
         TESTS::
 
@@ -127,8 +129,7 @@ class PosetElement(Element):
         return have_same_parent(self, other) \
             and self.vertex == other.vertex
 
-
-    def __ne__(self,other):
+    def __ne__(self, other):
         r"""
         TESTS::
 
@@ -149,7 +150,7 @@ class PosetElement(Element):
         """
         return not self == other
 
-    def _cmp(self,other):
+    def _cmp(self, other):
         """
         TESTS::
 
@@ -163,59 +164,9 @@ class PosetElement(Element):
             sage: P(1)._cmp(P(2))
 
         """
-        return self.parent().compare_elements(self,other)
+        return self.parent().compare_elements(self, other)
 
-    def __cmp__(self, other):
-        r"""
-        A default comparison of ``self`` with ``other``.
-
-        .. note::
-
-           The rich comparison methods have been implemented for poset
-           elements, so when a user asks for ``x < y``, for example, rich
-           comparison is used (that is, ``x.__lt__(y)`` is returned). This
-           method is implemented because ``PosetElement`` inherits from
-           ``Element``, which requires ``__cmp__`` to enable sorting by the
-           ``cmp`` method.
-
-           If both ``self`` and ``other`` have the same parent poset,
-           then the comparison is done in the poset. If the elements
-           are incomparable in the poset, then 0 is returned. Note that,
-           in particular, ``cmp(a,b) == cmp(b,a)`` if ``a`` and ``b`` are
-           equal or incomparable in the poset.
-
-        TESTS::
-
-            sage: P = Poset([[1,2],[4],[3],[4],[]], facade = False)
-            sage: P(0).__cmp__(P(4))
-            -1
-            sage: P(4).__cmp__(P(0))
-            1
-            sage: P(0).__cmp__(P(0))
-            0
-            sage: P(1).__cmp__(P(2))
-            0
-            sage: cmp(P(0),P(4))
-            -1
-            sage: cmp(P(4),P(0))
-            1
-            sage: cmp(P(0),P(0))
-            0
-            sage: cmp(P(1),P(2))
-            0
-            sage: cmp(P(2),P(1))
-            0
-        """
-        if isinstance(other, type(self)):
-            r = self.parent().compare_elements(self,other)
-            if r is None:
-                return 0
-            else:
-                return r
-        else:
-            return cmp(type(other), type(self))
-
-    def __lt__(self,other):
+    def __lt__(self, other):
         """
         TESTS
 
@@ -232,7 +183,7 @@ class PosetElement(Element):
         """
         return self._cmp(other) == -1 or False
 
-    def __le__(self,other):
+    def __le__(self, other):
         """
         TESTS
 
@@ -251,7 +202,7 @@ class PosetElement(Element):
         """
         return self == other or self._cmp(other) == -1 or False
 
-    def __gt__(self,other):
+    def __gt__(self, other):
         """
         TESTS
 
@@ -268,7 +219,7 @@ class PosetElement(Element):
         """
         return self._cmp(other) == 1 or False
 
-    def __ge__(self,other):
+    def __ge__(self, other):
         """
         TESTS
 
@@ -285,14 +236,15 @@ class PosetElement(Element):
         """
         return self == other or self._cmp(other) == 1 or False
 
+
 class MeetSemilatticeElement(PosetElement):
-    def __mul__(self,other):
+    def __mul__(self, other):
         r"""
         Return the meet of ``self`` and ``other`` in the lattice.
 
         EXAMPLES::
 
-            sage: D = Posets.DiamondPoset(5,facade=False)
+            sage: D = posets.DiamondPoset(5, facade=False)
             sage: D(1) * D(2)
             0
             sage: D(1) * D(1)
@@ -302,16 +254,17 @@ class MeetSemilatticeElement(PosetElement):
             sage: D(1) * D(4)
             1
         """
-        return self.parent().meet(self,other)
+        return self.parent().meet(self, other)
+
 
 class JoinSemilatticeElement(PosetElement):
-    def __add__(self,other):
+    def __add__(self, other):
         r"""
         Return the join of ``self`` and ``other`` in the lattice.
 
         EXAMPLES::
 
-            sage: D = Posets.DiamondPoset(5,facade=False)
+            sage: D = posets.DiamondPoset(5,facade=False)
             sage: D(1) + D(2)
             4
             sage: D(1) + D(1)
@@ -321,7 +274,8 @@ class JoinSemilatticeElement(PosetElement):
             sage: D(1) + D(0)
             1
         """
-        return self.parent().join(self,other)
+        return self.parent().join(self, other)
 
-class LatticePosetElement(MeetSemilatticeElement,JoinSemilatticeElement):
+
+class LatticePosetElement(MeetSemilatticeElement, JoinSemilatticeElement):
     pass

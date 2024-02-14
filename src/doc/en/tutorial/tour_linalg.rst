@@ -42,16 +42,6 @@ Evaluating ``A.solve_right(Y)`` returns a matrix (or vector)
     sage: A * X   # checking our answer...
     (0, -4, -1)
 
-A backslash ``\`` can be used in the place of ``solve_right``; use
-``A \ Y`` instead of ``A.solve_right(Y)``.
-
-.. link
-
-::
-
-    sage: A \ Y
-    (-2, 1, 0)
-
 If there is no solution, Sage returns an error:
 
 .. skip
@@ -131,8 +121,8 @@ We create the space :math:`\text{Mat}_{3\times 3}(\QQ)` of `3 \times
 (To specify the space of 3 by 4 matrices, you would use
 ``MatrixSpace(QQ,3,4)``. If the number of columns is omitted, it
 defaults to the number of rows, so ``MatrixSpace(QQ,3)`` is a synonym
-for ``MatrixSpace(QQ,3,3)``.) The space of matrices has a basis which
-Sage stores as a list:
+for ``MatrixSpace(QQ,3,3)``.) The space of matrices is equipped with
+its canonical basis:
 
 .. link
 
@@ -141,7 +131,7 @@ Sage stores as a list:
     sage: B = M.basis()
     sage: len(B)
     9
-    sage: B[1]
+    sage: B[0,1]
     [0 1 0]
     [0 0 0]
     [0 0 0]
@@ -249,4 +239,4 @@ Note that Python is case sensitive:
     sage: M = MatrixSpace(QQ, 10,10, Sparse=True)
     Traceback (most recent call last):
     ...
-    TypeError: __classcall__() got an unexpected keyword argument 'Sparse'
+    TypeError: ...__init__() got an unexpected keyword argument 'Sparse'

@@ -13,9 +13,10 @@ from sage.sets.family import Family
 from sage.structure.parent import Parent
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.element_wrapper import ElementWrapper
-from sage.categories.all import Monoids
+from sage.categories.monoids import Monoids
 from sage.rings.integer import Integer
 from sage.rings.integer_ring import ZZ
+
 
 class IntegerModMonoid(UniqueRepresentation, Parent):
     r"""
@@ -29,7 +30,7 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
         An example of a finite multiplicative monoid: the integers modulo 12
 
         sage: S.category()
-        Category of finitely generated finite monoids
+        Category of finitely generated finite enumerated monoids
 
     We conclude by running systematic tests on this monoid::
 
@@ -38,10 +39,12 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
         running ._test_associativity() . . . pass
         running ._test_cardinality() . . . pass
         running ._test_category() . . . pass
+        running ._test_construction() . . . pass
         running ._test_elements() . . .
           Running the test suite of self.an_element()
           running ._test_category() . . . pass
           running ._test_eq() . . . pass
+          running ._test_new() . . . pass
           running ._test_not_implemented_methods() . . . pass
           running ._test_pickling() . . . pass
           pass
@@ -53,6 +56,7 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
         running ._test_enumerated_set_iter_cardinality() . . . pass
         running ._test_enumerated_set_iter_list() . . . pass
         running ._test_eq() . . . pass
+        running ._test_new() . . . pass
         running ._test_not_implemented_methods() . . . pass
         running ._test_one() . . . pass
         running ._test_pickling() . . . pass
@@ -60,7 +64,7 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
         running ._test_some_elements() . . . pass
     """
 
-    def __init__(self, n = 12):
+    def __init__(self, n=12):
         r"""
         EXAMPLES::
 
@@ -70,7 +74,6 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
         TESTS::
 
             sage: TestSuite(M).run()
-
         """
         self.n = n
         Parent.__init__(self, category=Monoids().Finite().FinitelyGenerated())
@@ -83,7 +86,7 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
             sage: M._repr_()
             'An example of a finite multiplicative monoid: the integers modulo 12'
         """
-        return "An example of a finite multiplicative monoid: the integers modulo %s"%self.n
+        return "An example of a finite multiplicative monoid: the integers modulo %s" % self.n
 
     def semigroup_generators(self):
         r"""
@@ -142,5 +145,6 @@ class IntegerModMonoid(UniqueRepresentation, Parent):
 
     class Element (ElementWrapper):
         wrapped_class = Integer
+
 
 Example = IntegerModMonoid

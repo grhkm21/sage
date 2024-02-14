@@ -2,13 +2,15 @@
 Stopgaps
 """
 
-########################################################################
+#*****************************************************************************
 #       Copyright (C) 2012 William Stein <wstein@gmail.com>
 #
-#  Distributed under the terms of the GNU General Public License (GPL)
-#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 #                  http://www.gnu.org/licenses/
-########################################################################
+#*****************************************************************************
 
 import warnings
 
@@ -32,10 +34,8 @@ def set_state(bint mode):
         sage: sage.misc.stopgap.set_state(True)
         sage: sage.misc.stopgap.stopgap("Displays something.", 123456)
         doctest:...:
-        ********************************************************************************
-        Displays something.
-        This issue is being tracked at http://trac.sagemath.org/sage_trac/ticket/123456.
-        ********************************************************************************
+        ...StopgapWarning: Displays something.
+        This issue is being tracked at https://github.com/sagemath/sage/issues/123456.
         sage: sage.misc.stopgap.set_state(False)
     """
     global ENABLED
@@ -52,7 +52,7 @@ warnings.filterwarnings('always', category=StopgapWarning)
 
 cdef set _stopgap_cache = set([])
 
-def stopgap(message, int ticket_no):
+def stopgap(message, int issue_no):
     r"""
     Issue a stopgap warning.
 
@@ -60,29 +60,29 @@ def stopgap(message, int ticket_no):
 
      - ``message`` - an explanation of how an incorrect answer might be produced.
 
-     - ``ticket_no`` - an integer, giving the number of the Trac ticket tracking the underlying issue.
+     - ``issue_no`` - an integer, giving the number of the Github issue tracking the underlying issue.
 
     EXAMPLES::
 
         sage: import sage.misc.stopgap
         sage: sage.misc.stopgap.set_state(True)
         sage: sage.misc.stopgap.stopgap("Computation of heights on elliptic curves over number fields can return very imprecise results.", 12509)
-        doctest:...:
-        ********************************************************************************
-        Computation of heights on elliptic curves over number fields can return very imprecise results.
-        This issue is being tracked at http://trac.sagemath.org/sage_trac/ticket/12509.
-        ********************************************************************************
+        doctest:...
+        ...StopgapWarning: Computation of heights on elliptic curves over number fields can return very imprecise results.
+        This issue is being tracked at https://github.com/sagemath/sage/issues/12509.
         sage: sage.misc.stopgap.stopgap("This is not printed", 12509)
         sage: sage.misc.stopgap.set_state(False)  # so rest of doctesting fine
     """
-    if not ENABLED or ticket_no in _stopgap_cache:
+    if not ENABLED or issue_no in _stopgap_cache:
         return
     # We reset show_warning so that the message is not printed twice.
     old_format = warnings.formatwarning
+
     def my_format(message, category, filename, lineno, line=None):
-        return "%s:%s:\n%s\n%s\n%s\n" % (filename, lineno, "*"*80, message, "*"*80)
+        return "%s:%s:\n%s\n%s\n%s\n" % (filename, lineno,
+                                         "*" * 80, message, "*" * 80)
     warnings.formatwarning = my_format
-    message = message + "\nThis issue is being tracked at http://trac.sagemath.org/sage_trac/ticket/%s."%ticket_no
+    message = message + "\nThis issue is being tracked at https://github.com/sagemath/sage/issues/%s." % issue_no
     warnings.warn(StopgapWarning(message), stacklevel=2)
     warnings.formatwarning = old_format
-    _stopgap_cache.add(ticket_no)
+    _stopgap_cache.add(issue_no)

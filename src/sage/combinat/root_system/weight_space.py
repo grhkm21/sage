@@ -1,18 +1,19 @@
 """
 Weight lattices and weight spaces
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2008-2009 Nicolas M. Thiery <nthiery at users.sf.net>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.misc.cachefunc import cached_method
 from sage.sets.family import Family
-from sage.combinat.free_module import CombinatorialFreeModule, CombinatorialFreeModuleElement
-from weight_lattice_realizations import WeightLatticeRealizations
+from sage.combinat.free_module import CombinatorialFreeModule
+from .weight_lattice_realizations import WeightLatticeRealizations
 import functools
+
 
 class WeightSpace(CombinatorialFreeModule):
     r"""
@@ -29,7 +30,7 @@ class WeightSpace(CombinatorialFreeModule):
 
     This class is also used for coweight spaces (or lattices).
 
-    .. seealso::
+    .. SEEALSO::
 
         - :meth:`RootSystem`
         - :meth:`RootSystem.weight_lattice` and :meth:`RootSystem.weight_space`
@@ -39,12 +40,14 @@ class WeightSpace(CombinatorialFreeModule):
 
         sage: Q = RootSystem(['A', 3]).weight_lattice(); Q
         Weight lattice of the Root system of type ['A', 3]
-        sage: Q.simple_roots()
-        Finite family {1: 2*Lambda[1] - Lambda[2], 2: -Lambda[1] + 2*Lambda[2] - Lambda[3], 3: -Lambda[2] + 2*Lambda[3]}
+        sage: Q.simple_roots()                                                          # needs sage.graphs
+        Finite family {1: 2*Lambda[1] -   Lambda[2],
+                       2:  -Lambda[1] + 2*Lambda[2] -   Lambda[3],
+                       3:                -Lambda[2] + 2*Lambda[3]}
 
         sage: Q = RootSystem(['A', 3, 1]).weight_lattice(); Q
         Weight lattice of the Root system of type ['A', 3, 1]
-        sage: Q.simple_roots()
+        sage: Q.simple_roots()                                                          # needs sage.graphs
         Finite family {0: 2*Lambda[0] -   Lambda[1]               -   Lambda[3],
                        1:  -Lambda[0] + 2*Lambda[1] -   Lambda[2],
                        2:                -Lambda[1] + 2*Lambda[2] -   Lambda[3],
@@ -53,12 +56,12 @@ class WeightSpace(CombinatorialFreeModule):
     For infinite types, the Cartan matrix is singular, and therefore
     the embedding of the root lattice is not faithful::
 
-        sage: sum(Q.simple_roots())
+        sage: sum(Q.simple_roots())                                                     # needs sage.graphs
         0
 
     In particular, the null root is zero::
 
-        sage: Q.null_root()
+        sage: Q.null_root()                                                             # needs sage.graphs
         0
 
     This can be compensated by extending the basis of the weight space
@@ -68,7 +71,7 @@ class WeightSpace(CombinatorialFreeModule):
     types. In that case, if ``extended`` is set, then the basis of the
     weight space is extended by an element `\delta`::
 
-        sage: Q = RootSystem(['A', 3, 1]).weight_lattice(extended = True); Q
+        sage: Q = RootSystem(['A', 3, 1]).weight_lattice(extended=True); Q
         Extended weight lattice of the Root system of type ['A', 3, 1]
         sage: Q.basis().keys()
         {0, 1, 2, 3, 'delta'}
@@ -76,7 +79,7 @@ class WeightSpace(CombinatorialFreeModule):
     And the simple root `\alpha_0` associated to the special node is
     deformed as follows::
 
-        sage: Q.simple_roots()
+        sage: Q.simple_roots()                                                          # needs sage.graphs
         Finite family {0: 2*Lambda[0] -   Lambda[1]               -   Lambda[3] + delta,
                        1:  -Lambda[0] + 2*Lambda[1] -   Lambda[2],
                        2:                -Lambda[1] + 2*Lambda[2] -   Lambda[3],
@@ -84,7 +87,7 @@ class WeightSpace(CombinatorialFreeModule):
 
     Now, the null root is nonzero::
 
-        sage: Q.null_root()
+        sage: Q.null_root()                                                             # needs sage.graphs
         delta
 
     .. WARNING::
@@ -97,9 +100,9 @@ class WeightSpace(CombinatorialFreeModule):
         `A_{2n}^{(2)}`). Therefore we currently have::
 
             sage: Q = RootSystem(["A",4,2]).weight_lattice(extended=True)
-            sage: Q.simple_root(0)
+            sage: Q.simple_root(0)                                                      # needs sage.graphs
             2*Lambda[0] - Lambda[1] + delta
-            sage: Q.null_root()
+            sage: Q.null_root()                                                         # needs sage.graphs
             2*delta
 
         whereas, with the standard notations from the literature, one
@@ -124,18 +127,19 @@ class WeightSpace(CombinatorialFreeModule):
         extended weight lattice on that basis element can be recovered
         with::
 
-            sage: Q.null_root()[index]
+            sage: Q.null_root()[index]                                                  # needs sage.graphs
             2
 
     TESTS::
 
-        sage: for ct in CartanType.samples(crystallographic=True)+[CartanType(["A",2],["C",5,1])]:
-        ...       TestSuite(ct.root_system().weight_lattice()).run()
-        ...       TestSuite(ct.root_system().weight_space()).run()
-        sage: for ct in CartanType.samples(affine=True):
-        ...       if ct.is_implemented():
-        ...           P = ct.root_system().weight_space(extended=True)
-        ...           TestSuite(P).run()
+        sage: for ct in (CartanType.samples(crystallographic=True)                      # needs sage.graphs
+        ....:             + [CartanType(["A",2], ["C",5,1])]):
+        ....:     TestSuite(ct.root_system().weight_lattice()).run()
+        ....:     TestSuite(ct.root_system().weight_space()).run()
+        sage: for ct in CartanType.samples(affine=True):                                # needs sage.graphs
+        ....:     if ct.is_implemented():
+        ....:         P = ct.root_system().weight_space(extended=True)
+        ....:         TestSuite(P).run()
     """
 
     @staticmethod
@@ -143,7 +147,7 @@ class WeightSpace(CombinatorialFreeModule):
         """
         Guarantees Unique representation
 
-        .. seealso:: :class:`UniqueRepresentation`
+        .. SEEALSO:: :class:`UniqueRepresentation`
 
         TESTS::
 
@@ -152,8 +156,7 @@ class WeightSpace(CombinatorialFreeModule):
             sage: WeightSpace(R, QQ) is WeightSpace(R, QQ, False)
             True
         """
-        return super(WeightSpace, cls).__classcall__(cls, root_system, base_ring, extended)
-
+        return super().__classcall__(cls, root_system, base_ring, extended)
 
     def __init__(self, root_system, base_ring, extended):
         """
@@ -163,9 +166,9 @@ class WeightSpace(CombinatorialFreeModule):
             sage: from sage.combinat.root_system.weight_space import WeightSpace
             sage: Q = WeightSpace(R, QQ); Q
             Weight space over the Rational Field of the Root system of type ['A', 4]
-            sage: TestSuite(Q).run()
+            sage: TestSuite(Q).run()                                                    # needs sage.graphs
 
-            sage: WeightSpace(R, QQ, extended = True)
+            sage: WeightSpace(R, QQ, extended=True)
             Traceback (most recent call last):
             ...
             ValueError: extended weight lattices are only implemented for affine root systems
@@ -178,26 +181,33 @@ class WeightSpace(CombinatorialFreeModule):
                                  " implemented for affine root systems")
             basis_keys = tuple(basis_keys) + ("delta",)
 
+            def sortkey(x):
+                return (1 if isinstance(x, str) else 0, x)
+        else:
+            def sortkey(x):
+                return x
+
         self.root_system = root_system
         CombinatorialFreeModule.__init__(self, base_ring,
                                          basis_keys,
-                                         prefix = "Lambdacheck" if root_system.dual_side else "Lambda",
-                                         latex_prefix = "\\Lambda^\\vee" if root_system.dual_side else "\\Lambda",
-                                         category = WeightLatticeRealizations(base_ring))
+                                         prefix="Lambdacheck" if root_system.dual_side else "Lambda",
+                                         latex_prefix="\\Lambda^\\vee" if root_system.dual_side else "\\Lambda",
+                                         sorting_key=sortkey,
+                                         category=WeightLatticeRealizations(base_ring))
 
         if root_system.cartan_type().is_affine() and not extended:
             # For an affine type, register the quotient map from the
             # extended weight lattice/space to the weight lattice/space
             domain = root_system.weight_space(base_ring, extended=True)
             domain.module_morphism(self.fundamental_weight,
-                                   codomain = self
+                                   codomain=self
                                    ).register_as_coercion()
 
     def is_extended(self):
         """
-        Returns whether this is an extended weight lattice
+        Return whether this is an extended weight lattice.
 
-        .. seealso: :meth:`~sage.combinat.root_sytem.weight_lattice_realization.ParentMethods.is_extended`
+        .. SEEALSO:: :meth:`~sage.combinat.root_system.weight_lattice_realization.ParentMethods.is_extended`
 
         EXAMPLES::
 
@@ -237,7 +247,7 @@ class WeightSpace(CombinatorialFreeModule):
 
     @cached_method
     def fundamental_weight(self, i):
-        """
+        r"""
         Returns the `i`-th fundamental weight
 
         INPUT:
@@ -248,7 +258,7 @@ class WeightSpace(CombinatorialFreeModule):
         also accepts ``"delta"`` as input, and returns the image of
         `\delta` of the extended weight lattice in this realization.
 
-        .. seealso: :meth:`~sage.combinat.root_sytem.weight_lattice_realization.ParentMethods.fundamental_weight`
+        .. SEEALSO:: :meth:`~sage.combinat.root_system.weight_lattice_realization.ParentMethods.fundamental_weight`
 
         EXAMPLES::
 
@@ -300,22 +310,21 @@ class WeightSpace(CombinatorialFreeModule):
         else:
             return Family([])
 
-
     @cached_method
     def simple_root(self, j):
-        """
+        r"""
         Returns the `j^{th}` simple root
 
         EXAMPLES::
 
             sage: L = RootSystem(["C",4]).weight_lattice()
-            sage: L.simple_root(3)
+            sage: L.simple_root(3)                                                      # needs sage.graphs
             -Lambda[2] + 2*Lambda[3] - Lambda[4]
 
         Its coefficients are given by the corresponding column of the
         Cartan matrix::
 
-            sage: L.cartan_type().cartan_matrix()[:,2]
+            sage: L.cartan_type().cartan_matrix()[:,2]                                  # needs sage.graphs
             [ 0]
             [-1]
             [ 2]
@@ -323,7 +332,7 @@ class WeightSpace(CombinatorialFreeModule):
 
         Here are all simple roots::
 
-            sage: L.simple_roots()
+            sage: L.simple_roots()                                                      # needs sage.graphs
             Finite family {1:  2*Lambda[1]   - Lambda[2],
                            2:   -Lambda[1] + 2*Lambda[2]   - Lambda[3],
                            3:   -Lambda[2] + 2*Lambda[3]   - Lambda[4],
@@ -334,7 +343,7 @@ class WeightSpace(CombinatorialFreeModule):
         `\delta`, where `\delta` is the null root::
 
             sage: L = RootSystem(["C",4,1]).weight_lattice(extended=True)
-            sage: L.simple_root(0)
+            sage: L.simple_root(0)                                                      # needs sage.graphs
             2*Lambda[0] - 2*Lambda[1] + delta
 
         In fact `\delta` is really `1/a_0` times the null root (see
@@ -342,9 +351,9 @@ class WeightSpace(CombinatorialFreeModule):
         but this only makes a difference in type `BC`::
 
             sage: L = RootSystem(CartanType(["BC",4,2])).weight_lattice(extended=True)
-            sage: L.simple_root(0)
+            sage: L.simple_root(0)                                                      # needs sage.graphs
             2*Lambda[0] - Lambda[1] + delta
-            sage: L.null_root()
+            sage: L.null_root()                                                         # needs sage.graphs
             2*delta
 
         .. SEEALSO::
@@ -367,17 +376,16 @@ class WeightSpace(CombinatorialFreeModule):
         EXAMPLES::
 
             sage: L = RootSystem(["C",4,1]).weight_lattice(extended=True)
-            sage: L.simple_root(0)             # indirect doctest
+            sage: L.simple_root(0)             # indirect doctest                       # needs sage.graphs
             2*Lambda[0] - 2*Lambda[1] + delta
 
             sage: L = RootSystem(["C",4,1]).coweight_lattice(extended=True)
-            sage: L.simple_root(0)             # indirect doctest
+            sage: L.simple_root(0)             # indirect doctest                       # needs sage.graphs
             2*Lambdacheck[0] - Lambdacheck[1] + deltacheck
         """
         if m == "delta":
             return "deltacheck" if self.root_system.dual_side else "delta"
-        else:
-            return super(WeightSpace, self)._repr_term(m)
+        return super()._repr_term(m)
 
     def _latex_term(self, m):
         r"""
@@ -386,17 +394,16 @@ class WeightSpace(CombinatorialFreeModule):
         EXAMPLES::
 
             sage: L = RootSystem(["C",4,1]).weight_lattice(extended=True)
-            sage: latex(L.simple_root(0))             # indirect doctest
-            2\Lambda_{0} - 2\Lambda_{1} + \delta
+            sage: latex(L.simple_root(0))             # indirect doctest                # needs sage.graphs
+            2 \Lambda_{0} - 2 \Lambda_{1} + \delta
 
             sage: L = RootSystem(["C",4,1]).coweight_lattice(extended=True)
-            sage: latex(L.simple_root(0))             # indirect doctest
-            2\Lambda^\vee_{0} - \Lambda^\vee_{1} + \delta^\vee
+            sage: latex(L.simple_root(0))             # indirect doctest                # needs sage.graphs
+            2 \Lambda^\vee_{0} - \Lambda^\vee_{1} + \delta^\vee
         """
         if m == "delta":
             return "\\delta^\\vee" if self.root_system.dual_side else "\\delta"
-        else:
-            return super(WeightSpace, self)._latex_term(m)
+        return super()._latex_term(m)
 
     @cached_method
     def _to_classical_on_basis(self, i):
@@ -444,18 +451,20 @@ class WeightSpace(CombinatorialFreeModule):
             raise TypeError("No implemented map from the coweight space to the ambient space")
         L = self.cartan_type().root_system().ambient_space()
         basis = L.fundamental_weights()
+
         def basis_value(basis, i):
             return basis[i]
-        return self.module_morphism(on_basis = functools.partial(basis_value, basis), codomain=L)
+        return self.module_morphism(on_basis=functools.partial(basis_value, basis), codomain=L)
 
-class WeightSpaceElement(CombinatorialFreeModuleElement):
+
+class WeightSpaceElement(CombinatorialFreeModule.Element):
 
     def scalar(self, lambdacheck):
         """
         The canonical scalar product between the weight lattice and
         the coroot lattice.
 
-        .. todo::
+        .. TODO::
 
             - merge with_apply_multi_module_morphism
             - allow for any root space / lattice
@@ -475,8 +484,8 @@ class WeightSpaceElement(CombinatorialFreeModuleElement):
         The fundamental weights and the simple coroots are dual bases::
 
             sage: matrix([ [ Lambda[i].scalar(alphacheck[j])
-            ...              for i in L.index_set() ]
-            ...            for j in L.index_set() ])
+            ....:            for i in L.index_set() ]
+            ....:          for j in L.index_set() ])
             [1 0 0 0 0]
             [0 1 0 0 0]
             [0 0 1 0 0]
@@ -488,12 +497,13 @@ class WeightSpaceElement(CombinatorialFreeModuleElement):
         won't be the job of this method::
 
             sage: R = RootSystem(["A",3])
-            sage: alpha = R.weight_space().roots()
-            sage: alphacheck = R.coweight_space().roots()
-            sage: alpha[1].scalar(alphacheck[1])
+            sage: alpha = R.weight_space().roots()                                      # needs sage.graphs
+            sage: alphacheck = R.coweight_space().roots()                               # needs sage.graphs
+            sage: alpha[1].scalar(alphacheck[1])                                        # needs sage.graphs
             Traceback (most recent call last):
             ...
-            ValueError: -Lambdacheck[1] + 2*Lambdacheck[2] - Lambdacheck[3] is not in the coroot space
+            ValueError: -Lambdacheck[1] + 2*Lambdacheck[2] - Lambdacheck[3]
+            is not in the coroot space
         """
         # TODO: Find some better test
         if lambdacheck not in self.parent().coroot_lattice() and lambdacheck not in self.parent().coroot_space():
@@ -513,22 +523,22 @@ class WeightSpaceElement(CombinatorialFreeModuleElement):
 
             sage: W = RootSystem(['A',3]).weight_space()
             sage: Lambda = W.basis()
-            sage: w = Lambda[1]+Lambda[3]
+            sage: w = Lambda[1] + Lambda[3]
             sage: w.is_dominant()
             True
-            sage: w = Lambda[1]-Lambda[2]
+            sage: w = Lambda[1] - Lambda[2]
             sage: w.is_dominant()
             False
 
         In the extended affine weight lattice, 'delta' is orthogonal to
         the positive coroots, so adding or subtracting it should not
-        effect dominance ::
+        affect dominance ::
 
             sage: P = RootSystem(['A',2,1]).weight_lattice(extended=true)
             sage: Lambda = P.fundamental_weights()
-            sage: delta = P.null_root()
-            sage: w = Lambda[1]-delta
-            sage: w.is_dominant()
+            sage: delta = P.null_root()                                                 # needs sage.graphs
+            sage: w = Lambda[1] - delta                                                 # needs sage.graphs
+            sage: w.is_dominant()                                                       # needs sage.graphs
             True
 
         """
@@ -545,7 +555,7 @@ class WeightSpaceElement(CombinatorialFreeModuleElement):
             sage: mu.to_ambient()
             (3, 1)
 
-        ..warning::
+        .. WARNING::
 
             Only implemented in finite Cartan type.
             Does not work for coweight lattices because there is no implemented map
@@ -569,5 +579,6 @@ class WeightSpaceElement(CombinatorialFreeModuleElement):
             2*Lambda[1] + 2*Lambda[2]
         """
         return self
+
 
 WeightSpace.Element = WeightSpaceElement

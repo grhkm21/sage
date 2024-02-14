@@ -29,22 +29,23 @@ def magma_free_eval(code, strip=True, columns=0):
     LIMITATIONS: The code must evaluate in at most 20 seconds
     and there is a limitation on the amount of RAM.
 
-    EXAMPLES:
+    EXAMPLES::
+
         sage: magma_free("Factorization(9290348092384)")  # optional - internet
         [ <2, 5>, <290323377887, 1> ]
     """
-    # import compatible with py2 and py3
-    from six.moves.urllib.parse import urlencode
-    import httplib
+    from urllib.parse import urlencode
+    from http import client as httplib
     from xml.dom.minidom import parseString
 
     server = "magma.maths.usyd.edu.au"
     processPath = "/xml/calculator.xml"
     refererPath = "/calc/"
     refererUrl = "http://%s%s" % ( server, refererPath)
-    code = "SetColumns(%s);\n"%columns + code
+    code = "SetColumns(%s);\n" % columns + code
     params = urlencode({'input':code})
-    headers = {"Content-type": "application/x-www-form-urlencoded", "Accept":"Accept: text/html, application/xml, application/xhtml+xml", "Referer": refererUrl}
+    headers = {"Content-type": "application/x-www-form-urlencoded",
+               "Accept": "Accept: text/html, application/xml, application/xhtml+xml", "Referer": refererUrl}
     conn = httplib.HTTPConnection(server)
     conn.request("POST", processPath, params, headers)
     response = conn.getresponse()
@@ -67,18 +68,22 @@ def magma_free_eval(code, strip=True, columns=0):
             return str(self)
     return MagmaExpr(res)
 
+
 class MagmaFree:
     """
     Evaluate MAGMA code without requiring that MAGMA be installed
     on your computer by using the free online MAGMA calculator.
 
-    EXAMPLES:
+    EXAMPLES::
+
         sage: magma_free("Factorization(9290348092384)")  # optional - internet
         [ <2, 5>, <290323377887, 1> ]
     """
     def eval(self, x, **kwds):
         return magma_free_eval(x)
+
     def __call__(self, code, strip=True, columns=0):
         return magma_free_eval(code, strip=strip, columns=columns)
+
 
 magma_free = MagmaFree()

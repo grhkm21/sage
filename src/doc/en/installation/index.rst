@@ -1,24 +1,156 @@
-Welcome to the Sage Installation Guide
-======================================
+.. _installation-guide:
 
-You can install Sage either from a pre-built binary tarball or from its sources.
+==================================
+Welcome to Sage Installation Guide
+==================================
 
-Installing Sage from **pre-build binaries** is the fastest method, with fewest
-prerequisites. Choose it for your first Sage install.
+If you are reading this manual at https://doc.sagemath.org/, note that
+it was built at the time the most recent stable release of SageMath
+was made.
 
-By compiling Sage from its **sources** you run a slightly more up-to-date
-version. You can also modify it and contribute back to the project. Compiling
-Sage should be simpler than you're used to with most software, since much
-testing is done on a wide range of computers.
+More up-to-date information and details regarding supported platforms
+may have become available afterwards and can be found in the section
+"Availability and installation help" of the
+`release tour <https://wiki.sagemath.org/ReleaseTours>`_ for each
+SageMath release.
+
+**Where would you like to run SageMath?** Pick one of the following sections.
+
+macOS
+=====
+
+- **Do you want to do SageMath development?**
+
+  - **Yes, development:**
+
+    Obtain the SageMath sources via ``git`` as described in `The Sage
+    Developer's Guide
+    <https://doc.sagemath.org/html/en/developer/walkthrough.html#chapter-walkthrough>`_.
+
+    - Then build SageMath from source as described in section
+      :ref:`sec-installation-from-sources`.
+
+    - Alternatively, follow the instructions in section
+      :ref:`sec-installation-conda-develop`;
+      these describe an experimental method that gets all required
+      packages, including Python packages, from conda-forge.
+
+  - **No development:**
+
+    - Install the `binary build of SageMath <https://github.com/3-manifolds/Sage_macOS/releases>`_
+      from the 3-manifolds project.  It is a signed and notarized app, which
+      works for macOS 10.12 and newer. It is completely self-contained and
+      provides the standard Sage distribution together with many optional
+      packages. Additional optional Python packages can be installed with the
+      ``%pip`` magic command and will go into your ``~/.sage`` directory.
+
+    - Alternatively, install SageMath from the `conda-forge
+      <https://conda-forge.org/>`_ project, as described in section
+      :ref:`sec-installation-conda`.
+
+    - Alternatively, build SageMath from source as described in section
+      :ref:`sec-installation-from-sources`.
+
+Windows
+=======
+
+- **Do you want to do SageMath development?**
+
+  - **Yes, development:**
+
+    Enable Windows Subsystem for Linux (WSL) by following the
+    `official WSL setup guide
+    <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_. Be
+    sure to do the steps to install WSL2 and set it as default.
+    Make sure to allocate enough RAM to WSL: 5GB is known to be enough,
+    2GB might not allow you to build some packages.
+    Then go to the Microsoft Store and install Ubuntu (or another
+    Linux distribution). Start Ubuntu from the start menu.
+
+    Then follow the instructions for development on Linux below.
+
+  - **No development:**
+
+    Enable Windows Subsystem for Linux (WSL) by following the
+    `official WSL setup guide
+    <https://docs.microsoft.com/en-us/windows/wsl/install-win10>`_. Be
+    sure to do the steps to install WSL2 and set it as default.
+    Make sure to allocate enough RAM to WSL: 5GB is known to be enough,
+    2GB might not allow you to build some packages.
+    Then go to the Microsoft Store and install Ubuntu (or another
+    Linux distribution). Start Ubuntu from the start menu.
+
+    On the Linux running on WSL, you always have root access, so you
+    can use any of the installation methods described below for
+    Linux.
+
+Linux
+=====
+
+- **Do you want to do SageMath development?**
+
+  - **Yes, development:**
+
+    Obtain the SageMath sources via ``git`` as described in `The Sage
+    Developer's Guide
+    <https://doc.sagemath.org/html/en/developer/walkthrough.html#chapter-walkthrough>`_.
+
+    - Then build SageMath from source as described in section
+      :ref:`sec-installation-from-sources`.
+
+    - Alternatively, follow the instructions in section
+      :ref:`sec-installation-conda-develop`;
+      these describe an experimental method that gets all required
+      packages, including Python packages, from conda-forge.
+
+  - No development: **Do you have root access (sudo)?**
+
+    - **Yes, root access:** Then the easiest way to install SageMath is
+      through a Linux distribution that provides it as a package.  Some
+      Linux distributions have up-to-date versions of SageMath,
+      see `repology.org: sagemath
+      <https://repology.org/project/sagemath/versions>`_ for an
+      overview.  See :ref:`sec-GNU-Linux` for additional information.
+
+      If you are on an older version of your distribution and a recent
+      version of SageMath is only available on a newer version of the
+      distribution, consider upgrading your distribution.
+      In particular, do not install a version of Sage older than 9.5.
+
+    - **No root access, or on an older distribution:** Install SageMath from
+      the `conda-forge <https://conda-forge.org/>`_ project, as described in section
+      :ref:`sec-installation-conda`.
+
+    - Alternatively, build SageMath from source as described in section
+      :ref:`sec-installation-from-sources`.
+
+In the cloud
+============
+
+- `Sage Binder repo <https://github.com/sagemath/sage-binder-env>`_ provides a
+  Binder badge to launch JupyterLab environment with Sage.
+
+- `Sage Cell Server <https://sagecell.sagemath.org/>`_ is a free online service for
+  quick computations with Sage.
+
+- `CoCalc <https://cocalc.com/>`_ is an online commercial service that provides Sage and
+  many other tools.
+
+- `Docker image sagemathinc/cocalc
+  <https://hub.docker.com/r/sagemathinc/cocalc>`_ can be used on any system with Docker to run CoCalc locally.
+
+
+More information:
 
 .. toctree::
    :maxdepth: 2
 
-   quick-guide
+   linux
    binary
+   conda
    source
-   standard_packages
-   icon
+   launching
+   troubles
 
 This work is licensed under a `Creative Commons Attribution-Share Alike
 3.0 License`__.

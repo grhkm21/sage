@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.schemes
 """
 Divisors on schemes
 
@@ -28,7 +29,7 @@ EXAMPLES::
     -1
     sage: D[1][1]
     Ideal (x, z) of Multivariate Polynomial Ring in x, y, z over Finite Field of size 5
-    sage: C.divisor([(3, pts[0]), (-1, pts[1]), (10,pts[5])])
+    sage: C.divisor([(3, pts[0]), (-1, pts[1]), (10, pts[5])])
     3*(x, y) - (x, z) + 10*(x + 2*z, y + z)
 """
 #*******************************************************************************
@@ -40,13 +41,13 @@ EXAMPLES::
 #                  http://www.gnu.org/licenses/
 #*******************************************************************************
 
-from sage.misc.all import latex
-from sage.misc.misc import repr_lincomb
+from sage.misc.latex import latex
+from sage.misc.repr import repr_lincomb
 from sage.misc.search import search
-from sage.rings.all import ZZ
+from sage.rings.integer_ring import ZZ
 from sage.structure.formal_sum import FormalSum
 
-from morphism import is_SchemeMorphism
+from .morphism import is_SchemeMorphism
 from sage.schemes.affine.affine_space import is_AffineSpace
 from sage.schemes.projective.projective_space import is_ProjectiveSpace
 
@@ -109,7 +110,7 @@ def is_Divisor(x):
         sage: from sage.schemes.generic.divisor import is_Divisor
         sage: x,y = AffineSpace(2, GF(5), names='xy').gens()
         sage: C = Curve(y^2 - x^9 - x)
-        sage: is_Divisor( C.divisor([]) )
+        sage: is_Divisor(C.divisor([]))
         True
         sage: is_Divisor("Ceci n'est pas un diviseur")
         False
@@ -177,8 +178,8 @@ class Divisor_generic(FormalSum):
             sage: D = Divisor_generic([(4, x), (-5, y), (1, x+2*y)], Div)
             sage: D._latex_()
             '\\mathrm{V}\\left(x + 2 y\\right)
-            + 4\\mathrm{V}\\left(x\\right)
-            - 5\\mathrm{V}\\left(y\\right)'
+            + 4 \\mathrm{V}\\left(x\\right)
+            - 5 \\mathrm{V}\\left(y\\right)'
         """
         # The code is copied from _repr_ with latex adjustments
         terms = list(self)
@@ -291,15 +292,15 @@ class Divisor_curve(Divisor_generic):
             sage: P = E(0,0)
             sage: from sage.schemes.generic.divisor import Divisor_curve
             sage: from sage.schemes.generic.divisor_group import DivisorGroup
-            sage: Divisor_curve([(1,P)], parent=DivisorGroup(E))
+            sage: Divisor_curve([(1, P)], parent=DivisorGroup(E))
             (x, y)
         """
-        from sage.schemes.generic.divisor_group import DivisorGroup_generic, DivisorGroup_curve
+        from sage.schemes.generic.divisor_group import DivisorGroup_curve
         if not isinstance(v, (list, tuple)):
             v = [(1,v)]
 
         if parent is None:
-            if len(v) > 0:
+            if v:
                 t = v[0]
                 if isinstance(t, tuple) and len(t) == 2:
                     try:
@@ -311,12 +312,12 @@ class Divisor_curve(Divisor_generic):
                         C = t.scheme()
                     except TypeError:
                         raise TypeError("Argument v (= %s) must consist of multiplicities and points on a scheme.")
-                parent = DivisorGroup(C)
+                parent = DivisorGroup_curve(C)
             else:
                 raise TypeError("Argument v (= %s) must consist of multiplicities and points on a scheme.")
         else:
             if not isinstance(parent, DivisorGroup_curve):
-                raise TypeError("parent (of type %s) must be a DivisorGroup_curve"%type(parent))
+                raise TypeError("parent (of type %s) must be a DivisorGroup_curve" % type(parent))
             C = parent.scheme()
 
         if len(v) < 1:
@@ -373,7 +374,7 @@ class Divisor_curve(Divisor_generic):
             sage: C = Curve(y^2 - x^9 - x)
             sage: pts = C.rational_points(); pts
             [(0, 0), (2, 2), (2, 3), (3, 1), (3, 4)]
-            sage: D = C.divisor_group()([(3,pts[0]), (-1, pts[1])]); D
+            sage: D = C.divisor_group()([(3, pts[0]), (-1, pts[1])]); D
             3*(x, y) - (x - 2, y - 2)
             sage: D.support()
             [(0, 0), (2, 2)]
@@ -411,7 +412,6 @@ class Divisor_curve(Divisor_generic):
             self._support = [s[1] for s in pts]
             return self._support
 
-
     def coefficient(self, P):
         """
         Return the coefficient of a given point P in this divisor.
@@ -425,7 +425,7 @@ class Divisor_curve(Divisor_generic):
             sage: D = C.divisor(pts[0])
             sage: D.coefficient(pts[0])
             1
-            sage: D = C.divisor([(3,pts[0]), (-1,pts[1])]); D
+            sage: D = C.divisor([(3, pts[0]), (-1, pts[1])]); D
             3*(x, y) - (x - 2, y - 2)
             sage: D.coefficient(pts[0])
             3
@@ -433,12 +433,11 @@ class Divisor_curve(Divisor_generic):
             -1
         """
         P = self.parent().scheme()(P)
-        if not(P in self.support()):
+        if P not in self.support():
             return self.base_ring().zero()
         t, i = search(self.support(), P)
         assert t
         try:
             return self._points[i][0]
         except AttributeError:
-                raise NotImplementedError
-
+            raise NotImplementedError

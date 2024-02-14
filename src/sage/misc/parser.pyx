@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 A parser for symbolic equations and expressions
 
@@ -9,22 +10,20 @@ AUTHOR:
 
 - Robert Bradshaw 2008-04 (initial version)
 """
-
-#*****************************************************************************
+# ***************************************************************************
 #       Copyright (C) 2008 Robert Bradshaw <robertwb@math.washington.edu>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ***************************************************************************
 
-from libc.string cimport strchr
-from cpython.string cimport PyString_FromStringAndSize
 from cpython.list cimport PyList_Append
 
 import math
+
 
 def foo(*args, **kwds):
     """
@@ -39,7 +38,7 @@ def foo(*args, **kwds):
     """
     return args, kwds
 
-fuction_map = {
+function_map = {
   'foo': foo,
   'sqrt': math.sqrt,
   'sin': math.sin,
@@ -61,16 +60,17 @@ cdef enum token_types:
     MATRIX
 
 enum_map = {
-  INT:        'INT',
-  FLOAT:      'FLOAT',
-  NAME:       'NAME',
-  EOS:        'EOS',
-  ERROR:      'ERROR',
-  LESS_EQ:    'LESS_EQ',
+  INT: 'INT',
+  FLOAT: 'FLOAT',
+  NAME: 'NAME',
+  EOS: 'EOS',
+  ERROR: 'ERROR',
+  LESS_EQ: 'LESS_EQ',
   GREATER_EQ: 'GREATER_EQ',
-  NOT_EQ:     'NOT_EQ',
-  MATRIX:     'MATRIX',
+  NOT_EQ: 'NOT_EQ',
+  MATRIX: 'MATRIX',
 }
+
 
 def token_to_str(int token):
     """
@@ -92,22 +92,21 @@ def token_to_str(int token):
         return chr(token)
 
 
-cdef inline bint is_alphanumeric(char c):
-    return 'a' <= c <= 'z' or 'A' <= c <= 'Z' or '0' <= c <= '9' or c == '_'
+cdef inline bint is_alphanumeric(c) noexcept:
+    return c.isalnum() or c == '_'
 
-cdef inline bint is_whitespace(char c):
-    return (c != 0) & (strchr(" \t\n\r", c) != NULL)
+cdef inline bint is_whitespace(c) noexcept:
+    return c.isspace()
 
 
 cdef class Tokenizer:
-    cdef char *s
-    cdef string_obj
+    cdef str s
     cdef int token
     cdef int pos
     cdef int last_pos
 
     def __init__(self, s):
-        """
+        r"""
         This class takes a string and turns it into a list of tokens for use
         by the parser.
 
@@ -150,6 +149,11 @@ cdef class Tokenizer:
             sage: Tokenizer("a a1 _a_24").test()
             ['NAME(a)', 'NAME(a1)', 'NAME(_a_24)']
 
+        There is special handling for matrices::
+
+            sage: Tokenizer("matrix(a)").test()
+            ['MATRIX', '(', 'NAME(a)', ')']
+
         Anything else is an error::
 
             sage: Tokenizer("&@~").test()
@@ -161,11 +165,17 @@ cdef class Tokenizer:
             [')', ')', '(', 'FLOAT(5e5)', 'NAME(e5)']
             sage: Tokenizer("?$%").test()
             ['ERROR', 'ERROR', 'ERROR']
+
+        TESTS:
+
+        Check support for unicode characters (:trac:`29280`)::
+
+            sage: Tokenizer("λ+α_β0 Γ^ω").test()
+            ['NAME(λ)', '+', 'NAME(α_β0)', 'NAME(Γ)', '^', 'NAME(ω)']
         """
         self.pos = 0
         self.last_pos = 0
         self.s = s
-        self.string_obj = s # so it doesn't get deallocated before self
 
     def test(self):
         """
@@ -193,7 +203,7 @@ cdef class Tokenizer:
             token = self.next()
         return all
 
-    cpdef reset(self, int pos = 0):
+    cpdef reset(self, int pos = 0) noexcept:
         """
         Reset the tokenizer to a given position.
 
@@ -225,55 +235,58 @@ cdef class Tokenizer:
 
     cdef int find(self) except -1:
         """
-        This function actually does all the work, and extensively is tested above.
+        This function actually does all the work, and is extensively tested
+        above.
         """
         cdef bint seen_exp, seen_decimal
         cdef int type
-        cdef char* s = self.s
+        cdef str s = self.s
         cdef int pos = self.pos
+        cdef int s_len = len(s)
 
         # skip whitespace
-        if is_whitespace(s[pos]):
-            while is_whitespace(s[pos]):
+        if pos < s_len and is_whitespace(s[pos]):
+            while pos < s_len and is_whitespace(s[pos]):
                 pos += 1
             self.pos = pos
 
         # end of string
-        if s[pos] == 0:
+        if pos == s_len:
             return EOS
 
-        # dipthongs
-        if s[pos+1] == '=':
-            if s[pos] == '<':
-                self.pos += 2
-                return LESS_EQ
-            elif s[pos] == '>':
-                self.pos += 2
-                return GREATER_EQ
-            elif s[pos] == '!':
-                self.pos += 2
-                return NOT_EQ
-            elif s[pos] == '=':
-                self.pos += 2
-                return '='
+        # diphthongs
+        if pos+1 < s_len:
+            if s[pos+1] == '=':
+                if s[pos] == '<':
+                    self.pos += 2
+                    return LESS_EQ
+                elif s[pos] == '>':
+                    self.pos += 2
+                    return GREATER_EQ
+                elif s[pos] == '!':
+                    self.pos += 2
+                    return NOT_EQ
+                elif s[pos] == '=':
+                    self.pos += 2
+                    return ord('=')
 
-        elif s[pos] == '*' and s[pos+1] == '*':
-            self.pos += 2
-            return '^'
+            elif s[pos] == '*' and s[pos+1] == '*':
+                self.pos += 2
+                return ord('^')
 
         # simple tokens
-        if strchr("+-*/^()=<>,[]{}!", s[pos]):
-            type = s[pos]
+        if s[pos] in "+-*/^()=><,[]{}!":
+            type = ord(s[pos])
             self.pos += 1
             return type
 
         # numeric literals
-        if '0' <= s[pos] <= '9' or s[pos] == '.':
+        if s[pos].isdigit() or s[pos] == '.':
             type = INT
             seen_exp = False
             seen_decimal = False
-            while True:
-                if '0' <= s[pos] <= '9':
+            while pos < s_len:
+                if s[pos].isdigit():
                     pass
                 elif s[pos] == '.':
                     if seen_decimal or seen_exp:
@@ -294,16 +307,17 @@ cdef class Tokenizer:
                         self.pos = pos
                         return type
                 else:
-                    self.pos = pos
-                    return type
+                    break
                 pos += 1
+            self.pos = pos
+            return type
 
         # name literals
         if is_alphanumeric(s[pos]):
-            while is_alphanumeric(s[pos]):
+            while pos < s_len and is_alphanumeric(s[pos]):
                 pos += 1
             # matrices
-            if s[self.pos:pos] == b'matrix':
+            if s[self.pos:pos] == 'matrix':
                 self.pos = pos
                 return MATRIX
             self.pos = pos
@@ -313,7 +327,7 @@ cdef class Tokenizer:
         self.pos = pos
         return ERROR
 
-    cpdef int next(self):
+    cpdef int next(self) noexcept:
         """
         Returns the next token in the string.
 
@@ -330,13 +344,13 @@ cdef class Tokenizer:
             sage: token_to_str(t.next())
             'EOS'
         """
-        while is_whitespace(self.s[self.pos]):
+        while self.pos < len(self.s) and is_whitespace(self.s[self.pos]):
             self.pos += 1
         self.last_pos = self.pos
         self.token = self.find()
         return self.token
 
-    cpdef int last(self):
+    cpdef int last(self) noexcept:
         """
         Returns the last token seen.
 
@@ -355,7 +369,7 @@ cdef class Tokenizer:
         """
         return self.token
 
-    cpdef int peek(self):
+    cpdef int peek(self) noexcept:
         """
         Returns the next token that will be encountered, without changing
         the state of self.
@@ -406,7 +420,7 @@ cdef class Tokenizer:
             self.pos = self.last_pos
             self.token = 0
 
-    cpdef last_token_string(self):
+    cpdef last_token_string(self) noexcept:
         """
         Return the actual contents of the last token.
 
@@ -425,7 +439,7 @@ cdef class Tokenizer:
             sage: t.last_token_string()
             '1e5'
         """
-        return PyString_FromStringAndSize(&self.s[self.last_pos], self.pos-self.last_pos)
+        return self.s[self.last_pos:self.pos]
 
 
 cdef class Parser:
@@ -464,21 +478,22 @@ cdef class Parser:
             sage: p.parse("1+2 == 3")
             True
 
-            sage: p = Parser(make_var=var)
-            sage: p.parse("a*b^c - 3a")
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.parse("a*b^c - 3a")                                                 # needs sage.symbolic
             a*b^c - 3*a
 
             sage: R.<x> = QQ[]
-            sage: p = Parser(make_var = {'x': x })
+            sage: p = Parser(make_var={'x': x})
             sage: p.parse("(x+1)^5-x")
             x^5 + 5*x^4 + 10*x^3 + 10*x^2 + 4*x + 1
             sage: p.parse("(x+1)^5-x").parent() is R
             True
 
-            sage: p = Parser(make_float=RR, make_var=var, make_function={'foo': (lambda x: x*x+x)})
-            sage: p.parse("1.5 + foo(b)")
+            sage: p = Parser(make_float=RR, make_var=var,                               # needs sage.symbolic
+            ....:            make_function={'foo': (lambda x: x*x+x)})
+            sage: p.parse("1.5 + foo(b)")                                               # needs sage.symbolic
             b^2 + b + 1.50000000000000
-            sage: p.parse("1.9").parent()
+            sage: p.parse("1.9").parent()                                               # needs sage.symbolic
             Real Field with 53 bits of precision
         """
         self.integer_constructor = make_int
@@ -491,15 +506,39 @@ cdef class Parser:
         self.callable_constructor = make_function
         self.implicit_multiplication = implicit_multiplication
 
-    cpdef parse(self, s, bint accept_eqn=True):
+    def _variable_constructor(self):
+        """
+        Return the variable constructor of this parser.
+
+        EXAMPLES::
+
+            sage: from sage.calculus.calculus import SR_parser                          # needs sage.symbolic
+            sage: SR_parser._variable_constructor()                                     # needs sage.symbolic
+            <sage.misc.parser.LookupNameMaker...
+        """
+        return self.variable_constructor
+
+    def _callable_constructor(self):
+        """
+        Return the callable constructor of this parser.
+
+        EXAMPLES::
+
+            sage: from sage.calculus.calculus import SR_parser                          # needs sage.symbolic
+            sage: SR_parser._callable_constructor()                                     # needs sage.symbolic
+            <sage.misc.parser.LookupNameMaker...
+        """
+        return self.callable_constructor
+
+    cpdef parse(self, s, bint accept_eqn=True) noexcept:
         """
         Parse the given string.
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser
-            sage: p = Parser(make_var=var)
-            sage: p.parse("E = m c^2")
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.parse("E = m c^2")                                                  # needs sage.symbolic
             E == c^2*m
         """
         cdef Tokenizer tokens = Tokenizer(s)
@@ -513,15 +552,15 @@ cdef class Parser:
             self.parse_error(tokens)
         return expr
 
-    cpdef parse_expression(self, s):
+    cpdef parse_expression(self, s) noexcept:
         """
         Parse an expression.
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser
-            sage: p = Parser(make_var=var)
-            sage: p.parse_expression('a-3b^2')
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.parse_expression('a-3b^2')                                          # needs sage.symbolic
             -3*b^2 + a
         """
         cdef Tokenizer tokens = Tokenizer(s)
@@ -530,12 +569,13 @@ cdef class Parser:
             self.parse_error(tokens)
         return expr
 
-    cpdef parse_sequence(self, s):
+    cpdef parse_sequence(self, s) noexcept:
         """
         Parse a (possibly nested) set of lists and tuples.
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import Parser
             sage: p = Parser(make_var=var)
             sage: p.parse_sequence("1,2,3")
@@ -553,27 +593,27 @@ cdef class Parser:
             all = all[0]
         return all
 
-    cpdef p_matrix(self, Tokenizer tokens):
+    cpdef p_matrix(self, Tokenizer tokens) noexcept:
         """
         Parse a matrix
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_matrix(Tokenizer("([a,0],[0,a])"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_matrix(Tokenizer("([a,0],[0,a])"))                                # needs sage.symbolic
             [a 0]
             [0 a]
         """
         cdef int token
         all = []
-        if tokens.next() == '(':
-            token = ','
-            while token == ',':
+        if tokens.next() == c'(':
+            token = c','
+            while token == c',':
                 all.append(self.p_list(tokens))
                 token = tokens.next()
 
-            if token == ')':
+            if token == c')':
                 from sage.matrix.constructor import matrix
                 return matrix(all)
             else:
@@ -581,22 +621,22 @@ cdef class Parser:
         else:
             self.parse_error(tokens, "Malformed matrix")
 
-    cpdef p_sequence(self, Tokenizer tokens):
+    cpdef p_sequence(self, Tokenizer tokens) noexcept:
         """
         Parse a (possibly nested) set of lists and tuples.
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_sequence(Tokenizer("[1+2,0]"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_sequence(Tokenizer("[1+2,0]"))                                    # needs sage.symbolic
             [[3, 0]]
-            sage: p.p_sequence(Tokenizer("(1,2,3) , [1+a, 2+b, (3+c), (4+d,)]"))
+            sage: p.p_sequence(Tokenizer("(1,2,3) , [1+a, 2+b, (3+c), (4+d,)]"))        # needs sage.symbolic
             [(1, 2, 3), [a + 1, b + 2, c + 3, (d + 4,)]]
         """
         all = []
-        cdef int token = ','
-        while token == ',':
+        cdef int token = c','
+        while token == c',':
             token = tokens.peek()
             if token == MATRIX:
                 tokens.next()
@@ -609,14 +649,14 @@ cdef class Parser:
                 else:
                     tokens.backtrack()
                     obj = self.p_eqn(tokens)
-            elif token == '[':
+            elif token == c'[':
                 obj = self.p_list(tokens)
-            elif token == '(':
+            elif token == c'(':
                 obj = self.p_tuple(tokens)
             elif token == EOS:
                 return all
-            elif token == ']' or token == ')':
-                tokens.token = ','
+            elif token == c']' or token == c')':
+                tokens.token = c','
                 return all
             else:
                 obj = self.p_eqn(tokens)
@@ -626,56 +666,56 @@ cdef class Parser:
         tokens.backtrack()
         return all
 
-    cpdef p_list(self, Tokenizer tokens):
+    cpdef p_list(self, Tokenizer tokens) noexcept:
         """
         Parse a list of items.
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_list(Tokenizer("[1+2, 1e3]"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_list(Tokenizer("[1+2, 1e3]"))                                     # needs sage.symbolic
             [3, 1000.0]
-            sage: p.p_list(Tokenizer("[]"))
+            sage: p.p_list(Tokenizer("[]"))                                             # needs sage.symbolic
             []
         """
         cdef int token = tokens.next()
-        if token != '[':
+        if token != c'[':
             self.parse_error(tokens, "Malformed list")
         all = self.p_sequence(tokens)
         token = tokens.next()
-        if token != ']':
+        if token != c']':
             self.parse_error(tokens, "Malformed list")
         return all
 
-    cpdef p_tuple(self, Tokenizer tokens):
+    cpdef p_tuple(self, Tokenizer tokens) noexcept:
         """
         Parse a tuple of items.
 
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_tuple(Tokenizer("( (), (1), (1,), (1,2), (1,2,3), (1+2)^2, )"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_tuple(Tokenizer("( (), (1), (1,), (1,2), (1,2,3), (1+2)^2, )"))   # needs sage.symbolic
             ((), 1, (1,), (1, 2), (1, 2, 3), 9)
         """
         cdef int start = tokens.pos
         cdef int token = tokens.next()
         cdef bint real_tuple = True
-        if token != '(':
+        if token != c'(':
             self.parse_error(tokens, "Malformed tuple")
         all = self.p_sequence(tokens)
         if len(all) == 1:
             if tokens.last() != c',':
                 real_tuple = False
         token = tokens.next()
-        if token != ')':
+        if token != c')':
             self.parse_error(tokens, "Malformed tuple")
         if real_tuple:
             return tuple(all)
         else:
             token = tokens.peek()
-            if token == ',' or token == EOS:
+            if token == c',' or token == EOS:
                 return all[0]
             else:
                 # we have to reparse the entire thing as an expression
@@ -683,8 +723,8 @@ cdef class Parser:
                 return self.p_eqn(tokens)
 
 # eqn ::= expr op expr | expr
-    cpdef p_eqn(self, Tokenizer tokens):
-        """
+    cpdef p_eqn(self, Tokenizer tokens) noexcept:
+        r"""
         Parse an equation or expression.
 
         This is the top-level node called by the \code{parse} function.
@@ -692,10 +732,11 @@ cdef class Parser:
         EXAMPLES::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_eqn(Tokenizer("1+a"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_eqn(Tokenizer("1+a"))                                             # needs sage.symbolic
             a + 1
 
+            sage: # needs sage.symbolic
             sage: p.p_eqn(Tokenizer("a == b"))
             a == b
             sage: p.p_eqn(Tokenizer("a < b"))
@@ -711,15 +752,15 @@ cdef class Parser:
         """
         lhs = self.p_expr(tokens)
         cdef int op = tokens.next()
-        if op == '=':
+        if op == c'=':
             return lhs == self.p_expr(tokens)
         elif op == NOT_EQ:
             return lhs != self.p_expr(tokens)
-        elif op == '<':
+        elif op == c'<':
             return lhs < self.p_expr(tokens)
         elif op == LESS_EQ:
             return lhs <= self.p_expr(tokens)
-        elif op == '>':
+        elif op == c'>':
             return lhs > self.p_expr(tokens)
         elif op == GREATER_EQ:
             return lhs >= self.p_expr(tokens)
@@ -728,12 +769,13 @@ cdef class Parser:
             return lhs
 
 # expr ::=  term | expr '+' term | expr '-' term
-    cpdef p_expr(self, Tokenizer tokens):
+    cpdef p_expr(self, Tokenizer tokens) noexcept:
         """
         Parse a list of one or more terms.
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import Parser, Tokenizer
             sage: p = Parser(make_var=var)
             sage: p.p_expr(Tokenizer("a+b"))
@@ -751,9 +793,9 @@ cdef class Parser:
         cdef int op
         operand1 = self.p_term(tokens)
         op = tokens.next()
-        while op == '+' or op == '-':
+        while op == c'+' or op == c'-':
             operand2 = self.p_term(tokens)
-            if op == '+':
+            if op == c'+':
                 operand1 = operand1 + operand2
             else:
                 operand1 = operand1 - operand2
@@ -762,12 +804,13 @@ cdef class Parser:
         return operand1
 
 # term ::=  factor | term '*' factor | term '/' factor
-    cpdef p_term(self, Tokenizer tokens):
+    cpdef p_term(self, Tokenizer tokens) noexcept:
         """
         Parse a single term (consisting of one or more factors).
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import Parser, Tokenizer
             sage: p = Parser(make_var=var)
             sage: p.p_term(Tokenizer("a*b"))
@@ -786,23 +829,23 @@ cdef class Parser:
         operand1 = self.p_factor(tokens)
         op = tokens.next()
         if op == NAME and self.implicit_multiplication:
-            op = '*'
+            op = c'*'
             tokens.backtrack()
-        while op == '*' or op == '/':
+        while op == c'*' or op == c'/':
             operand2 = self.p_factor(tokens)
-            if op == '*':
+            if op == c'*':
                 operand1 = operand1 * operand2
             else:
                 operand1 = operand1 / operand2
             op = tokens.next()
             if op == NAME and self.implicit_multiplication:
-                op = '*'
+                op = c'*'
                 tokens.backtrack()
         tokens.backtrack()
         return operand1
 
 # factor ::=  '+' factor | '-' factor | power
-    cpdef p_factor(self, Tokenizer tokens):
+    cpdef p_factor(self, Tokenizer tokens) noexcept:
         """
         Parse a single factor, which consists of any number of unary +/-
         and a power.
@@ -820,16 +863,16 @@ cdef class Parser:
             t^11
         """
         cdef int token = tokens.next()
-        if token == '+':
+        if token == c'+':
             return self.p_factor(tokens)
-        elif token == '-':
+        elif token == c'-':
             return -self.p_factor(tokens)
         else:
             tokens.backtrack()
             return self.p_power(tokens)
 
 # power ::=  (atom | atom!) ^ factor | atom | atom!
-    cpdef p_power(self, Tokenizer tokens):
+    cpdef p_power(self, Tokenizer tokens) noexcept:
         """
         Parses a power. Note that exponentiation groups right to left.
 
@@ -845,6 +888,7 @@ cdef class Parser:
             sage: p.p_power(Tokenizer("2^3^2")) == 2^9
             True
 
+            sage: # needs sage.symbolic
             sage: p = Parser(make_var=var)
             sage: p.p_factor(Tokenizer('x!'))
             factorial(x)
@@ -856,13 +900,13 @@ cdef class Parser:
         """
         operand1 = self.p_atom(tokens)
         cdef int token = tokens.next()
-        if token == '^':
+        if token == c'^':
             operand2 = self.p_factor(tokens)
             return operand1 ** operand2
-        elif token == "!":
+        elif token == c"!":
             from sage.functions.all import factorial
             operand1 = factorial(operand1)
-            if tokens.peek() == '^':
+            if tokens.peek() == c'^':
                 tokens.next()
                 operand2 = self.p_factor(tokens)
                 return operand1 ** operand2
@@ -873,12 +917,13 @@ cdef class Parser:
             return operand1
 
 # atom ::= int | float | name | '(' expr ')' | name '(' args ')'
-    cpdef p_atom(self, Tokenizer tokens):
+    cpdef p_atom(self, Tokenizer tokens) noexcept:
         """
         Parse an atom. This is either a parenthesized expression, a function call, or a literal name/int/float.
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import Parser, Tokenizer
             sage: p = Parser(make_var=var, make_function={'sin': sin})
             sage: p.p_atom(Tokenizer("1"))
@@ -893,7 +938,8 @@ cdef class Parser:
             a + 1
             sage: p.p_atom(Tokenizer("sin(1+a)"))
             sin(a + 1)
-            sage: p = Parser(make_var=var, make_function={'foo': sage.misc.parser.foo})
+            sage: p = Parser(make_var=var,
+            ....:            make_function={'foo': sage.misc.parser.foo})
             sage: p.p_atom(Tokenizer("foo(a, b, key=value)"))
             ((a, b), {'key': value})
             sage: p.p_atom(Tokenizer("foo()"))
@@ -907,27 +953,27 @@ cdef class Parser:
         elif token == NAME:
             name = tokens.last_token_string()
             token = tokens.next()
-            if token == '(':
+            if token == c'(':
                 func = self.callable_constructor(name)
                 args, kwds = self.p_args(tokens)
                 token = tokens.next()
-                if token != ')':
+                if token != c')':
                     self.parse_error(tokens, "Bad function call")
                 return func(*args, **kwds)
             else:
                 tokens.backtrack()
                 return self.variable_constructor(name)
-        elif token == '(':
+        elif token == c'(':
             expr = self.p_expr(tokens)
             token = tokens.next()
-            if token != ')':
+            if token != c')':
                 self.parse_error(tokens, "Mismatched parentheses")
             return expr
         else:
             self.parse_error(tokens)
 
 # args = arg (',' arg)* | EMPTY
-    cpdef p_args(self, Tokenizer tokens):
+    cpdef p_args(self, Tokenizer tokens) noexcept:
         """
         Returns a list, dict pair.
 
@@ -942,10 +988,10 @@ cdef class Parser:
         """
         args = []
         kwds = {}
-        if tokens.peek() == ')':
+        if tokens.peek() == c')':
             return args, kwds
-        cdef int token = ','
-        while token == ',':
+        cdef int token = c','
+        while token == c',':
             arg = self.p_arg(tokens)
             if isinstance(arg, tuple):
                 name, value = arg
@@ -957,7 +1003,7 @@ cdef class Parser:
         return args, kwds
 
 # arg = expr | name '=' expr
-    cpdef p_arg(self, Tokenizer tokens):
+    cpdef p_arg(self, Tokenizer tokens) noexcept:
         """
         Returns an expr, or a (name, expr) tuple corresponding to a single
         function call argument.
@@ -967,44 +1013,45 @@ cdef class Parser:
         Parsing a normal expression::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_arg(Tokenizer("a+b"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_arg(Tokenizer("a+b"))                                             # needs sage.symbolic
             a + b
 
        A keyword expression argument::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_arg(Tokenizer("val=a+b"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_arg(Tokenizer("val=a+b"))                                         # needs sage.symbolic
             ('val', a + b)
 
         A lone list::
 
             sage: from sage.misc.parser import Parser, Tokenizer
-            sage: p = Parser(make_var=var)
-            sage: p.p_arg(Tokenizer("[x]"))
+            sage: p = Parser(make_var=var)                                              # needs sage.symbolic
+            sage: p.p_arg(Tokenizer("[x]"))                                             # needs sage.symbolic
             [x]
 
         """
         cdef int token = tokens.next()
-        if token == NAME and tokens.peek() == '=':
+        if token == NAME and tokens.peek() == c'=':
             name = tokens.last_token_string()
             tokens.next()
             return name, self.p_expr(tokens)
-        if token == "[" :
+        if token == c"[":
             tokens.backtrack()
             return self.p_list(tokens)
         else:
             tokens.backtrack()
             return self.p_expr(tokens)
 
-    cdef parse_error(self, Tokenizer tokens, msg="Malformed expression"):
+    cdef parse_error(self, Tokenizer tokens, msg="Malformed expression") noexcept:
         raise SyntaxError(msg, tokens.s, tokens.pos)
 
 
 cdef class LookupNameMaker:
     cdef object names
     cdef object fallback
+
     def __init__(self, names, fallback=None):
         """
         This class wraps a dictionary as a callable for use in creating names.
@@ -1013,6 +1060,7 @@ cdef class LookupNameMaker:
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import LookupNameMaker
             sage: maker = LookupNameMaker({'pi': pi}, var)
             sage: maker('pi')
@@ -1025,10 +1073,23 @@ cdef class LookupNameMaker:
         self.names = names
         self.fallback = fallback
 
+    def set_names(self, new_names):
+        """
+        TESTS::
+
+            sage: from sage.misc.parser import LookupNameMaker
+            sage: maker = LookupNameMaker({}, str)
+            sage: maker.set_names({'a': x})                                             # needs sage.symbolic
+            sage: maker('a') is x                                                       # needs sage.symbolic
+            True
+        """
+        self.names = new_names
+
     def __call__(self, name):
         """
         TESTS::
 
+            sage: # needs sage.symbolic
             sage: from sage.misc.parser import LookupNameMaker
             sage: maker = LookupNameMaker({'a': x}, str)
             sage: maker('a')
@@ -1043,5 +1104,4 @@ cdef class LookupNameMaker:
         except KeyError:
             if self.fallback is not None:
                 return self.fallback(name)
-            raise NameError("Unknown variable: '{}'".format(name))
-
+            raise NameError(f"Unknown variable: '{name}'")

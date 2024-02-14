@@ -10,7 +10,7 @@ dual of `M`.
 
 EXAMPLES::
 
-    sage: M = matroids.named_matroids.Fano()
+    sage: M = matroids.catalog.Fano()
     sage: N = M.dual()
     sage: M.is_basis('abc')
     True
@@ -43,8 +43,7 @@ AUTHORS:
 Methods
 =======
 """
-from __future__ import absolute_import
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013 Rudi Pendavingh <rudi.pendavingh@gmail.com>
 #       Copyright (C) 2013 Michael Welsh <michael@welsh.co.nz>
 #       Copyright (C) 2013 Stefan van Zwam <stefanvanzwam@gmail.com>
@@ -53,8 +52,8 @@ from __future__ import absolute_import
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from .matroid import Matroid
 
@@ -75,14 +74,14 @@ class DualMatroid(Matroid):
     EXAMPLES::
 
         sage: from sage.matroids.advanced import *
-        sage: M = matroids.named_matroids.Vamos()
+        sage: M = matroids.catalog.Vamos()
         sage: Md = DualMatroid(M)  # indirect doctest
         sage: Md.rank('abd') == M.corank('abd')
         True
         sage: Md
         Dual of 'Vamos: Matroid of rank 4 on 8 elements with circuit-closures
-        {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'}, {'e', 'f', 'g', 'h'},
-             {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'}},
+        {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'}, {'a', 'b', 'g', 'h'},
+             {'c', 'd', 'e', 'f'}, {'e', 'f', 'g', 'h'}},
          4: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}}}'
     """
 
@@ -93,16 +92,16 @@ class DualMatroid(Matroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = matroids.named_matroids.Vamos()
+            sage: M = matroids.catalog.Vamos()
             sage: Md = DualMatroid(M)  # indirect doctest
             sage: Md.rank('abd') == M.corank('abd')
             True
             sage: Md
-            Dual of 'Vamos: Matroid of rank 4 on 8 elements with
-            circuit-closures
+            Dual of 'Vamos:
+            Matroid of rank 4 on 8 elements with circuit-closures
             {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'},
-                 {'e', 'f', 'g', 'h'}, {'a', 'b', 'g', 'h'},
-                 {'c', 'd', 'e', 'f'}},
+                 {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'},
+                 {'e', 'f', 'g', 'h'}},
              4: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}}}'
         """
         if not isinstance(matroid, Matroid):
@@ -121,7 +120,7 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Pappus().dual()
+            sage: M = matroids.catalog.Pappus().dual()
             sage: sorted(M.groundset())
             ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
         """
@@ -144,10 +143,9 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.NonPappus().dual()
+            sage: M = matroids.catalog.NonPappus().dual()
             sage: M._rank(['a', 'b', 'c'])
             3
-
         """
         return self._matroid._corank(X)
 
@@ -157,7 +155,8 @@ class DualMatroid(Matroid):
 
         INPUT:
 
-        - ``X`` -- An object with Python's ``frozenset`` interface containing a subset of ``self.groundset()``.
+        - ``X`` -- An object with Python's ``frozenset`` interface
+          containing a subset of ``self.groundset()``.
 
         OUTPUT:
 
@@ -165,7 +164,7 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: M._corank(set(['a', 'e', 'g', 'd', 'h']))
             4
         """
@@ -186,10 +185,14 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
-            sage: sorted(M._max_independent(set(['a', 'c', 'd', 'e', 'f'])))
+            sage: M = matroids.catalog.Vamos().dual()
+            sage: X = M._max_independent(set(['a', 'c', 'd', 'e', 'f']))
+            sage: sorted(X) # random
             ['a', 'c', 'd', 'e']
-
+            sage: M.is_independent(X)
+            True
+            sage: all(M.is_dependent(X.union([y])) for y in M.groundset() if y not in X)
+            True
         """
         return self._matroid._max_coindependent(X)
 
@@ -209,7 +212,7 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: sorted(sage.matroids.matroid.Matroid._circuit(M,
             ....:                             set(['a', 'c', 'd', 'e', 'f'])))
             ['c', 'd', 'e', 'f']
@@ -218,7 +221,6 @@ class DualMatroid(Matroid):
             Traceback (most recent call last):
             ...
             ValueError: no circuit in independent set.
-
         """
         return self._matroid._cocircuit(X)
 
@@ -237,10 +239,9 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: sorted(M._closure(set(['a', 'b', 'c'])))
             ['a', 'b', 'c', 'd']
-
         """
         return self._matroid._coclosure(X)
 
@@ -259,10 +260,14 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
-            sage: sorted(M._max_coindependent(set(['a', 'c', 'd', 'e', 'f'])))
+            sage: M = matroids.catalog.Vamos().dual()
+            sage: X = M._max_coindependent(set(['a', 'c', 'd', 'e', 'f']))
+            sage: sorted(X) # random
             ['a', 'd', 'e', 'f']
-
+            sage: M.is_coindependent(X)
+            True
+            sage: all(M.is_codependent(X.union([y])) for y in M.groundset() if y not in X)
+            True
         """
         return self._matroid._max_independent(X)
 
@@ -281,10 +286,9 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: sorted(M._coclosure(set(['a', 'b', 'c'])))
             ['a', 'b', 'c', 'd']
-
         """
         return self._matroid._closure(X)
 
@@ -304,14 +308,13 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: sorted(M._cocircuit(set(['a', 'c', 'd', 'e', 'f'])))
             ['c', 'd', 'e', 'f']
             sage: sorted(M._cocircuit(set(['a', 'c', 'd'])))
             Traceback (most recent call last):
             ...
-            ValueError: no circuit in independent set.
-
+            ValueError: no circuit in independent set
         """
         return self._matroid._circuit(X)
 
@@ -342,20 +345,23 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: N = M._minor(contractions=set(['a']), deletions=set([]))
             sage: N._minor(contractions=set([]), deletions=set(['b', 'c']))
-            Dual of 'M / {'b', 'c'} \ {'a'}, where M is Vamos: Matroid of rank
-            4 on 8 elements with circuit-closures
-            {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'}, {'e', 'f', 'g',
-            'h'}, {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'}}, 4: {{'a', 'b',
-            'c', 'd', 'e', 'f', 'g', 'h'}}}'
+            Dual of 'M / {'b', 'c'} \ {'a'}, where M is Vamos:
+            Matroid of rank 4 on 8 elements with circuit-closures
+            {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'},
+                 {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'},
+                 {'e', 'f', 'g', 'h'}},
+             4: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}}}'
         """
-        # Assumption: if self._matroid cannot make a dual, neither can its minor.
-        return DualMatroid(self._matroid._minor(contractions=deletions, deletions=contractions))
+        # Assumption: if self._matroid cannot make a dual, neither can
+        # its minor.
+        return DualMatroid(self._matroid._minor(contractions=deletions,
+                                                deletions=contractions))
 
     def dual(self):
-        """
+        r"""
         Return the dual of the matroid.
 
         Let `M` be a matroid with ground set `E`. If `B` is the set of bases
@@ -371,15 +377,15 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Pappus().dual()
+            sage: M = matroids.catalog.Pappus().dual()
             sage: N = M.dual()
             sage: N.rank()
             3
             sage: N
             Pappus: Matroid of rank 3 on 9 elements with circuit-closures
-            {2: {{'a', 'b', 'c'}, {'a', 'f', 'h'}, {'c', 'e', 'g'},
-                 {'b', 'f', 'g'}, {'c', 'd', 'h'}, {'d', 'e', 'f'},
-                 {'a', 'e', 'i'}, {'b', 'd', 'i'}, {'g', 'h', 'i'}},
+            {2: {{'a', 'b', 'c'}, {'a', 'e', 'i'}, {'a', 'f', 'h'},
+                 {'b', 'd', 'i'}, {'b', 'f', 'g'}, {'c', 'd', 'h'},
+                 {'c', 'e', 'g'}, {'d', 'e', 'f'}, {'g', 'h', 'i'}},
              3: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'}}}
         """
         return self._matroid
@@ -391,13 +397,13 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: print(M._repr_())
-            Dual of 'Vamos: Matroid of rank 4 on 8 elements with
-            circuit-closures
+            Dual of 'Vamos:
+            Matroid of rank 4 on 8 elements with circuit-closures
             {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'},
-                 {'e', 'f', 'g', 'h'}, {'a', 'b', 'g', 'h'},
-                 {'c', 'd', 'e', 'f'}},
+                 {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'},
+                 {'e', 'f', 'g', 'h'}},
              4: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}}}'
         """
         return "Dual of '" + repr(self._matroid) + "'"
@@ -420,9 +426,9 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
-            sage: N = matroids.named_matroids.Vamos().dual()
-            sage: O = matroids.named_matroids.Vamos()
+            sage: M = matroids.catalog.Vamos().dual()
+            sage: N = matroids.catalog.Vamos().dual()
+            sage: O = matroids.catalog.Vamos()
             sage: hash(M) == hash(N)
             True
             sage: hash(M) == hash(O)
@@ -445,7 +451,7 @@ class DualMatroid(Matroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M1 = matroids.named_matroids.Fano()
+            sage: M1 = matroids.catalog.Fano()
             sage: M2 = CircuitClosuresMatroid(M1.dual())
             sage: M3 = CircuitClosuresMatroid(M1).dual()
             sage: M4 = CircuitClosuresMatroid(groundset='abcdefg',
@@ -477,7 +483,7 @@ class DualMatroid(Matroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M1 = matroids.named_matroids.Fano()
+            sage: M1 = matroids.catalog.Fano()
             sage: M2 = CircuitClosuresMatroid(M1.dual())
             sage: M3 = CircuitClosuresMatroid(M1).dual()
             sage: M4 = CircuitClosuresMatroid(groundset='abcdefg',
@@ -500,17 +506,15 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos()
+            sage: M = matroids.catalog.Vamos()
             sage: N = copy(M)  # indirect doctest
             sage: M == N
             True
             sage: M.groundset() is N.groundset()
             True
-
         """
         N = DualMatroid(self._matroid)
-        if getattr(self, '__custom_name') is not None:  # because of name wrangling, this is not caught by the default copy
-            N.rename(getattr(self, '__custom_name'))
+        N.rename(self.get_custom_name())
         return N
 
     def __deepcopy__(self, memo={}):
@@ -523,7 +527,7 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: N = deepcopy(M)  # indirect doctest
             sage: M == N
             True
@@ -532,8 +536,7 @@ class DualMatroid(Matroid):
         """
         from copy import deepcopy
         N = DualMatroid(deepcopy(self._matroid, memo))
-        if getattr(self, '__custom_name') is not None:  # because of name wrangling, this is not caught by the default deepcopy
-            N.rename(deepcopy(getattr(self, '__custom_name'), memo))
+        N.rename(deepcopy(self.get_custom_name(), memo))
         return N
 
     def __reduce__(self):
@@ -550,19 +553,18 @@ class DualMatroid(Matroid):
 
         EXAMPLES::
 
-            sage: M = matroids.named_matroids.Vamos().dual()
+            sage: M = matroids.catalog.Vamos().dual()
             sage: M == loads(dumps(M))  # indirect doctest
             True
             sage: loads(dumps(M))
-            Dual of 'Vamos: Matroid of rank 4 on 8 elements with
-            circuit-closures
+            Dual of 'Vamos:
+            Matroid of rank 4 on 8 elements with circuit-closures
             {3: {{'a', 'b', 'c', 'd'}, {'a', 'b', 'e', 'f'},
-                 {'e', 'f', 'g', 'h'}, {'a', 'b', 'g', 'h'},
-                 {'c', 'd', 'e', 'f'}},
+                 {'a', 'b', 'g', 'h'}, {'c', 'd', 'e', 'f'},
+                 {'e', 'f', 'g', 'h'}},
              4: {{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}}}'
-
         """
         import sage.matroids.unpickling
-        data = (self._matroid, getattr(self, '__custom_name'))
+        data = (self._matroid, self.get_custom_name())
         version = 0
         return sage.matroids.unpickling.unpickle_dual_matroid, (version, data)

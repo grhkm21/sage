@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.rings.number_field
 """
 Torsion points on modular abelian varieties
 
@@ -6,10 +7,8 @@ AUTHORS:
 - William Stein (2007-03)
 
 - Peter Bruin (2014-12): move TorsionPoint to a separate file
-
 """
-
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2007 William Stein <wstein@gmail.com>
 #       Copyright (C) 2014 Peter Bruin <P.J.Bruin@math.leidenuniv.nl>
 #
@@ -17,10 +16,11 @@ AUTHORS:
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
 #                  http://www.gnu.org/licenses/
-#*****************************************************************************
-
+# ****************************************************************************
 
 from sage.structure.element import ModuleElement
+from sage.structure.richcmp import richcmp, rich_to_bool
+
 
 class TorsionPoint(ModuleElement):
     r"""
@@ -31,10 +31,10 @@ class TorsionPoint(ModuleElement):
     - ``parent`` -- a finite subgroup of a modular abelian variety
 
     - ``element`` -- a `\QQ`-vector space element that represents
-       this element in terms of the ambient rational homology
+      this element in terms of the ambient rational homology
 
     - ``check`` -- bool (default: ``True``): whether to check that
-       element is in the appropriate vector space
+      element is in the appropriate vector space
 
     EXAMPLES:
 
@@ -44,7 +44,7 @@ class TorsionPoint(ModuleElement):
         sage: G = J.finite_subgroup([[1/3,0], [0,1/5]]); G
         Finite subgroup with invariants [15] over QQbar of Abelian variety J0(11) of dimension 1
         sage: type(G.0)
-        <class 'sage.modular.abvar.torsion_point.FiniteSubgroup_lattice_with_category.element_class'>
+        <class 'sage.modular.abvar.finite_subgroup.FiniteSubgroup_lattice_with_category.element_class'>
     """
     def __init__(self, parent, element, check=True):
         """
@@ -58,7 +58,7 @@ class TorsionPoint(ModuleElement):
         """
         ModuleElement.__init__(self, parent)
         if check:
-            if not element in parent.abelian_variety().vector_space():
+            if element not in parent.abelian_variety().vector_space():
                 raise TypeError("element must be a vector in the abelian variety's rational homology (embedded in the ambient Jacobian product)")
         if element.denominator() == 1:
             element = element.parent().zero_vector()
@@ -79,7 +79,8 @@ class TorsionPoint(ModuleElement):
 
             sage: J = J0(11)
             sage: G = J.finite_subgroup([[1/3,0], [0,1/5]]); G
-            Finite subgroup with invariants [15] over QQbar of Abelian variety J0(11) of dimension 1
+            Finite subgroup with invariants [15] over QQbar of
+             Abelian variety J0(11) of dimension 1
             sage: G.0.element()
             (1/3, 0)
 
@@ -88,7 +89,7 @@ class TorsionPoint(ModuleElement):
             sage: v = (G.0-G.1).element(); v
             (1/3, -1/5)
             sage: type(v)
-            <type 'sage.modules.vector_rational_dense.Vector_rational_dense'>
+            <class 'sage.modules.vector_rational_dense.Vector_rational_dense'>
         """
         return self.__element
 
@@ -111,7 +112,7 @@ class TorsionPoint(ModuleElement):
             sage: G.0._repr_()
             '[(1/3, 0)]'
         """
-        return '[%s]'%self.__element
+        return '[%s]' % self.__element
 
     def _add_(self, other):
         """
@@ -188,51 +189,46 @@ class TorsionPoint(ModuleElement):
         P = self.parent()
         return P.element_class(P, self.__element * right, check=False)
 
-    def __cmp__(self, right):
+    def _richcmp_(self, right, op):
         """
         Compare ``self`` and ``right``.
 
         INPUT:
 
         - ``self, right`` -- elements of the same finite abelian
-           variety subgroup.
+          variety subgroup.
 
-        OUTPUT: -1, 0, or 1
+        - ``op`` -- comparison operator (see :mod:`sage.structure.richcmp`)
+
+        OUTPUT: boolean
 
         EXAMPLES::
 
             sage: J = J0(11); G = J.finite_subgroup([[1/3,0], [0,1/5]])
-            sage: cmp(G.0, G.1)
-            1
-            sage: cmp(G.0, G.0)
-            0
+            sage: G.0 > G.1
+            True
+            sage: G.0 == G.0
+            True
             sage: 3*G.0 == 0
             True
             sage: 3*G.0 == 5*G.1
             True
 
-        We make sure things that shouldn't be equal aren't::
+        We make sure things that should not be equal are not::
 
             sage: H = J0(14).finite_subgroup([[1/3,0]])
             sage: G.0 == H.0
             False
-            sage: cmp(G.0, H.0)
-            -1
             sage: G.0
             [(1/3, 0)]
             sage: H.0
             [(1/3, 0)]
         """
-        if not isinstance(right, TorsionPoint):
-            return cmp(type(self), type(right))
         A = self.parent().abelian_variety()
-        B = right.parent().abelian_variety()
-        if A.groups() != B.groups():
-            return cmp(A,B)
-        from sage.rings.all import QQ
-        if self.__element.change_ring(QQ) - right.__element.change_ring(QQ) in A.lattice() + B.lattice():
-            return 0
-        return cmp(self.__element, right.__element)
+        from sage.rings.rational_field import QQ
+        if self.__element.change_ring(QQ) - right.__element.change_ring(QQ) in A.lattice():
+            return rich_to_bool(op, 0)
+        return richcmp(self.__element, right.__element, op)
 
     def additive_order(self):
         """
@@ -261,10 +257,12 @@ class TorsionPoint(ModuleElement):
 
         EXAMPLES::
 
+            sage: # needs sage.libs.flint
             sage: A = J0(43)[1]; A
             Simple abelian subvariety 43b(1,43) of dimension 2 of J0(43)
             sage: C = A.cuspidal_subgroup(); C
-            Finite subgroup with invariants [7] over QQ of Simple abelian subvariety 43b(1,43) of dimension 2 of J0(43)
+            Finite subgroup with invariants [7] over QQ of
+             Simple abelian subvariety 43b(1,43) of dimension 2 of J0(43)
             sage: x = C.0; x
             [(0, 1/7, 0, 6/7, 0, 5/7)]
             sage: x._relative_element()

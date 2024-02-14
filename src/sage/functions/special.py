@@ -1,18 +1,5 @@
 r"""
-Miscellaneous Special Functions
-
-AUTHORS:
-
-- David Joyner (2006-13-06): initial version
-
-- David Joyner (2006-30-10): bug fixes to pari wrappers of Bessel
-  functions, hypergeometric_U
-
-- William Stein (2008-02): Impose some sanity checks.
-
-- David Joyner (2008-04-23): addition of elliptic integrals
-
-- Eviatar Bach (2013): making elliptic integrals symbolic
+Miscellaneous special functions
 
 This module provides easy access to many of Maxima and PARI's
 special functions.
@@ -31,144 +18,113 @@ Toy. It is placed under the terms of the General Public License
 Next, we summarize some of the properties of the functions
 implemented here.
 
+- **Spherical harmonics**: Laplace's equation in spherical coordinates is:
 
--  Spherical harmonics: Laplace's equation in spherical coordinates
-   is:
+    .. MATH::
 
-   .. math::
+        \frac{1}{r^2} \frac{\partial}{\partial r}
+        \left( r^2 \frac{\partial f}{\partial r} \right) +
+        \frac{1}{r^2\sin\theta} \frac{\partial}{\partial \theta}
+        \left( \sin\theta \frac{\partial f}{\partial \theta} \right) +
+        \frac{1}{r^2\sin^2\theta} \frac{\partial^2 f}{\partial \varphi^2} = 0.
 
-       {\frac{1}{r^2}}{\frac{\partial}{\partial r}}
-       \left(r^2 {\frac{\partial f}{\partial r}}\right) +
-       {\frac{1}{r^2}\sin\theta}{\frac{\partial}{\partial \theta}}
-       \left(\sin\theta {\frac{\partial f}{\partial \theta}}\right) +
-       {\frac{1}{r^2\sin^2\theta}}{\frac{\partial^2 f}{\partial \varphi^2}} = 0.
+  Note that the spherical coordinates `\theta` and `\varphi` are defined here
+  as follows: `\theta` is the colatitude or polar angle, ranging from
+  `0\leq\theta\leq\pi` and `\varphi` the azimuth or longitude, ranging from
+  `0\leq\varphi<2\pi`.
 
+  The general solution which remains finite towards infinity is a linear
+  combination of functions of the form
 
-   Note that the spherical coordinates `\theta` and
-   `\varphi` are defined here as follows: `\theta` is
-   the colatitude or polar angle, ranging from
-   `0\leq\theta\leq\pi` and `\varphi` the azimuth or
-   longitude, ranging from `0\leq\varphi<2\pi`.
+    .. MATH::
 
-   The general solution which remains finite towards infinity is a
-   linear combination of functions of the form
-
-   .. math::
-
-         r^{-1-\ell} \cos (m \varphi) P_\ell^m (\cos{\theta} )
-
+        r^{-1-\ell} \cos (m \varphi) P_\ell^m (\cos{\theta} )
 
    and
 
-   .. math::
+    .. MATH::
 
-         r^{-1-\ell} \sin (m \varphi) P_\ell^m (\cos{\theta} )
+        r^{-1-\ell} \sin (m \varphi) P_\ell^m (\cos{\theta} )
 
+  where `P_\ell^m` are the associated Legendre polynomials
+  (cf. :class:`~sage.functions.orthogonal_polys.Func_assoc_legendre_P`),
+  and with integer parameters `\ell \ge 0` and `m` from `0` to `\ell`. Put in
+  another way, the solutions with integer parameters `\ell \ge 0` and
+  `- \ell\leq m\leq \ell`, can be written as linear combinations of:
 
-   where `P_\ell^m` are the associated Legendre polynomials,
-   and with integer parameters `\ell \ge 0` and `m`
-   from `0` to `\ell`. Put in another way, the
-   solutions with integer parameters `\ell \ge 0` and
-   `- \ell\leq m\leq \ell`, can be written as linear
-   combinations of:
+    .. MATH::
 
-   .. math::
+        U_{\ell,m}(r,\theta , \varphi ) =
+        r^{-1-\ell} Y_\ell^m( \theta , \varphi )
 
-         U_{\ell,m}(r,\theta , \varphi ) =
-         r^{-1-\ell} Y_\ell^m( \theta , \varphi )
+  where the functions `Y` are the spherical harmonic functions with
+  parameters `\ell`, `m`, which can be written as:
 
+    .. MATH::
 
-   where the functions `Y` are the spherical harmonic
-   functions with parameters `\ell`, `m`, which can be
-   written as:
+        Y_\ell^m( \theta , \varphi ) =
+        \sqrt{ \frac{(2\ell+1)}{4\pi} \frac{(\ell-m)!}{(\ell+m)!} }
+        \, e^{i m \varphi } \, P_\ell^m ( \cos{\theta} ) .
 
-   .. math::
+  The spherical harmonics obey the normalisation condition
 
-         Y_\ell^m( \theta , \varphi ) =
-         \sqrt{{\frac{(2\ell+1)}{4\pi}}{\frac{(\ell-m)!}{(\ell+m)!}}}
-         \cdot e^{i m \varphi } \cdot P_\ell^m ( \cos{\theta} ) .
+    .. MATH::
 
+        \int_{\theta=0}^\pi\int_{\varphi=0}^{2\pi}
+        Y_\ell^mY_{\ell'}^{m'*}\,d\Omega =
+        \delta_{\ell\ell'}\delta_{mm'}\quad\quad d\Omega =
+        \sin\theta\,d\varphi\,d\theta .
 
+- The **incomplete elliptic integrals** (of the first kind, etc.) are:
 
-   The spherical harmonics obey the normalisation condition
+    .. MATH::
 
+        \begin{array}{c}
+        \displaystyle\int_0^\phi \frac{1}{\sqrt{1 - m\sin(x)^2}}\, dx,\\
+        \displaystyle\int_0^\phi \sqrt{1 - m\sin(x)^2}\, dx,\\
+        \displaystyle\int_0^\phi \frac{\sqrt{1-mt^2}}{\sqrt(1 - t^2)}\, dx,\\
+        \displaystyle\int_0^\phi
+        \frac{1}{\sqrt{1 - m\sin(x)^2\sqrt{1 - n\sin(x)^2}}}\, dx,
+        \end{array}
 
-   .. math::
+  and the complete ones are obtained by taking `\phi =\pi/2`.
 
-     \int_{\theta=0}^\pi\int_{\varphi=0}^{2\pi}
-     Y_\ell^mY_{\ell'}^{m'*}\,d\Omega =
-     \delta_{\ell\ell'}\delta_{mm'}\quad\quad d\Omega =
-     \sin\theta\,d\varphi\,d\theta .
+.. WARNING::
 
-
-
--  When solving for separable solutions of Laplace's equation in
-   spherical coordinates, the radial equation has the form:
-
-   .. math::
-
-         x^2 \frac{d^2 y}{dx^2} + 2x \frac{dy}{dx} + [x^2 - n(n+1)]y = 0.
-
-
-   The spherical Bessel functions `j_n` and `y_n`,
-   are two linearly independent solutions to this equation. They are
-   related to the ordinary Bessel functions `J_n` and
-   `Y_n` by:
-
-   .. math::
-
-         j_n(x) = \sqrt{\frac{\pi}{2x}} J_{n+1/2}(x),
-
-
-
-   .. math::
-
-         y_n(x) = \sqrt{\frac{\pi}{2x}} Y_{n+1/2}(x) =
-         (-1)^{n+1} \sqrt{\frac{\pi}{2x}} J_{-n-1/2}(x).
-
-
-   -  The incomplete elliptic integrals (of the first kind, etc.) are:
-
-      .. math::
-
-         \begin{array}{c}
-         \displaystyle\int_0^\phi \frac{1}{\sqrt{1 - m\sin(x)^2}}\, dx,\\
-         \displaystyle\int_0^\phi \sqrt{1 - m\sin(x)^2}\, dx,\\
-         \displaystyle\int_0^\phi \frac{\sqrt{1-mt^2}}{\sqrt(1 - t^2)}\, dx,\\
-         \displaystyle\int_0^\phi
-         \frac{1}{\sqrt{1 - m\sin(x)^2\sqrt{1 - n\sin(x)^2}}}\, dx,
-         \end{array}
-
-      and the complete ones are obtained by taking `\phi =\pi/2`.
-
+    SciPy's versions are poorly documented and seem less accurate than the
+    Maxima and PARI versions. Typically they are limited by hardware floats
+    precision.
 
 REFERENCES:
 
-- Abramowitz and Stegun: Handbook of Mathematical Functions,
-  http://www.math.sfu.ca/~cbm/aands/
+- Abramowitz and Stegun: *Handbook of Mathematical Functions* [AS1964]_
 
-- http://en.wikipedia.org/wiki/Spherical_harmonics
+- :wikipedia:`Spherical_harmonics`
 
-- http://en.wikipedia.org/wiki/Helmholtz_equation
+- :wikipedia:`Helmholtz_equation`
 
-- Online Encyclopedia of Special Function
-  http://algo.inria.fr/esf/index.html
+- `Online Encyclopedia of Special Functions
+  <http://algo.inria.fr/esf/index.html>`_
 
 AUTHORS:
 
-- David Joyner and William Stein
+- David Joyner (2006-13-06): initial version
 
-Added 16-02-2008 (wdj): optional calls to scipy and replace all
-'#random' by '...' (both at the request of William Stein)
+- David Joyner (2006-30-10): bug fixes to pari wrappers of Bessel
+  functions, hypergeometric_U
 
-.. warning::
+- William Stein (2008-02): Impose some sanity checks.
 
-   SciPy's versions are poorly documented and seem less
-   accurate than the Maxima and PARI versions; typically they are limited
-   by hardware floats precision.
+- David Joyner (2008-02-16): optional calls to scipy and replace all ``#random`` by ``...``
+
+- David Joyner (2008-04-23): addition of elliptic integrals
+
+- Eviatar Bach (2013): making elliptic integrals symbolic
+
+- Eric Gourgoulhon (2022): add Condon-Shortley phase to spherical harmonics
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2006 William Stein <wstein@gmail.com>
 #                     2006 David Joyner <wdj@usna.edu>
 #
@@ -181,326 +137,31 @@ Added 16-02-2008 (wdj): optional calls to scipy and replace all
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
+import sage.rings.abc
+
+from sage.misc.functional import sqrt
+from sage.misc.lazy_import import lazy_import
 from sage.rings.integer import Integer
-from sage.rings.real_mpfr import RealField
-from sage.rings.complex_field import ComplexField
-from sage.misc.latex import latex
-from sage.rings.all import ZZ, RR, RDF, CDF
-from sage.functions.other import real, imag, log_gamma
-from sage.symbolic.constants import pi
-from sage.symbolic.function import BuiltinFunction, is_inexact
-from sage.symbolic.expression import Expression
-from sage.calculus.calculus import maxima
-from sage.structure.coerce import parent
-from sage.structure.element import get_coercion_model
-from sage.structure.parent import Parent
-from sage.libs.mpmath import utils as mpmath_utils
-from sage.functions.all import sqrt, sin, cot, exp
-from sage.symbolic.all import I
+from sage.rings.integer_ring import ZZ
+from sage.structure.element import parent as s_parent
+from sage.symbolic.function import BuiltinFunction
 
-_done = False
-def _init():
-    """
-    Internal function which checks if Maxima has loaded the
-    "orthopoly" package.  All functions using this in this
-    file should call this function first.
+lazy_import('sage.functions.jacobi', 'jacobi_am_f')
+lazy_import('sage.functions.log', ['exp'])
+lazy_import('sage.functions.trig', ['sin', 'cot'])
 
-    TEST:
+lazy_import('sage.misc.latex', 'latex')
 
-    The global starts ``False``::
+lazy_import('sage.symbolic.constants', ['I', 'pi'])
 
-        sage: sage.functions.special._done
-        False
-
-    Then after using one of the MaximaFunctions, it changes::
-
-        sage: spherical_hankel2(2,x)
-        (-I*x^2 - 3*x + 3*I)*e^(-I*x)/x^3
-
-        sage: sage.functions.special._done
-        True
-    """
-    global _done
-    if _done:
-        return
-    maxima.eval('load("orthopoly");')
-    maxima.eval('orthopoly_returns_intervals:false;')
-    _done = True
-
-def meval(x):
-    """
-    Return ``x`` evaluated in Maxima, then returned to Sage.
-
-    This is used to evaluate several of these special functions.
-
-    TEST::
-
-        sage: from sage.functions.special import spherical_bessel_J
-        sage: spherical_bessel_J(2.,3.)      # rel tol 1e-10
-        0.2986374970757335
-    """
-    return maxima(x).sage()
-
-
-class MaximaFunction(BuiltinFunction):
-    """
-    EXAMPLES::
-
-        sage: from sage.functions.special import MaximaFunction
-        sage: f = MaximaFunction("jacobi_sn")
-        sage: f(1,1)
-        tanh(1)
-        sage: f(1/2,1/2).n()
-        0.470750473655657
-    """
-    def __init__(self, name, nargs=2, conversions={}):
-        """
-        EXAMPLES::
-
-            sage: from sage.functions.special import MaximaFunction
-            sage: f = MaximaFunction("jacobi_sn")
-            sage: f(1,1)
-            tanh(1)
-            sage: f(1/2,1/2).n()
-            0.470750473655657
-        """
-        c = dict(maxima=name)
-        c.update(conversions)
-        BuiltinFunction.__init__(self, name=name, nargs=nargs,
-                                   conversions=c)
-
-    def _maxima_init_evaled_(self, *args):
-        """
-        Returns a string which represents this function evaluated at
-        *args* in Maxima.
-
-        EXAMPLES::
-
-            sage: from sage.functions.special import MaximaFunction
-            sage: f = MaximaFunction("jacobi_sn")
-            sage: f._maxima_init_evaled_(1/2, 1/2)
-            'jacobi_sn(1/2, 1/2)'
-
-        TESTS:
-
-        Check if complex numbers in the arguments are converted to maxima
-        correctly (see :trac:`7557`)::
-
-            sage: t = f(1.2+2*I*elliptic_kc(1-.5),.5)
-            sage: maxima(t) # abs tol 1e-13
-            0.88771548861928029 - 1.7301614091485560e-15*%i
-            sage: t.n() # abs tol 1e-13
-            0.887715488619280 - 1.73016140914856e-15*I
-        """
-        args_maxima = []
-        for a in args:
-            if isinstance(a, str):
-                args_maxima.append(a)
-            elif hasattr(a, '_maxima_init_'):
-                args_maxima.append(a._maxima_init_())
-            else:
-                args_maxima.append(str(a))
-        return "%s(%s)"%(self.name(), ', '.join(args_maxima))
-
-    def _evalf_(self, *args, **kwds):
-        """
-        Returns a numerical approximation of this function using
-        Maxima.  Currently, this is limited to 53 bits of precision.
-
-        EXAMPLES::
-
-            sage: from sage.functions.special import MaximaFunction
-            sage: f = MaximaFunction("jacobi_sn")
-            sage: f(1/2, 1/2)
-            jacobi_sn(1/2, 1/2)
-            sage: f(1/2, 1/2).n()
-            0.470750473655657
-            sage: f(1/2, 1/2).n(20)
-            0.47075
-            sage: f(1, I).n()
-            0.848379519751901 - 0.0742924572771414*I
-
-        TESTS::
-
-            sage: f(1/2, 1/2).n(150)
-            Traceback (most recent call last):
-            ...
-            NotImplementedError: Maxima function jacobi_sn not implemented for Real Field with 150 bits of precision
-            sage: f._evalf_(1/2, 1/2, parent=int)
-            Traceback (most recent call last):
-            ...
-            NotImplementedError: Maxima function jacobi_sn not implemented for <type 'int'>
-            sage: f._evalf_(1/2, 1/2, parent=complex)
-            (0.4707504736556572+0j)
-            sage: f._evalf_(1/2, 1/2, parent=RDF)
-            0.4707504736556572
-            sage: f._evalf_(1, I, parent=CDF)  # abs tol 1e-16
-            0.8483795707591759 - 0.07429247342160791*I
-            sage: f._evalf_(1, I, parent=RR)
-            Traceback (most recent call last):
-            ...
-            TypeError: unable to convert '0.848379570759176-0.0742924734216079*I' to a real number
-        """
-        parent = kwds['parent']
-        # The result from maxima is a machine double, which corresponds
-        # to RDF (or CDF). Therefore, before converting, we check that
-        # we can actually coerce RDF into our parent.
-        if parent is not float and parent is not complex:
-            if (not isinstance(parent, Parent)
-                or not parent.has_coerce_map_from(RDF)):
-                raise NotImplementedError("Maxima function %s not implemented for %r"%(self.name(), parent))
-        _init()
-        return parent(maxima("%s, numer"%self._maxima_init_evaled_(*args)))
-
-    def _eval_(self, *args):
-        """
-        Try to evaluate this function at ``*args``, return ``None`` if
-        Maxima did not compute a numerical evaluation.
-
-        EXAMPLES::
-
-            sage: from sage.functions.special import MaximaFunction
-            sage: f = MaximaFunction("jacobi_sn")
-            sage: f(1,1)
-            tanh(1)
-
-            sage: f._eval_(1,1)
-            tanh(1)
-
-        Since Maxima works only with double precision, numerical
-        results are in ``RDF``, no matter what the input precision is::
-
-            sage: R = RealField(300)
-            sage: r = jacobi_sn(R(1/2), R(1/8)); r # not tested
-            0.4950737320232015
-            sage: parent(r)  # not tested
-            Real Double Field
-        """
-        _init()
-        try:
-            s = maxima(self._maxima_init_evaled_(*args))
-        except TypeError:
-            return None
-
-        if self.name() in repr(s):  # Avoid infinite recursion
-            return None
-        else:
-            return s.sage()
-
-from sage.misc.cachefunc import cached_function
-
-@cached_function
-def maxima_function(name):
-    """
-    Returns a function which is evaluated both symbolically and
-    numerically via Maxima.  In particular, it returns an instance
-    of :class:`MaximaFunction`.
-
-    .. note::
-
-       This function is cached so that duplicate copies of the same
-       function are not created.
-
-    EXAMPLES::
-
-        sage: spherical_hankel2(2,i)
-        -e
-    """
-    # The superclass of MaximaFunction, BuiltinFunction, assumes that there
-    # will be only one symbolic function with the same name and class.
-    # We create a new class for each Maxima function wrapped.
-    class NewMaximaFunction(MaximaFunction):
-        def __init__(self):
-            """
-            Constructs an object that wraps a Maxima function.
-
-            TESTS::
-
-                sage: spherical_hankel2(2,x)
-                (-I*x^2 - 3*x + 3*I)*e^(-I*x)/x^3
-            """
-            MaximaFunction.__init__(self, name)
-
-    return NewMaximaFunction()
-
-
-def spherical_bessel_J(n, var, algorithm="maxima"):
-    r"""
-    Returns the spherical Bessel function of the first kind for
-    integers n >= 1.
-
-    Reference: AS 10.1.8 page 437 and AS 10.1.15 page 439.
-
-    EXAMPLES::
-
-        sage: spherical_bessel_J(2,x)
-        ((3/x^2 - 1)*sin(x) - 3*cos(x)/x)/x
-        sage: spherical_bessel_J(1, 5.2, algorithm='scipy')
-        -0.12277149950007...
-        sage: spherical_bessel_J(1, 3, algorithm='scipy')
-        0.345677499762355...
-    """
-    if algorithm == "scipy":
-        from scipy.special.specfun import sphj
-        return CDF(sphj(int(n), float(var))[1][-1])
-    elif algorithm == 'maxima':
-        _init()
-        return meval("spherical_bessel_j(%s,%s)"%(ZZ(n),var))
-    else:
-        raise ValueError("unknown algorithm '%s'"%algorithm)
-
-def spherical_bessel_Y(n,var, algorithm="maxima"):
-    r"""
-    Returns the spherical Bessel function of the second kind for
-    integers n -1.
-
-    Reference: AS 10.1.9 page 437 and AS 10.1.15 page 439.
-
-    EXAMPLES::
-
-        sage: x = PolynomialRing(QQ, 'x').gen()
-        sage: spherical_bessel_Y(2,x)
-        -((3/x^2 - 1)*cos(x) + 3*sin(x)/x)/x
-    """
-    if algorithm == "scipy":
-        import scipy.special
-        return CDF(scipy.special.sph_yn(int(n),float(var)))
-    elif algorithm == 'maxima':
-        _init()
-        return meval("spherical_bessel_y(%s,%s)"%(ZZ(n),var))
-    else:
-        raise ValueError("unknown algorithm '%s'"%algorithm)
-
-def spherical_hankel1(n, var):
-    r"""
-    Returns the spherical Hankel function of the first kind for
-    integers `n > -1`, written as a string. Reference: AS
-    10.1.36 page 439.
-
-    EXAMPLES::
-
-        sage: spherical_hankel1(2, x)
-        (I*x^2 - 3*x - 3*I)*e^(I*x)/x^3
-    """
-    return maxima_function("spherical_hankel1")(ZZ(n), var)
-
-def spherical_hankel2(n,x):
-    r"""
-    Returns the spherical Hankel function of the second kind for
-    integers `n > -1`, written as a string. Reference: AS 10.1.17 page
-    439.
-
-    EXAMPLES::
-
-        sage: spherical_hankel2(2, x)
-        (-I*x^2 - 3*x + 3*I)*e^(-I*x)/x^3
-
-    Here I = sqrt(-1).
-    """
-    return maxima_function("spherical_hankel2")(ZZ(n), x)
+lazy_import('sage.libs.mpmath.utils', 'call', as_='_mpmath_utils_call')
+lazy_import('mpmath',
+            ['spherharm', 'ellipe', 'ellipf', 'ellipk', 'ellippi'],
+            as_=['_mpmath_spherharm', '_mpmath_ellipe', '_mpmath_ellipf',
+                 '_mpmath_ellipk', '_mpmath_ellippi'])
 
 
 class SphericalHarmonic(BuiltinFunction):
@@ -512,37 +173,88 @@ class SphericalHarmonic(BuiltinFunction):
 
     EXAMPLES::
 
+        sage: # needs sage.symbolic
         sage: x, y = var('x, y')
         sage: spherical_harmonic(3, 2, x, y)
-        15/4*sqrt(7/30)*cos(x)*e^(2*I*y)*sin(x)^2/sqrt(pi)
+        1/8*sqrt(30)*sqrt(7)*cos(x)*e^(2*I*y)*sin(x)^2/sqrt(pi)
         sage: spherical_harmonic(3, 2, 1, 2)
-        15/4*sqrt(7/30)*cos(1)*e^(4*I)*sin(1)^2/sqrt(pi)
+        1/8*sqrt(30)*sqrt(7)*cos(1)*e^(4*I)*sin(1)^2/sqrt(pi)
         sage: spherical_harmonic(3 + I, 2., 1, 2)
         -0.351154337307488 - 0.415562233975369*I
         sage: latex(spherical_harmonic(3, 2, x, y, hold=True))
         Y_{3}^{2}\left(x, y\right)
         sage: spherical_harmonic(1, 2, x, y)
         0
+
+    The degree `n` and the order `m` can be symbolic::
+
+        sage: # needs sage.symbolic
+        sage: n, m = var('n m')
+        sage: spherical_harmonic(n, m, x, y)
+        spherical_harmonic(n, m, x, y)
+        sage: latex(spherical_harmonic(n, m, x, y))
+        Y_{n}^{m}\left(x, y\right)
+        sage: diff(spherical_harmonic(n, m, x, y), x)
+        m*cot(x)*spherical_harmonic(n, m, x, y)
+         + sqrt(-(m + n + 1)*(m - n))*e^(-I*y)*spherical_harmonic(n, m + 1, x, y)
+        sage: diff(spherical_harmonic(n, m, x, y), y)
+        I*m*spherical_harmonic(n, m, x, y)
+
+    The convention regarding the Condon-Shortley phase `(-1)^m` is the same
+    as for SymPy's spherical harmonics and :wikipedia:`Spherical_harmonics`::
+
+        sage: # needs sage.symbolic
+        sage: spherical_harmonic(1, 1, x, y)
+        -1/4*sqrt(3)*sqrt(2)*e^(I*y)*sin(x)/sqrt(pi)
+        sage: from sympy import Ynm                                                     # needs sympy
+        sage: Ynm(1, 1, x, y).expand(func=True)                                         # needs sympy
+        -sqrt(6)*exp(I*y)*sin(x)/(4*sqrt(pi))
+        sage: spherical_harmonic(1, 1, x, y) - Ynm(1, 1, x, y)                          # needs sympy
+        0
+
+    It also agrees with SciPy's spherical harmonics::
+
+        sage: spherical_harmonic(1, 1, pi/2, pi).n()  # abs tol 1e-14                   # needs sage.symbolic
+        0.345494149471335
+        sage: from scipy.special import sph_harm  # NB: arguments x and y are swapped   # needs scipy
+        sage: sph_harm(1, 1, pi.n(), (pi/2).n())  # abs tol 1e-14                       # needs scipy sage.symbolic
+        (0.3454941494713355-4.231083042742082e-17j)
+
+    Note that this convention differs from the one in Maxima, as revealed by
+    the sign difference for odd values of `m`::
+
+        sage: maxima.spherical_harmonic(1, 1, x, y).sage()                              # needs sage.symbolic
+        1/2*sqrt(3/2)*e^(I*y)*sin(x)/sqrt(pi)
+
+    It follows that, contrary to Maxima, SageMath uses the same sign convention
+    for spherical harmonics as SymPy, SciPy, Mathematica and
+    :wikipedia:`Table_of_spherical_harmonics`.
+
+    REFERENCES:
+
+    - :wikipedia:`Spherical_harmonics`
+
     """
     def __init__(self):
         r"""
         TESTS::
 
-            sage: n, m, theta, phi = var('n m theta phi')
-            sage: spherical_harmonic(n, m, theta, phi)._sympy_()
+            sage: n, m, theta, phi = var('n m theta phi')                               # needs sage.symbolic
+            sage: spherical_harmonic(n, m, theta, phi)._sympy_()                        # needs sympy sage.symbolic
             Ynm(n, m, theta, phi)
         """
         BuiltinFunction.__init__(self, 'spherical_harmonic', nargs=4,
                                  conversions=dict(
-                                    maple='SphericalY',
-                                    mathematica= 'SphericalHarmonicY',
-                                    maxima='spherical_harmonic',
-                                    sympy='Ynm'))
+                                     maple='SphericalY',
+                                     mathematica='SphericalHarmonicY',
+                                     maxima='spherical_harmonic',
+                                     sympy='Ynm'))
 
     def _eval_(self, n, m, theta, phi, **kwargs):
         r"""
         TESTS::
 
+            sage: # needs sage.symbolic
             sage: x, y = var('x y')
             sage: spherical_harmonic(1, 2, x, y)
             0
@@ -551,40 +263,101 @@ class SphericalHarmonic(BuiltinFunction):
             sage: spherical_harmonic(1/2, 2, x, y)
             spherical_harmonic(1/2, 2, x, y)
             sage: spherical_harmonic(3, 2, x, y)
-            15/4*sqrt(7/30)*cos(x)*e^(2*I*y)*sin(x)^2/sqrt(pi)
+            1/8*sqrt(30)*sqrt(7)*cos(x)*e^(2*I*y)*sin(x)^2/sqrt(pi)
             sage: spherical_harmonic(3, 2, 1, 2)
-            15/4*sqrt(7/30)*cos(1)*e^(4*I)*sin(1)^2/sqrt(pi)
+            1/8*sqrt(30)*sqrt(7)*cos(1)*e^(4*I)*sin(1)^2/sqrt(pi)
             sage: spherical_harmonic(3 + I, 2., 1, 2)
             -0.351154337307488 - 0.415562233975369*I
+
+        Check that :trac:`20939` is fixed::
+
+            sage: ex = spherical_harmonic(3, 2, 1, 2*pi/3)                              # needs sage.symbolic
+            sage: QQbar(ex * sqrt(pi)/cos(1)/sin(1)^2).minpoly()                        # needs sage.rings.number_field sage.symbolic
+            x^4 + 105/32*x^2 + 11025/1024
+
+        Check whether Sage yields correct results compared to Maxima,
+        up to the Condon-Shortley phase factor `(-1)^m`
+        (see :trac:`25034` and :trac:`33117`)::
+
+            sage: # needs sage.symbolic
+            sage: spherical_harmonic(1, 1, pi/3, pi/6).n()  # abs tol 1e-14
+            -0.259120612103502 - 0.149603355150537*I
+            sage: maxima.spherical_harmonic(1, 1, pi/3, pi/6).n()  # abs tol 1e-14
+            0.259120612103502 + 0.149603355150537*I
+            sage: spherical_harmonic(1, -1, pi/3, pi/6).n()  # abs tol 1e-14
+            0.259120612103502 - 0.149603355150537*I
+            sage: maxima.spherical_harmonic(1, -1, pi/3, pi/6).n()  # abs tol 1e-14
+            -0.259120612103502 + 0.149603355150537*I
+
+        Check that :trac:`33501` is fixed::
+
+            sage: spherical_harmonic(2, 1, x, y)                                        # needs sage.symbolic
+            -1/4*sqrt(6)*sqrt(5)*cos(x)*e^(I*y)*sin(x)/sqrt(pi)
+            sage: spherical_harmonic(5, -3, x, y)                                       # needs sage.symbolic
+            -1/32*(9*sqrt(385)*sin(x)^4 - 8*sqrt(385)*sin(x)^2)*e^(-3*I*y)*sin(x)/sqrt(pi)
+
         """
         if n in ZZ and m in ZZ and n > -1:
             if abs(m) > n:
                 return ZZ(0)
-            return meval("spherical_harmonic({},{},{},{})".format(
-                ZZ(n), ZZ(m), maxima(theta), maxima(phi)))
+            if m == 0 and theta.is_zero():
+                return sqrt((2*n+1)/4/pi)
+            from sage.arith.misc import factorial
+            from sage.functions.trig import cos
+            from sage.functions.orthogonal_polys import gen_legendre_P
+            res = (sqrt(factorial(n-m) * (2*n+1) / (4*pi * factorial(n+m)))
+                   * gen_legendre_P(n, m, cos(theta))
+                   * exp(I*m*phi)).simplify_trig()
+            res = res.substitute({sqrt(sin(theta)**2): sin(theta)})
+            return res
 
     def _evalf_(self, n, m, theta, phi, parent, **kwds):
         r"""
         TESTS::
 
-            sage: spherical_harmonic(3 + I, 2, 1, 2).n(100)
+            sage: spherical_harmonic(3 + I, 2, 1, 2).n(100)                             # needs sage.symbolic
             -0.35115433730748836508201061672 - 0.41556223397536866209990358597*I
-            sage: spherical_harmonic(I, I, I, I).n()
+            sage: spherical_harmonic(I, I, I, I).n()                                    # needs sage.symbolic
             7.66678546069894 - 0.265754432549751*I
+
+        Consistency with ``_eval_``::
+
+            sage: d = lambda a, b: abs(spherical_harmonic(a, b, 1., 2.)
+            ....:                      - spherical_harmonic(a, b, 1, 2).n())
+            sage: ab = [(0, 0), (1, -1), (1, 0), (1, 1), (3, 2), (3, 3)]
+            sage: all(d(a, b) < 1e-14 for a, b in ab)                                   # needs sage.symbolic
+            True
+
         """
-        from mpmath import spherharm
-        return mpmath_utils.call(spherharm, n, m, theta, phi, parent=parent)
+        return _mpmath_utils_call(_mpmath_spherharm, n, m, theta, phi, parent=parent)
 
     def _derivative_(self, n, m, theta, phi, diff_param):
         r"""
         TESTS::
 
+            sage: # needs sage.symbolic
             sage: n, m, theta, phi = var('n m theta phi')
-            sage: spherical_harmonic(n, m, theta, phi).diff(theta)
+            sage: Ynm = spherical_harmonic(n, m, theta, phi)
+            sage: DY_theta = Ynm.diff(theta); DY_theta
             m*cot(theta)*spherical_harmonic(n, m, theta, phi)
              + sqrt(-(m + n + 1)*(m - n))*e^(-I*phi)*spherical_harmonic(n, m + 1, theta, phi)
-            sage: spherical_harmonic(n, m, theta, phi).diff(phi)
+            sage: Ynm.diff(phi)
             I*m*spherical_harmonic(n, m, theta, phi)
+
+        Check that :trac:`33117` is fixed::
+
+            sage: # needs sage.symbolic
+            sage: DY_theta.subs({n: 1, m: 0})
+            -1/2*sqrt(3)*sin(theta)/sqrt(pi)
+            sage: Ynm.subs({n: 1, m: 0}).diff(theta)
+            -1/2*sqrt(3)*sin(theta)/sqrt(pi)
+            sage: bool(DY_theta.subs({n: 1, m: 0}) == Ynm.subs({n: 1, m: 0}).diff(theta))
+            True
+            sage: bool(DY_theta.subs({n: 1, m: 1}) == Ynm.subs({n: 1, m: 1}).diff(theta))
+            True
+            sage: bool(DY_theta.subs({n: 1, m: -1}) == Ynm.subs({n: 1, m: -1}).diff(theta))
+            True
+
         """
         if diff_param == 2:
             return (m * cot(theta) * spherical_harmonic(n, m, theta, phi) +
@@ -609,91 +382,107 @@ class SphericalHarmonic(BuiltinFunction):
         r"""
         TESTS::
 
-            sage: y = var('y')
-            sage: latex(spherical_harmonic(3, 2, x, y, hold=True))
+            sage: y = var('y')                                                          # needs sage.symbolic
+            sage: latex(spherical_harmonic(3, 2, x, y, hold=True))                      # needs sage.symbolic
             Y_{3}^{2}\left(x, y\right)
         """
         return r"Y_{{{}}}^{{{}}}\left({}, {}\right)".format(
-                 latex(n), latex(m), latex(theta), latex(phi))
+            latex(n), latex(m), latex(theta), latex(phi))
+
 
 spherical_harmonic = SphericalHarmonic()
 
-####### elliptic functions and integrals
 
-def elliptic_j(z):
-   r"""
-   Returns the elliptic modular `j`-function evaluated at `z`.
+# elliptic functions and integrals
 
-   INPUT:
+def elliptic_j(z, prec=53):
+    r"""
+    Returns the elliptic modular `j`-function evaluated at `z`.
 
-   - ``z`` (complex) -- a complex number with positive imaginary part.
+    INPUT:
 
-   OUTPUT:
+    - ``z`` (complex) -- a complex number with positive imaginary part.
 
-   (complex) The value of `j(z)`.
+    - ``prec`` (default: 53) -- precision in bits for the complex field.
 
-   ALGORITHM:
+    OUTPUT:
 
-   Calls the ``pari`` function ``ellj()``.
+    (complex) The value of `j(z)`.
 
-   AUTHOR:
+    ALGORITHM:
 
-   John Cremona
+    Calls the ``pari`` function ``ellj()``.
 
-   EXAMPLES::
+    AUTHOR:
 
-       sage: elliptic_j(CC(i))
-       1728.00000000000
-       sage: elliptic_j(sqrt(-2.0))
-       8000.00000000000
-       sage: z = ComplexField(100)(1,sqrt(11))/2
-       sage: elliptic_j(z)
-       -32768.000...
-       sage: elliptic_j(z).real().round()
-       -32768
+    John Cremona
+
+    EXAMPLES::
+
+        sage: elliptic_j(CC(i))                                                         # needs sage.rings.real_mpfr
+        1728.00000000000
+        sage: elliptic_j(sqrt(-2.0))                                                    # needs sage.rings.complex_double
+        8000.00000000000
+        sage: z = ComplexField(100)(1, sqrt(11))/2                                      # needs sage.rings.real_mpfr sage.symbolic
+        sage: elliptic_j(z)                                                             # needs sage.rings.real_mpfr sage.symbolic
+        -32768.000...
+        sage: elliptic_j(z).real().round()                                              # needs sage.rings.real_mpfr sage.symbolic
+        -32768
 
     ::
 
-       sage: tau = (1 + sqrt(-163))/2
-       sage: (-elliptic_j(tau.n(100)).real().round())^(1/3)
-       640320
+        sage: tau = (1 + sqrt(-163))/2                                                  # needs sage.symbolic
+        sage: (-elliptic_j(tau.n(100)).real().round())^(1/3)                            # needs sage.symbolic
+        640320
 
-   """
-   CC = z.parent()
-   from sage.rings.complex_field import is_ComplexField
-   if not is_ComplexField(CC):
-      CC = ComplexField()
-      try:
-         z = CC(z)
-      except ValueError:
-         raise ValueError("elliptic_j only defined for complex arguments.")
-   from sage.libs.all import pari
-   return CC(pari(z).ellj())
+    This example shows the need for higher precision than the default one of
+    the `ComplexField`, see :trac:`28355`::
 
-#### elliptic integrals
+        sage: # needs sage.symbolic
+        sage: -elliptic_j(tau)  # rel tol 1e-2
+        2.62537412640767e17 - 732.558854258998*I
+        sage: -elliptic_j(tau, 75)  # rel tol 1e-2
+        2.625374126407680000000e17 - 0.0001309913593909879441262*I
+        sage: -elliptic_j(tau, 100)  # rel tol 1e-2
+        2.6253741264076799999999999999e17 - 1.3012822400356887122945119790e-12*I
+        sage: (-elliptic_j(tau, 100).real().round())^(1/3)
+        640320
+    """
+    CC = z.parent()
+    if not isinstance(CC, sage.rings.abc.ComplexField):
+        from sage.rings.complex_mpfr import ComplexField
+        CC = ComplexField(prec)
+        try:
+            z = CC(z)
+        except ValueError:
+            raise ValueError("elliptic_j only defined for complex arguments.")
+    from sage.libs.pari.all import pari
+    return CC(pari(z).ellj())
+
+
+# elliptic integrals
 
 class EllipticE(BuiltinFunction):
     r"""
     Return the incomplete elliptic integral of the
     second kind:
 
-    .. math::
+    .. MATH::
 
         E(\varphi\,|\,m)=\int_0^\varphi \sqrt{1 - m\sin(x)^2}\, dx.
 
     EXAMPLES::
 
-        sage: z = var("z")
-        sage: elliptic_e(z, 1)
+        sage: z = var("z")                                                              # needs sage.symbolic
+        sage: elliptic_e(z, 1)                                                          # needs sage.symbolic
         elliptic_e(z, 1)
-        sage: # this is still wrong: must be abs(sin(z)) + 2*round(z/pi)
-        sage: elliptic_e(z, 1).simplify()
-        2*round(z/pi) + sin(z)
-        sage: elliptic_e(z, 0)
+        sage: elliptic_e(z, 1).simplify()       # not tested                            # needs sage.symbolic
+        2*round(z/pi) - sin(pi*round(z/pi) - z)
+        sage: elliptic_e(z, 0)                                                          # needs sage.symbolic
         z
-        sage: elliptic_e(0.5, 0.1)  # abs tol 2e-15
+        sage: elliptic_e(0.5, 0.1)  # abs tol 2e-15                                     # needs mpmath
         0.498011394498832
-        sage: elliptic_e(1/2, 1/10).n(200)
+        sage: elliptic_e(1/2, 1/10).n(200)                                              # needs sage.symbolic
         0.4980113944988315331154610406...
 
     .. SEEALSO::
@@ -711,23 +500,56 @@ class EllipticE(BuiltinFunction):
     - :wikipedia:`Jacobi_elliptic_functions`
     """
     def __init__(self):
-        """
+        r"""
         TESTS::
 
             sage: loads(dumps(elliptic_e))
             elliptic_e
+            sage: elliptic_e(x, x)._sympy_()                                            # needs sympy sage.symbolic
+            elliptic_e(x, x)
+
+        Check that :trac:`34085` is fixed::
+
+            sage: _ = var("x y")                                                        # needs sage.symbolic
+            sage: fricas(elliptic_e(x, y))                                          # optional - fricas, needs sage.symbolic
+            ellipticE(sin(x),y)
+
+        However, the conversion is only correct in the interval
+        `[-\pi/2, \pi/2]`::
+
+            sage: fricas(elliptic_e(x, y)).D(x).sage()/elliptic_e(x, y).diff(x)     # optional - fricas, needs sage.symbolic
+            cos(x)/sqrt(-sin(x)^2 + 1)
+
+        Numerically::
+
+            sage: f = lambda x, y: elliptic_e(arcsin(x), y).subs(x=x, y=y)
+            sage: g = lambda x, y: fricas.ellipticE(x, y).sage()
+            sage: d = lambda x, y: f(x, y) - g(x, y)
+            sage: [d(N(-pi/2 + x), y)                           # abs tol 1e-8      # optional - fricas, needs sage.symbolic
+            ....:  for x in range(1, 3) for y in range(-2, 2)]
+            [0.000000000000000,
+             0.000000000000000,
+             0.000000000000000,
+             0.000000000000000,
+             5.55111512312578e-17,
+             0.000000000000000,
+             0.000000000000000,
+             0.000000000000000]
+
         """
         BuiltinFunction.__init__(self, 'elliptic_e', nargs=2,
                                  # Maple conversion left out since it uses
                                  # k instead of m as the second argument
                                  conversions=dict(mathematica='EllipticE',
                                                   maxima='elliptic_e',
-                                                  sympy='elliptic_e'))
+                                                  sympy='elliptic_e',
+                                                  fricas='((x,y)+->ellipticE(sin(x), y))'))
 
     def _eval_(self, z, m):
         """
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: z = var("z")
             sage: elliptic_e(0, x)
             0
@@ -738,9 +560,9 @@ class EllipticE(BuiltinFunction):
             sage: elliptic_e(z, 1)
             elliptic_e(z, 1)
 
-        Here arccoth doesn't have 1 in its domain, so we just hold the expression:
+        Here arccoth doesn't have 1 in its domain, so we just hold the expression::
 
-            sage: elliptic_e(arccoth(1), x^2*e)
+            sage: elliptic_e(arccoth(1), x^2*e)                                         # needs sage.symbolic
             elliptic_e(+Infinity, x^2*e)
         """
         if z == 0:
@@ -754,32 +576,31 @@ class EllipticE(BuiltinFunction):
         """
         EXAMPLES::
 
-            sage: elliptic_e(0.5, 0.1)
+            sage: elliptic_e(0.5, 0.1)                                                  # needs mpmath
             0.498011394498832
-            sage: elliptic_e(1/2, 1/10).n(200)
+            sage: elliptic_e(1/2, 1/10).n(200)                                          # needs sage.symbolic
             0.4980113944988315331154610406...
-            sage: elliptic_e(I, I).n()
+            sage: elliptic_e(I, I).n()                                                  # needs sage.symbolic
             -0.189847437084712 + 1.03209769372160*I
 
         TESTS:
 
         This gave an error in Maxima (:trac:`15046`)::
 
-            sage: elliptic_e(2.5, 2.5)
+            sage: elliptic_e(2.5, 2.5)                                                  # needs mpmath
             0.535647771608740 + 1.63996015168665*I
         """
-        R = parent or parent(z)
-        from mpmath import ellipe
-        return mpmath_utils.call(ellipe, z, m, parent=R)
+        R = parent or s_parent(z)
+        return _mpmath_utils_call(_mpmath_ellipe, z, m, parent=R)
 
     def _derivative_(self, z, m, diff_param):
         """
         EXAMPLES::
 
-            sage: x,z = var('x,z')
-            sage: elliptic_e(z, x).diff(z, 1)
+            sage: x, z = var('x,z')                                                     # needs sage.symbolic
+            sage: elliptic_e(z, x).diff(z, 1)                                           # needs sage.symbolic
             sqrt(-x*sin(z)^2 + 1)
-            sage: elliptic_e(z, x).diff(x, 1)
+            sage: elliptic_e(z, x).diff(x, 1)                                           # needs sage.symbolic
             1/2*(elliptic_e(z, x) - elliptic_f(z, x))/x
         """
         if diff_param == 0:
@@ -788,29 +609,31 @@ class EllipticE(BuiltinFunction):
             return (elliptic_e(z, m) - elliptic_f(z, m)) / (Integer(2) * m)
 
     def _print_latex_(self, z, m):
-        """
+        r"""
         EXAMPLES::
 
-            sage: latex(elliptic_e(pi, x))
+            sage: latex(elliptic_e(pi, x))                                              # needs sage.symbolic
             E(\pi\,|\,x)
         """
         return r"E(%s\,|\,%s)" % (latex(z), latex(m))
 
+
 elliptic_e = EllipticE()
 
+
 class EllipticEC(BuiltinFunction):
-    """
+    r"""
     Return the complete elliptic integral of the second kind:
 
-    .. math::
+    .. MATH::
 
         E(m)=\int_0^{\pi/2} \sqrt{1 - m\sin(x)^2}\, dx.
 
     EXAMPLES::
 
-        sage: elliptic_ec(0.1)
+        sage: elliptic_ec(0.1)                                                          # needs mpmath
         1.53075763689776
-        sage: elliptic_ec(x).diff()
+        sage: elliptic_ec(x).diff()                                                     # needs sage.symbolic
         1/2*(elliptic_ec(x) - elliptic_kc(x))/x
 
     .. SEEALSO::
@@ -827,23 +650,34 @@ class EllipticEC(BuiltinFunction):
 
             sage: loads(dumps(elliptic_ec))
             elliptic_ec
-            sage: elliptic_ec(x)._sympy_()
+            sage: elliptic_ec(x)._sympy_()                                              # needs sage.symbolic
             elliptic_e(x)
+
+        TESTS::
+
+            sage: fricas(elliptic_ec(x))                                        # optional - fricas, needs sage.symbolic
+            ellipticE(x)
+
+            sage: elliptic_ec(0.5)  # abs tol 1e-8                                      # needs sage.symbolic
+            1.35064388104768
+            sage: fricas.ellipticE(0.5).sage()  # abs tol 1e-8                  # optional - fricas, needs sage.symbolic
+            1.3506438810476755025201749
         """
         BuiltinFunction.__init__(self, 'elliptic_ec', nargs=1, latex_name='E',
                                  conversions=dict(mathematica='EllipticE',
                                                   maxima='elliptic_ec',
-                                                  sympy='elliptic_e'))
- 
+                                                  sympy='elliptic_e',
+                                                  fricas='ellipticE'))
+
     def _eval_(self, x):
         """
         EXAMPLES::
 
-            sage: elliptic_ec(0)
+            sage: elliptic_ec(0)                                                        # needs sage.symbolic
             1/2*pi
-            sage: elliptic_ec(1)
+            sage: elliptic_ec(1)                                                        # needs sage.symbolic
             1
-            sage: elliptic_ec(x)
+            sage: elliptic_ec(x)                                                        # needs sage.symbolic
             elliptic_ec(x)
         """
         if x == 0:
@@ -855,37 +689,38 @@ class EllipticEC(BuiltinFunction):
         """
         EXAMPLES::
 
-            sage: elliptic_ec(sqrt(2)/2).n()
+            sage: elliptic_ec(sqrt(2)/2).n()                                            # needs sage.symbolic
             1.23742252487318
-            sage: elliptic_ec(sqrt(2)/2).n(200)
+            sage: elliptic_ec(sqrt(2)/2).n(200)                                         # needs sage.symbolic
             1.237422524873181672854746084083...
-            sage: elliptic_ec(I).n()
+            sage: elliptic_ec(I).n()                                                    # needs sage.symbolic
             1.63241178144043 - 0.369219492375499*I
         """
-        R = parent or parent(z)
-        from mpmath import ellipe
-        return mpmath_utils.call(ellipe, x, parent=R)
+        R = parent or s_parent(x)
+        return _mpmath_utils_call(_mpmath_ellipe, x, parent=R)
 
     def _derivative_(self, x, diff_param):
         """
         EXAMPLES::
- 
-            sage: elliptic_ec(x).diff()
+
+            sage: elliptic_ec(x).diff()                                                 # needs sage.symbolic
             1/2*(elliptic_ec(x) - elliptic_kc(x))/x
         """
         return (elliptic_ec(x) - elliptic_kc(x)) / (Integer(2) * x)
 
+
 elliptic_ec = EllipticEC()
+
 
 class EllipticEU(BuiltinFunction):
     r"""
     Return Jacobi's form of the incomplete elliptic integral of the second kind:
 
-    .. math::
+    .. MATH::
 
         E(u,m)=
         \int_0^u \mathrm{dn}(x,m)^2\, dx = \int_0^\tau
-        {\sqrt{1-m x^2}\over\sqrt{1-x^2}}\, dx.
+        \frac{\sqrt{1-m x^2}}{\sqrt{1-x^2}}\, dx.
 
     where `\tau = \mathrm{sn}(u, m)`.
 
@@ -893,7 +728,7 @@ class EllipticEU(BuiltinFunction):
 
     EXAMPLES::
 
-        sage: elliptic_eu (0.5, 0.1)
+        sage: elliptic_eu(0.5, 0.1)                                                     # needs mpmath
         0.496054551286597
 
     .. SEEALSO::
@@ -915,12 +750,12 @@ class EllipticEU(BuiltinFunction):
         """
         BuiltinFunction.__init__(self, 'elliptic_eu', nargs=2,
                                  conversions=dict(maxima='elliptic_eu'))
- 
+
     def _eval_(self, u, m):
         """
         EXAMPLES::
 
-            sage: elliptic_eu(1,1)
+            sage: elliptic_eu(1, 1)                                                     # needs sage.symbolic
             elliptic_eu(1, 1)
         """
         pass
@@ -929,22 +764,22 @@ class EllipticEU(BuiltinFunction):
         """
         EXAMPLES::
 
-            sage: elliptic_eu(1,1).n()
+            sage: elliptic_eu(1, 1).n()                                                 # needs sage.symbolic
             0.761594155955765
-            sage: elliptic_eu(1,1).n(200)
+            sage: elliptic_eu(1, 1).n(200)                                              # needs sage.symbolic
             0.7615941559557648881194582...
         """
-        R = parent or parent(z)
-        return mpmath_utils.call(elliptic_eu_f, u, m, parent=R)
+        R = parent or s_parent(u)
+        return _mpmath_utils_call(elliptic_eu_f, u, m, parent=R)
 
     def _derivative_(self, u, m, diff_param):
         """
         EXAMPLES::
 
-            sage: x,m = var('x,m')
-            sage: elliptic_eu(x,m).diff(x)
+            sage: x, m = var('x,m')                                                     # needs sage.symbolic
+            sage: elliptic_eu(x, m).diff(x)                                             # needs sage.symbolic
             sqrt(-m*jacobi_sn(x, m)^2 + 1)*jacobi_dn(x, m)
-            sage: elliptic_eu(x,m).diff(m)
+            sage: elliptic_eu(x, m).diff(m)                                             # needs sage.symbolic
             1/2*(elliptic_eu(x, m)
              - elliptic_f(jacobi_am(x, m), m))/m
              - 1/2*(m*jacobi_cn(x, m)*jacobi_sn(x, m)
@@ -968,10 +803,11 @@ class EllipticEU(BuiltinFunction):
         """
         EXAMPLES::
 
-            sage: latex(elliptic_eu(1,x))
+            sage: latex(elliptic_eu(1, x))                                              # needs sage.symbolic
             E(1;x)
         """
         return r"E(%s;%s)" % (latex(u), latex(m))
+
 
 def elliptic_eu_f(u, m):
     r"""
@@ -983,13 +819,10 @@ def elliptic_eu_f(u, m):
     EXAMPLES::
 
         sage: from sage.functions.special import elliptic_eu_f
-        sage: elliptic_eu_f(0.5, 0.1)
+        sage: elliptic_eu_f(0.5, 0.1)                                                   # needs mpmath
         mpf('0.49605455128659691')
     """
-    from mpmath import mp
-    from sage.functions.jacobi import jacobi_am_f
-
-    ctx = mp
+    from mpmath import mp as ctx
     prec = ctx.prec
     try:
         u = ctx.convert(u)
@@ -999,13 +832,15 @@ def elliptic_eu_f(u, m):
     finally:
         ctx.prec = prec
 
+
 elliptic_eu = EllipticEU()
+
 
 class EllipticF(BuiltinFunction):
     r"""
     Return the incomplete elliptic integral of the first kind.
 
-    .. math::
+    .. MATH::
 
         F(\varphi\,|\,m)=\int_0^\varphi \frac{dx}{\sqrt{1 - m\sin(x)^2}},
 
@@ -1014,12 +849,12 @@ class EllipticF(BuiltinFunction):
 
     EXAMPLES::
 
-        sage: z = var("z")
-        sage: elliptic_f (z, 0)
+        sage: z = var("z")                                                              # needs sage.symbolic
+        sage: elliptic_f(z, 0)                                                          # needs sage.symbolic
         z
-        sage: elliptic_f (z, 1).simplify()
+        sage: elliptic_f(z, 1).simplify()                                               # needs sage.symbolic
         log(tan(1/4*pi + 1/2*z))
-        sage: elliptic_f (0.2, 0.1)
+        sage: elliptic_f(0.2, 0.1)                                                      # needs mpmath
         0.200132506747543
 
     .. SEEALSO::
@@ -1031,30 +866,61 @@ class EllipticF(BuiltinFunction):
     - :wikipedia:`Elliptic_integral#Incomplete_elliptic_integral_of_the_first_kind`
     """
     def __init__(self):
-        """
+        r"""
         EXAMPLES::
 
             sage: loads(dumps(elliptic_f))
             elliptic_f
-            sage: elliptic_f(x, 2)._sympy_()
+            sage: elliptic_f(x, 2)._sympy_()                                            # needs sympy sage.symbolic
             elliptic_f(x, 2)
+
+        Check that :trac:`34186` is fixed::
+
+            sage: _ = var("x y")                                                        # needs sage.symbolic
+            sage: fricas(elliptic_f(x, y))                                          # optional - fricas, needs sage.symbolic
+            ellipticF(sin(x),y)
+
+        However, the conversion is only correct in the interval
+        `[-\pi/2, \pi/2]`::
+
+            sage: fricas(elliptic_f(x, y)).D(x).sage()/elliptic_f(x, y).diff(x)     # optional - fricas, needs sage.symbolic
+            cos(x)/sqrt(-sin(x)^2 + 1)
+
+        Numerically::
+
+            sage: f = lambda x, y: elliptic_f(arcsin(x), y).subs(x=x, y=y)
+            sage: g = lambda x, y: fricas.ellipticF(x, y).sage()
+            sage: d = lambda x, y: f(x, y) - g(x, y)
+            sage: [d(N(-pi/2 + x), y)                          # abs tol 1e-8       # optional - fricas, needs sage.symbolic
+            ....:  for x in range(1, 3) for y in range(-2,2)]
+            [0.000000000000000,
+             0.000000000000000,
+             0.000000000000000,
+             0.000000000000000,
+             5.55111512312578e-17,
+             0.000000000000000,
+             0.000000000000000,
+             0.000000000000000]
+
         """
         BuiltinFunction.__init__(self, 'elliptic_f', nargs=2,
                                  conversions=dict(mathematica='EllipticF',
                                                   maxima='elliptic_f',
+                                                  fricas='((x,y)+->ellipticF(sin(x), y))',
                                                   sympy='elliptic_f'))
- 
+
     def _eval_(self, z, m):
         """
         EXAMPLES::
 
-            sage: elliptic_f(x,1)
+            sage: # needs sage.symbolic
+            sage: elliptic_f(x, 1)
             elliptic_f(x, 1)
-            sage: elliptic_f(x,0)
+            sage: elliptic_f(x, 0)
             x
-            sage: elliptic_f(0,1)
+            sage: elliptic_f(0, 1)
             0
-            sage: elliptic_f(pi/2,x)
+            sage: elliptic_f(pi/2, x)
             elliptic_kc(x)
         """
         if m == 0:
@@ -1068,25 +934,24 @@ class EllipticF(BuiltinFunction):
         """
         EXAMPLES::
 
-            sage: elliptic_f(1,1).n()
+            sage: elliptic_f(1, 1).n()                                                  # needs sage.symbolic
             1.22619117088352
-            sage: elliptic_f(1,1).n(200)
+            sage: elliptic_f(1, 1).n(200)                                               # needs sage.symbolic
             1.22619117088351707081306096...
-            sage: elliptic_f(I,I).n()
+            sage: elliptic_f(I, I).n()                                                  # needs sage.symbolic
             0.149965060031782 + 0.925097284105771*I
         """
-        R = parent or parent(z)
-        from mpmath import ellipf
-        return mpmath_utils.call(ellipf, z, m, parent=R)
+        R = parent or s_parent(z)
+        return _mpmath_utils_call(_mpmath_ellipf, z, m, parent=R)
 
     def _derivative_(self, z, m, diff_param):
         """
         EXAMPLES::
 
-            sage: x,m = var('x,m')
-            sage: elliptic_f(x,m).diff(x)
+            sage: x, m = var('x,m')                                                     # needs sage.symbolic
+            sage: elliptic_f(x, m).diff(x)                                              # needs sage.symbolic
             1/sqrt(-m*sin(x)^2 + 1)
-            sage: elliptic_f(x,m).diff(m)
+            sage: elliptic_f(x, m).diff(m)                                              # needs sage.symbolic
             -1/2*elliptic_f(x, m)/m
             + 1/4*sin(2*x)/(sqrt(-m*sin(x)^2 + 1)*(m - 1))
             - 1/2*elliptic_e(x, m)/((m - 1)*m)
@@ -1101,27 +966,29 @@ class EllipticF(BuiltinFunction):
                       sqrt(Integer(1) - m * sin(z) ** Integer(2)))))
 
     def _print_latex_(self, z, m):
-        """
+        r"""
         EXAMPLES::
 
-            sage: latex(elliptic_f(x,pi))
+            sage: latex(elliptic_f(x, pi))                                              # needs sage.symbolic
             F(x\,|\,\pi)
         """
         return r"F(%s\,|\,%s)" % (latex(z), latex(m))
- 
+
+
 elliptic_f = EllipticF()
+
 
 class EllipticKC(BuiltinFunction):
     r"""
     Return the complete elliptic integral of the first kind:
 
-    .. math::
+    .. MATH::
 
         K(m)=\int_0^{\pi/2} \frac{dx}{\sqrt{1 - m\sin(x)^2}}.
 
     EXAMPLES::
 
-        sage: elliptic_kc(0.5)
+        sage: elliptic_kc(0.5)                                                          # needs mpmath
         1.85407467730137
 
     .. SEEALSO::
@@ -1139,64 +1006,87 @@ class EllipticKC(BuiltinFunction):
     def __init__(self):
         """
         EXAMPLES::
-    
+
             sage: loads(dumps(elliptic_kc))
             elliptic_kc
-            sage: elliptic_kc(x)._sympy_()
+            sage: elliptic_kc(x)._sympy_()                                              # needs sage.symbolic
             elliptic_k(x)
+
+        TESTS::
+
+            sage: fricas(elliptic_kc(x))                                        # optional - fricas, needs sage.symbolic
+            ellipticK(x)
+
+            sage: elliptic_kc(0.3)  # abs tol 1e-8                                      # needs mpmath
+            1.71388944817879
+            sage: fricas.ellipticK(0.3).sage()  # abs tol 1e-3                  # optional - fricas, needs sage.symbolic
+            1.7138894481787910555457043
         """
         BuiltinFunction.__init__(self, 'elliptic_kc', nargs=1, latex_name='K',
                                  conversions=dict(mathematica='EllipticK',
                                                   maxima='elliptic_kc',
-                                                  sympy='elliptic_k'))
- 
+                                                  sympy='elliptic_k',
+                                                  fricas='ellipticK'))
+
     def _eval_(self, z):
         """
         EXAMPLES::
 
-            sage: elliptic_kc(0)
+            sage: elliptic_kc(0)                                                        # needs sage.symbolic
             1/2*pi
-            sage: elliptic_kc(1/2)
+            sage: elliptic_kc(1/2)                                                      # needs sage.symbolic
             elliptic_kc(1/2)
+
+        TESTS:
+
+        Check if complex numbers in the arguments are converted to maxima
+        correctly (see :trac:`7557`)::
+
+            sage: t = jacobi_sn(1.2 + 2*I*elliptic_kc(1 - .5), .5)                      # needs sage.symbolic
+            sage: maxima(t)  # abs tol 1e-13                                            # needs sage.symbolic
+            0.88771548861928029 - 1.7301614091485560e-15*%i
+            sage: t.n()  # abs tol 1e-13                                                # needs sage.symbolic
+            0.887715488619280 - 1.73016140914856e-15*I
         """
         if z == 0:
             return pi / 2
         else:
             return None
- 
+
     def _evalf_(self, z, parent=None, algorithm=None):
         """
         EXAMPLES::
 
-            sage: elliptic_kc(1/2).n()
+            sage: elliptic_kc(1/2).n()                                                  # needs sage.symbolic
             1.85407467730137
-            sage: elliptic_kc(1/2).n(200)
+            sage: elliptic_kc(1/2).n(200)                                               # needs sage.symbolic
             1.85407467730137191843385034...
-            sage: elliptic_kc(I).n()
+            sage: elliptic_kc(I).n()                                                    # needs sage.symbolic
             1.42127228104504 + 0.295380284214777*I
         """
-        R = parent or parent(z)
-        from mpmath import ellipk
-        return mpmath_utils.call(ellipk, z, parent=R)
- 
+        R = parent or s_parent(z)
+        return _mpmath_utils_call(_mpmath_ellipk, z, parent=R)
+
     def _derivative_(self, z, diff_param):
         """
         EXAMPLES::
 
-            sage: elliptic_kc(x).diff(x)
+            sage: elliptic_kc(x).diff(x)                                                # needs sage.symbolic
             -1/2*((x - 1)*elliptic_kc(x)
             + elliptic_ec(x))/((x - 1)*x)
         """
         return ((elliptic_ec(z) - (Integer(1) - z) * elliptic_kc(z)) /
                 (Integer(2) * (Integer(1) - z) * z))
 
+
 elliptic_kc = EllipticKC()
+
 
 class EllipticPi(BuiltinFunction):
     r"""
     Return the incomplete elliptic integral of the third kind:
 
-    .. math::
+    .. MATH::
 
         \Pi(n, t, m) = \int_0^t \frac{dx}{(1 - n \sin(x)^2)\sqrt{1 - m \sin(x)^2}}.
 
@@ -1210,15 +1100,15 @@ class EllipticPi(BuiltinFunction):
 
     EXAMPLES::
 
-        sage: N(elliptic_pi(1, pi/4, 1))
+        sage: N(elliptic_pi(1, pi/4, 1))                                                # needs sage.symbolic
         1.14779357469632
 
     Compare the value computed by Maxima to the definition as a definite integral
     (using GSL)::
 
-        sage: elliptic_pi(0.1, 0.2, 0.3)
+        sage: elliptic_pi(0.1, 0.2, 0.3)                                                # needs mpmath
         0.200665068220979
-        sage: numerical_integral(1/(1-0.1*sin(x)^2)/sqrt(1-0.3*sin(x)^2), 0.0, 0.2)
+        sage: numerical_integral(1/(1-0.1*sin(x)^2)/sqrt(1-0.3*sin(x)^2), 0.0, 0.2)     # needs sage.symbolic
         (0.2006650682209791, 2.227829789769088e-15)
 
     REFERENCES:
@@ -1228,24 +1118,25 @@ class EllipticPi(BuiltinFunction):
     def __init__(self):
         """
         EXAMPLES::
-    
+
             sage: loads(dumps(elliptic_pi))
             elliptic_pi
-            sage: elliptic_pi(x, pi/4, 1)._sympy_()
+            sage: elliptic_pi(x, pi/4, 1)._sympy_()                                     # needs sympy sage.symbolic
             elliptic_pi(x, pi/4, 1)
         """
         BuiltinFunction.__init__(self, 'elliptic_pi', nargs=3,
                                  conversions=dict(mathematica='EllipticPi',
                                                   maxima='EllipticPi',
+                                                  # fricas='ellipticPi', doubt
                                                   sympy='elliptic_pi'))
- 
+
     def _eval_(self, n, z, m):
         """
         EXAMPLES::
-    
-            sage: elliptic_pi(x,x,pi)
+
+            sage: elliptic_pi(x, x, pi)                                                 # needs sympy sage.symbolic
             elliptic_pi(x, x, pi)
-            sage: elliptic_pi(0,x,pi)
+            sage: elliptic_pi(0, x, pi)                                                 # needs sympy sage.symbolic
             elliptic_f(x, pi)
         """
         if n == 0:
@@ -1254,33 +1145,34 @@ class EllipticPi(BuiltinFunction):
     def _evalf_(self, n, z, m, parent=None, algorithm=None):
         """
         EXAMPLES::
-    
-            sage: elliptic_pi(pi,1/2,1).n()
+
+            sage: # needs sage.symbolic
+            sage: elliptic_pi(pi, 1/2, 1).n()
             0.795062820631931
-            sage: elliptic_pi(pi,1/2,1).n(200)
+            sage: elliptic_pi(pi, 1/2, 1).n(200)
             0.79506282063193125292514098445...
-            sage: elliptic_pi(pi,1,1).n()
+            sage: elliptic_pi(pi, 1, 1).n()
             0.0991592574231369 - 1.30004368185937*I
-            sage: elliptic_pi(pi,I,I).n()
+            sage: elliptic_pi(pi, I, I).n()
             0.0542471560940594 + 0.552096453413081*I
         """
-        R = parent or parent(z)
-        from mpmath import ellippi
-        return mpmath_utils.call(ellippi, n, z, m, parent=R)
+        R = parent or s_parent(z)
+        return _mpmath_utils_call(_mpmath_ellippi, n, z, m, parent=R)
 
     def _derivative_(self, n, z, m, diff_param):
         """
         EXAMPLES::
 
-            sage: n,z,m = var('n,z,m')
-            sage: elliptic_pi(n,z,m).diff(n)
+            sage: # needs sage.symbolic
+            sage: n, z, m = var('n,z,m')
+            sage: elliptic_pi(n, z, m).diff(n)
             1/4*(sqrt(-m*sin(z)^2 + 1)*n*sin(2*z)/(n*sin(z)^2 - 1)
             + 2*(m - n)*elliptic_f(z, m)/n
             + 2*(n^2 - m)*elliptic_pi(n, z, m)/n
             + 2*elliptic_e(z, m))/((m - n)*(n - 1))
-            sage: elliptic_pi(n,z,m).diff(z)
+            sage: elliptic_pi(n, z, m).diff(z)
             -1/(sqrt(-m*sin(z)^2 + 1)*(n*sin(z)^2 - 1))
-            sage: elliptic_pi(n,z,m).diff(m)
+            sage: elliptic_pi(n, z, m).diff(m)
             1/4*(m*sin(2*z)/(sqrt(-m*sin(z)^2 + 1)*(m - 1))
             - 2*elliptic_e(z, m)/(m - 1)
             - 2*elliptic_pi(n, z, m))/(m - n)
@@ -1304,45 +1196,13 @@ class EllipticPi(BuiltinFunction):
                      sqrt(Integer(1) - m * sin(z) ** Integer(2)))))
 
     def _print_latex_(self, n, z, m):
-        """
+        r"""
         EXAMPLES::
 
-            sage: latex(elliptic_pi(x,pi,0))
+            sage: latex(elliptic_pi(x, pi, 0))                                          # needs sage.symbolic
             \Pi(x,\pi,0)
         """
         return r"\Pi(%s,%s,%s)" % (latex(n), latex(z), latex(m))
- 
+
+
 elliptic_pi = EllipticPi()
-
-
-def error_fcn(t):
-    r"""
-    The complementary error function
-    `\frac{2}{\sqrt{\pi}}\int_t^\infty e^{-x^2} dx` (t belongs
-    to RR).  This function is currently always
-    evaluated immediately.
-
-    EXAMPLES::
-
-        sage: error_fcn(6)
-        2.15197367124989e-17
-        sage: error_fcn(RealField(100)(1/2))
-        0.47950012218695346231725334611
-
-    Note this is literally equal to `1 - erf(t)`::
-
-        sage: 1 - error_fcn(0.5)
-        0.520499877813047
-        sage: erf(0.5)
-        0.520499877813047
-    """
-    try:
-        return t.erfc()
-    except AttributeError:
-        try:
-            return RR(t).erfc()
-        except Exception:
-            raise NotImplementedError
-
-
-

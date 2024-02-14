@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+# sage.doctest: needs sage.libs.pari
 r"""
-Congruence Subgroup `\Gamma_1(N)`
+Congruence subgroup `\Gamma_1(N)`
 """
 
 #*****************************************************************************
@@ -14,10 +14,10 @@ Congruence Subgroup `\Gamma_1(N)`
 
 from sage.misc.cachefunc import cached_method
 
-from sage.misc.all import prod
-from congroup_gammaH import GammaH_class, is_GammaH, GammaH_constructor
-from sage.rings.all import ZZ
-from sage.arith.all import euler_phi as phi, moebius, divisors
+from sage.misc.misc_c import prod
+from .congroup_gammaH import GammaH_class, is_GammaH, GammaH_constructor
+from sage.rings.integer_ring import ZZ
+from sage.arith.misc import euler_phi as phi, moebius, divisors
 from sage.modular.dirichlet import DirichletGroup
 
 
@@ -64,7 +64,7 @@ def Gamma1_constructor(N):
         True
     """
     if N == 1 or N == 2:
-        from congroup_gamma0 import Gamma0_constructor
+        from .congroup_gamma0 import Gamma0_constructor
         return Gamma0_constructor(N)
     try:
         return _gamma1_cache[N]
@@ -90,10 +90,9 @@ class Gamma1_class(GammaH_class):
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         sage: [Gamma1(4).dimension_cusp_forms(k) for k in [1..20]]
         [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8]
+
         sage: Gamma1(23).dimension_cusp_forms(1)
-        Traceback (most recent call last):
-        ...
-        NotImplementedError: Computation of dimensions of weight 1 cusp forms spaces not implemented in general
+        1
     """
 
     def __init__(self, level):
@@ -118,7 +117,7 @@ class Gamma1_class(GammaH_class):
             sage: Gamma1(133)._repr_()
             'Congruence Subgroup Gamma1(133)'
         """
-        return "Congruence Subgroup Gamma1(%s)"%self.level()
+        return "Congruence Subgroup Gamma1(%s)" % self.level()
 
     def __reduce__(self):
         """
@@ -142,7 +141,7 @@ class Gamma1_class(GammaH_class):
             sage: latex(Gamma1(3))
             \Gamma_1(3)
         """
-        return "\\Gamma_1(%s)"%self.level()
+        return "\\Gamma_1(%s)" % self.level()
 
     def is_even(self):
         """
@@ -206,7 +205,7 @@ class Gamma1_class(GammaH_class):
         based on Todd-Coxeter enumeration will be used. This tends to return
         far larger sets of generators.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: Gamma1(3).generators()
             [
@@ -215,18 +214,18 @@ class Gamma1_class(GammaH_class):
             ]
             sage: Gamma1(3).generators(algorithm="todd-coxeter")
             [
-            [1 1]  [-20   9]  [ 4  1]  [-5 -2]  [ 1 -1]  [1 0]  [1 1]  [-5  2]
-            [0 1], [ 51 -23], [-9 -2], [ 3  1], [ 0  1], [3 1], [0 1], [12 -5],
+            [1 1]  [-2  1]  [1 1]  [ 1 -1]  [1 0]  [1 1]  [-5  2]  [ 1  0]
+            [0 1], [-3  1], [0 1], [ 0  1], [3 1], [0 1], [12 -5], [-3  1],
             <BLANKLINE>
-            [ 1  0]  [ 4 -1]  [ -5   3]  [ 1 -1]  [ 7 -3]  [ 4 -1]  [ -5   3]
-            [-3  1], [ 9 -2], [-12   7], [ 3 -2], [12 -5], [ 9 -2], [-12   7]
+            [ 1 -1]  [ 1 -1]  [ 4 -1]  [ -5   3]
+            [ 3 -2], [ 3 -2], [ 9 -2], [-12   7]
             ]
         """
-        if algorithm=="farey":
+        if algorithm == "farey":
             return self.farey_symbol().generators()
-        elif algorithm=="todd-coxeter":
+        elif algorithm == "todd-coxeter":
             from sage.modular.modsym.g1list import G1list
-            from congroup import generators_helper
+            from .congroup import generators_helper
             level = self.level()
             gen_list = generators_helper(G1list(level), level)
             return [self(g, check=False) for g in gen_list]
@@ -254,14 +253,14 @@ class Gamma1_class(GammaH_class):
         """
         N = self.level()
         # don't need to check d == 1 mod N as this is automatic from det
-        return ((a%N == 1) and (c%N == 0))
+        return ((a % N == 1) and (c % N == 0))
 
     def nu2(self):
         r"""
         Calculate the number of orbits of elliptic points of order 2 for this
         subgroup `\Gamma_1(N)`. This is known to be 0 if N > 2.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: Gamma1(2).nu2()
             1
@@ -271,15 +270,17 @@ class Gamma1_class(GammaH_class):
             [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         """
         N = self.level()
-        if N > 2: return 0
-        elif N == 2 or N == 1: return 1
+        if N > 2:
+            return 0
+        elif N == 2 or N == 1:
+            return 1
 
     def nu3(self):
         r"""
         Calculate the number of orbits of elliptic points of order 3 for this
         subgroup `\Gamma_1(N)`. This is known to be 0 if N > 3.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: Gamma1(2).nu3()
             0
@@ -291,8 +292,10 @@ class Gamma1_class(GammaH_class):
             [1, 0, 1, 0, 0, 0, 0, 0, 0, 0]
         """
         N = self.level()
-        if N > 3 or N == 2: return 0
-        else: return 1
+        if N > 3 or N == 2:
+            return 0
+        else:
+            return 1
 
     def ncusps(self):
         r"""
@@ -314,11 +317,11 @@ class Gamma1_class(GammaH_class):
         r"""
         Return the index of self in the full modular group. This is given by the formula
 
-        .. math::
+        .. MATH::
 
             N^2 \prod_{\substack{p \mid N \\ \text{$p$ prime}}} \left( 1 - \frac{1}{p^2}\right).
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: Gamma1(180).index()
             20736
@@ -354,10 +357,10 @@ class Gamma1_class(GammaH_class):
 
         EXAMPLES::
 
+            sage: # needs sage.rings.number_field
             sage: K = CyclotomicField(3)
             sage: eps = DirichletGroup(7*43,K).0^2
             sage: G = Gamma1(7*43)
-
             sage: G.dimension_modular_forms(2, eps)
             32
             sage: G.dimension_modular_forms(2, eps, algorithm="Quer")
@@ -367,6 +370,8 @@ class Gamma1_class(GammaH_class):
 
         Check that :trac:`18436` is fixed::
 
+            sage: # needs sage.rings.number_field
+            sage: x = polygen(ZZ, 'x')
             sage: K.<a> = NumberField(x^2 + x + 1)
             sage: G = DirichletGroup(13, base_ring=K)
             sage: Gamma1(13).dimension_modular_forms(2, G[1])
@@ -382,7 +387,7 @@ class Gamma1_class(GammaH_class):
 
     def dimension_cusp_forms(self, k=2, eps=None, algorithm="CohenOesterle"):
         r"""
-        Return the dimension of the space of cusp forms for self, or the
+        Return the dimension of the space of cusp forms for ``self``, or the
         dimension of the subspace corresponding to the given character if one
         is supplied.
 
@@ -398,36 +403,48 @@ class Gamma1_class(GammaH_class):
         - ``algorithm`` -- either "CohenOesterle" (the default) or "Quer". This
           specifies the method to use in the case of nontrivial character:
           either the Cohen--Oesterle formula as described in Stein's book, or
-          by Möbius inversion using the subgroups GammaH (a method due to
-          Jordi Quer).
+          by Möbius inversion using the subgroups GammaH (a method due to Jordi
+          Quer). Ignored for weight 1.
 
         EXAMPLES:
 
         We compute the same dimension in two different ways ::
 
+            sage: # needs sage.rings.number_field
             sage: K = CyclotomicField(3)
             sage: eps = DirichletGroup(7*43,K).0^2
             sage: G = Gamma1(7*43)
 
-        Via Cohen--Oesterle: ::
+        Via Cohen--Oesterle::
 
-            sage: Gamma1(7*43).dimension_cusp_forms(2, eps)
+            sage: Gamma1(7*43).dimension_cusp_forms(2, eps)                             # needs sage.rings.number_field
             28
 
-        Via Quer's method: ::
+        Via Quer's method::
 
-            sage: Gamma1(7*43).dimension_cusp_forms(2, eps, algorithm="Quer")
+            sage: Gamma1(7*43).dimension_cusp_forms(2, eps, algorithm="Quer")           # needs sage.rings.number_field
             28
 
-        Some more examples: ::
+        Some more examples::
 
             sage: G.<eps> = DirichletGroup(9)
             sage: [Gamma1(9).dimension_cusp_forms(k, eps) for k in [1..10]]
             [0, 0, 1, 0, 3, 0, 5, 0, 7, 0]
             sage: [Gamma1(9).dimension_cusp_forms(k, eps^2) for k in [1..10]]
             [0, 0, 0, 2, 0, 4, 0, 6, 0, 8]
+
+        In weight 1, we can sometimes rule out cusp forms existing via
+        Riemann-Roch, but if this does not work, we trigger computation of the
+        cusp forms space via Schaeffer's algorithm::
+
+            sage: chi = [u for u in DirichletGroup(40) if u(-1) == -1 and u(21) == 1][0]
+            sage: Gamma1(40).dimension_cusp_forms(1, chi)
+            0
+            sage: G = DirichletGroup(57); chi = (G.0) * (G.1)^6
+            sage: Gamma1(57).dimension_cusp_forms(1, chi)
+            1
         """
-        from all import Gamma0
+        from .all import Gamma0
 
         # first deal with special cases
 
@@ -444,18 +461,12 @@ class Gamma1_class(GammaH_class):
         if eps.is_trivial():
             return Gamma0(N).dimension_cusp_forms(k)
 
-        if (k <= 0) or ((k % 2) == 1 and eps.is_even()) or ((k%2) == 0 and eps.is_odd()):
+        if (k <= 0) or ((k % 2) == 1 and eps.is_even()) or ((k % 2) == 0 and eps.is_odd()):
             return ZZ(0)
 
         if k == 1:
-            try:
-                n = self.dimension_cusp_forms(1)
-                if n == 0:
-                    return ZZ(0)
-                else: # never happens at present
-                    raise NotImplementedError("Computations of dimensions of spaces of weight 1 cusp forms not implemented at present")
-            except NotImplementedError:
-                raise
+            from sage.modular.modform.weight1 import dimension_wt1_cusp_forms
+            return dimension_wt1_cusp_forms(eps)
 
         # now the main part
 
@@ -505,21 +516,21 @@ class Gamma1_class(GammaH_class):
 
         EXAMPLES:
 
-        The following two computations use different algorithms: ::
+        The following two computations use different algorithms::
 
             sage: [Gamma1(36).dimension_eis(1,eps) for eps in DirichletGroup(36)]
             [0, 4, 3, 0, 0, 2, 6, 0, 0, 2, 3, 0]
             sage: [Gamma1(36).dimension_eis(1,eps,algorithm="Quer") for eps in DirichletGroup(36)]
             [0, 4, 3, 0, 0, 2, 6, 0, 0, 2, 3, 0]
 
-        So do these: ::
+        So do these::
 
             sage: [Gamma1(48).dimension_eis(3,eps) for eps in DirichletGroup(48)]
             [0, 12, 0, 4, 0, 8, 0, 4, 12, 0, 4, 0, 8, 0, 4, 0]
             sage: [Gamma1(48).dimension_eis(3,eps,algorithm="Quer") for eps in DirichletGroup(48)]
             [0, 12, 0, 4, 0, 8, 0, 4, 12, 0, 4, 0, 8, 0, 4, 0]
         """
-        from all import Gamma0
+        from .all import Gamma0
 
         # first deal with special cases
 
@@ -534,7 +545,7 @@ class Gamma1_class(GammaH_class):
             return Gamma0(N).dimension_eis(k)
 
         # Note case of k = 0 and trivial character already dealt with separately, so k <= 0 here is valid:
-        if (k <= 0) or ((k % 2) == 1 and eps.is_even()) or ((k%2) == 0 and eps.is_odd()):
+        if (k <= 0) or ((k % 2) == 1 and eps.is_even()) or ((k % 2) == 0 and eps.is_odd()):
             return ZZ(0)
 
         if algorithm == "Quer":
@@ -623,12 +634,12 @@ class Gamma1_class(GammaH_class):
         eps = DirichletGroup(N, eps.base_ring())(eps)
 
         if eps.is_trivial():
-            from all import Gamma0
+            from .all import Gamma0
             return Gamma0(N).dimension_new_cusp_forms(k, p)
 
-        from congroup_gammaH import mumu
+        from .congroup_gammaH import mumu
 
-        if p == 0 or N%p != 0 or eps.conductor().valuation(p) == N.valuation(p):
+        if p == 0 or N % p != 0 or eps.conductor().valuation(p) == N.valuation(p):
             D = [eps.conductor()*d for d in divisors(N//eps.conductor())]
             return sum([Gamma1_constructor(M).dimension_cusp_forms(k, eps.restrict(M), algorithm)*mumu(N//M) for M in D])
         eps_p = eps.restrict(N//p)

@@ -5,19 +5,19 @@ Sage implements asymptotically fast echelon form and matrix
 multiplication algorithms.
 """
 
-################################################################################
+#*****************************************************************************
 #       Copyright (C) 2005, 2006 William Stein <wstein@gmail.com>
 #
-#  Distributed under the terms of the GNU General Public License (GPL).
-#  The full text of the GPL is available at:
-#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
 #                  http://www.gnu.org/licenses/
-################################################################################
-from __future__ import print_function
+#*****************************************************************************
 
-from matrix_window cimport MatrixWindow
+from sage.matrix.matrix_window cimport MatrixWindow
 
-include "cysignals/signals.pxi"
+from cysignals.signals cimport sig_on, sig_off
 
 
 def strassen_window_multiply(C, A,B, cutoff):
@@ -48,8 +48,9 @@ def strassen_window_multiply(C, A,B, cutoff):
     """
     strassen_window_multiply_c(C, A, B, cutoff)
 
+
 cdef strassen_window_multiply_c(MatrixWindow C, MatrixWindow A,
-                                MatrixWindow B, Py_ssize_t cutoff):
+                                MatrixWindow B, Py_ssize_t cutoff) noexcept:
     # todo -- I'm not sure how to interpret "cutoff". Should it be...
     # (a) the minimum side length of the matrices (currently implemented below)
     # (b) the maximum side length of the matrices
@@ -97,7 +98,6 @@ cdef strassen_window_multiply_c(MatrixWindow C, MatrixWindow A,
 
     cdef MatrixWindow S0, S1, S2, S3, T0, T1 ,T2, T3, P0, P1, P2, P3, P4, P5, P6, U0, U1, U2, U3, U4, U5, U6
     cdef MatrixWindow X, Y
-    cdef Py_ssize_t tmp_cols, start_row
     X = A.new_empty_window(A_sub_nrows, max(A_sub_ncols,B_sub_ncols))
     Y = B.new_empty_window(A_sub_ncols, B_sub_ncols)
 
@@ -235,7 +235,7 @@ cdef strassen_window_multiply_c(MatrixWindow C, MatrixWindow A,
         C_bulk = C.matrix_window(0, 0, A_sub_nrows << 1, B_sub_ncols << 1)
         C_bulk.add_prod(A_last_col, B_last_row)
 
-cdef subtract_strassen_product(MatrixWindow result, MatrixWindow A, MatrixWindow B, Py_ssize_t cutoff):
+cdef subtract_strassen_product(MatrixWindow result, MatrixWindow A, MatrixWindow B, Py_ssize_t cutoff) noexcept:
     cdef MatrixWindow to_sub
     if (cutoff == -1 or result.ncols() <= cutoff or result.nrows() <= cutoff):
         result.subtract_prod(A, B)
@@ -253,16 +253,14 @@ def strassen_echelon(MatrixWindow A, cutoff):
 
     INPUT:
 
-
     -  ``A`` - matrix window
 
     -  ``cutoff`` - size at which algorithm reverts to
        naive Gaussian elimination and multiplication must be at least 1.
 
-
     OUTPUT: The list of pivot columns
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: A = matrix(QQ, 7, [5, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 3, 1, 0, -1, 0, 0, -1, 0, 1, 2, -1, 1, 0, -1, 0, 1, 3, -1, 1, 0, 0, -2, 0, 2, 0, 1, 0, 0, -1, 0, 1, 0, 1])
         sage: B = A.__copy__(); B._echelon_strassen(1); B
@@ -312,7 +310,8 @@ def strassen_echelon(MatrixWindow A, cutoff):
     strassen_echelon_c(A, cutoff, A._matrix._strassen_default_cutoff(A._matrix))
     sig_off()
 
-cdef strassen_echelon_c(MatrixWindow A, Py_ssize_t cutoff, Py_ssize_t mul_cutoff):
+
+cdef strassen_echelon_c(MatrixWindow A, Py_ssize_t cutoff, Py_ssize_t mul_cutoff) noexcept:
     # The following notation will be used in the comments below, which should be understood to give
     # the general idea of what's going on, as if there were no inconvenient non-pivot columns.
     # The original matrix is given by [ A B ]
@@ -371,7 +370,7 @@ cdef strassen_echelon_c(MatrixWindow A, Py_ssize_t cutoff, Py_ssize_t mul_cutoff
             # Subtract off C time top from the bottom_right
             if bottom_cut < ncols:
                 bottom_right = bottom.matrix_window(0, bottom_cut, nrows-split, ncols-bottom_cut)
-                subtract_strassen_product(bottom_right, clear, top.matrix_window(0, bottom_cut, top_h, ncols-bottom_cut), mul_cutoff);
+                subtract_strassen_product(bottom_right, clear, top.matrix_window(0, bottom_cut, top_h, ncols-bottom_cut), mul_cutoff)
             # [  I      A'B   ]
             # [  *   D - CA'B ]
 
@@ -429,7 +428,7 @@ cdef strassen_echelon_c(MatrixWindow A, Py_ssize_t cutoff, Py_ssize_t mul_cutoff
                 if top_cut < ncols:
 
                     top_right = top.matrix_window(0, top_cut, top_h, ncols - top_cut)
-                    subtract_strassen_product(top_right, clear, bottom.matrix_window(0, top_cut, bottom_h, ncols - top_cut), mul_cutoff);
+                    subtract_strassen_product(top_right, clear, bottom.matrix_window(0, top_cut, bottom_h, ncols - top_cut), mul_cutoff)
 
                 # [  I  *  G - EF ]
                 # [  0  I     F   ]
@@ -556,11 +555,11 @@ class int_range:
         if indices is None:
             self._intervals = []
             return
-        elif not range is None:
+        elif range is not None:
             self._intervals = [(int(indices), int(range))]
         else:
             self._intervals = []
-            if len(indices) == 0:
+            if not indices:
                 return
             indices.sort()
             start = None
@@ -603,7 +602,7 @@ class int_range:
             sage: I.intervals()
             [(4, 3), (20, 4)]
             sage: type(I.intervals())
-            <type 'list'>
+            <... 'list'>
         """
         return self._intervals
 
@@ -801,10 +800,12 @@ def test(n, m, R, c=2):
         3 True
         4 True
     """
-    from sage.matrix.all import matrix
-    A = matrix(R,n,m,range(n*m))
-    B = A.__copy__(); B._echelon_in_place_classical()
-    C = A.__copy__(); C._echelon_strassen(c)
+    from sage.matrix.constructor import matrix
+    A = matrix(R, n, m, range(n * m))
+    B = A.__copy__()
+    B._echelon_in_place_classical()
+    C = A.__copy__()
+    C._echelon_strassen(c)
     return B == C
 
 
@@ -865,4 +866,3 @@ def test(n, m, R, c=2):
 
 ##         sage: C == D
 ##         True
-

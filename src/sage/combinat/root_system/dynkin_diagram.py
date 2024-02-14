@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.graphs
 """
 Dynkin diagrams
 
@@ -12,7 +13,7 @@ AUTHORS:
 - Christian Stump, Travis Scrimshaw (2013-04-11): Added Cartan matrix as
   possible input for Dynkin diagrams.
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2007 Mike Hansen <mhansen@gmail.com>,
 #       Copyright (C) 2013 Travis Scrimshaw <tscrim@ucdavis.edu>
 #
@@ -25,13 +26,16 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 from sage.misc.cachefunc import cached_method
-from sage.matrix.matrix import is_Matrix
+from sage.misc.lazy_import import lazy_import
+from sage.structure.element import is_Matrix
 from sage.graphs.digraph import DiGraph
 from sage.combinat.root_system.cartan_type import CartanType, CartanType_abstract
-from sage.combinat.root_system.cartan_matrix import CartanMatrix
+
+lazy_import('sage.combinat.root_system.cartan_matrix', 'CartanMatrix')
+
 
 def DynkinDiagram(*args, **kwds):
     r"""
@@ -164,7 +168,7 @@ def DynkinDiagram(*args, **kwds):
         [-3  2 -2 -2]
         [ 0 -1  2 -1]
         [ 0 -1 -1  2]
-        sage: CM.dynkin_diagram().edges()
+        sage: CM.dynkin_diagram().edges(sort=True)
         [(0, 1, 3),
          (1, 0, 1),
          (1, 2, 1),
@@ -185,7 +189,7 @@ def DynkinDiagram(*args, **kwds):
                 return mat.cartan_type().dynkin_diagram()
             except AttributeError:
                 ct = CartanType(*args)
-                raise ValueError("Dynkin diagram data not yet hardcoded for type %s"%ct)
+                raise ValueError("Dynkin diagram data not yet hardcoded for type %s" % ct)
         if len(args) > 1:
             index_set = tuple(args[1])
         elif "index_set" in kwds:
@@ -201,7 +205,7 @@ def DynkinDiagram(*args, **kwds):
     try:
         return ct.dynkin_diagram()
     except AttributeError:
-        raise ValueError("Dynkin diagram data not yet hardcoded for type %s"%ct)
+        raise ValueError("Dynkin diagram data not yet hardcoded for type %s" % ct)
 
 
 class DynkinDiagram_class(DiGraph, CartanType_abstract):
@@ -240,13 +244,15 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
 
         sage: cd = copy(d)
         sage: cd.add_vertex(4)
-        sage: d.vertices() != cd.vertices()
+        sage: d.vertices(sort=True) != cd.vertices(sort=True)
         True
 
     Implementation note: if a Cartan type is given, then the nodes
     are initialized from the index set of this Cartan type.
     """
-    def __init__(self, t=None, index_set=None, **options):
+
+    def __init__(self, t=None, index_set=None, odd_isotropic_roots=[],
+                 **options):
         """
         Initialize ``self``.
 
@@ -258,19 +264,22 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
         if isinstance(t, DiGraph):
             if isinstance(t, DynkinDiagram_class):
                 self._cartan_type = t._cartan_type
+                self._odd_isotropic_roots = tuple(odd_isotropic_roots)
             else:
                 self._cartan_type = None
+                self._odd_isotropic_roots = ()
             DiGraph.__init__(self, data=t, **options)
             return
 
         DiGraph.__init__(self, **options)
         self._cartan_type = t
+        self._odd_isotropic_roots = tuple(odd_isotropic_roots)
         if index_set is not None:
             self.add_vertices(index_set)
         elif t is not None:
             self.add_vertices(t.index_set())
 
-    def _repr_(self):
+    def _repr_(self, compact=False):
         """
         EXAMPLES::
 
@@ -281,12 +290,12 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             G2
         """
         ct = self.cartan_type()
-        result = ct.ascii_art() +"\n" if hasattr(ct, "ascii_art") else ""
+        result = ct.ascii_art() + "\n" if hasattr(ct, "ascii_art") else ""
 
         if ct is None or isinstance(ct, CartanMatrix):
-            return result+"Dynkin diagram of rank %s"%self.rank()
+            return result+"Dynkin diagram of rank %s" % self.rank()
         else:
-            return result+"%s"%ct._repr_(compact=True)
+            return result+"%s" % ct._repr_(compact=True)
 
     def _rich_repr_(self, display_manager, **kwds):
         """
@@ -363,10 +372,10 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
 
             sage: from sage.combinat.root_system.dynkin_diagram import DynkinDiagram_class
             sage: d = DynkinDiagram_class(CartanType(['A',3]))
-            sage: list(sorted(d.edges()))
+            sage: sorted(d.edges(sort=True))
             []
             sage: d.add_edge(2, 3)
-            sage: list(sorted(d.edges()))
+            sage: sorted(d.edges(sort=True))
             [(2, 3, 1), (3, 2, 1)]
         """
         DiGraph.add_edge(self, i, j, label)
@@ -378,16 +387,18 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
         EXAMPLES::
 
             sage: d = CartanType(['A',3]).dynkin_diagram()
-            sage: hash(d) == hash((d.cartan_type(), tuple(d.vertices()), tuple(d.edge_iterator(d.vertices()))))
+            sage: dv = d.vertices(sort=True)
+            sage: hash(d) == hash((d.cartan_type(), tuple(dv), tuple(d.edge_iterator(dv))))
             True
         """
         # Should assert for immutability!
 
-        #return hash(self.cartan_type(), self.vertices(), tuple(self.edges()))
+        #return hash(self.cartan_type(), self.vertices(sort=True), tuple(self.edges(sort=True)))
         # FIXME: self.edges() currently tests at some point whether
         # self is a vertex of itself which causes an infinite
         # recursion loop. Current workaround: call self.edge_iterator directly
-        return hash((self.cartan_type(), tuple(self.vertices()), tuple(self.edge_iterator(self.vertices()))))
+        verts = self.vertices(sort=True)
+        return hash((self.cartan_type(), tuple(verts), tuple(self.edge_iterator(verts))))
 
     @staticmethod
     def an_instance():
@@ -427,7 +438,7 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             sage: DynkinDiagram("A2","B2","F4").index_set()
             (1, 2, 3, 4, 5, 6, 7, 8)
         """
-        return tuple(self.vertices())
+        return tuple(self.vertices(sort=True))
 
     def cartan_type(self):
         """
@@ -483,13 +494,13 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
         EXAMPLES::
 
             sage: D = DynkinDiagram(['C',3])
-            sage: D.edges()
+            sage: D.edges(sort=True)
             [(1, 2, 1), (2, 1, 1), (2, 3, 1), (3, 2, 2)]
             sage: D.dual()
             O---O=>=O
             1   2   3
             B3
-            sage: D.dual().edges()
+            sage: D.dual().edges(sort=True)
             [(1, 2, 1), (2, 1, 1), (2, 3, 2), (3, 2, 1)]
             sage: D.dual() == DynkinDiagram(['B',3])
             True
@@ -498,32 +509,37 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
 
             sage: D = DynkinDiagram(['A',0]); D
             A0
-            sage: D.edges()
+            sage: D.edges(sort=True)
             []
             sage: D.dual()
             A0
-            sage: D.dual().edges()
+            sage: D.dual().edges(sort=True)
             []
             sage: D = DynkinDiagram(['A',1])
-            sage: D.edges()
+            sage: D.edges(sort=True)
             []
             sage: D.dual()
             O
             1
             A1
-            sage: D.dual().edges()
+            sage: D.dual().edges(sort=True)
             []
         """
-        result = DynkinDiagram_class(None)
-        result.add_vertices(self.vertices())
-        for source, target, label in self.edges():
+        result = DynkinDiagram_class(None, odd_isotropic_roots=self._odd_isotropic_roots)
+        result.add_vertices(self.vertices(sort=True))
+        for source, target, label in self.edges(sort=False):
             result.add_edge(target, source, label)
-        result._cartan_type = self._cartan_type.dual() if not self._cartan_type is None else None
+        result._cartan_type = self._cartan_type.dual() if self._cartan_type is not None else None
         return result
 
-    def relabel(self, relabelling, inplace=False, **kwds):
+    def relabel(self, *args, **kwds):
         """
-        Return the relabelling Dynkin diagram of ``self``.
+        Return the relabelled Dynkin diagram of ``self``.
+
+        INPUT: see :meth:`~sage.graphs.generic_graph.GenericGraph.relabel`
+
+        There is one difference: the default value for ``inplace`` is
+        ``False`` instead of ``True``.
 
         EXAMPLES::
 
@@ -536,18 +552,66 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             O---O=<=O
             1   2   3
             C3
+
+            sage: _ = D.relabel({1:0, 2:4, 3:1}, inplace=True)
+            sage: D
+            O---O=<=O
+            0   4   1
+            C3 relabelled by {1: 0, 2: 4, 3: 1}
+
+            sage: D = DynkinDiagram(['A', [1,2]])
+            sage: Dp = D.relabel({-1:4, 0:-3, 1:3, 2:2})
+            sage: Dp
+            O---X---O---O
+            4   -3  3   2
+            A1|2 relabelled by {-1: 4, 0: -3, 1: 3, 2: 2}
+            sage: Dp.odd_isotropic_roots()
+            (-3,)
+
+            sage: D = DynkinDiagram(['D', 5])
+            sage: G, perm = D.relabel(range(5), return_map=True)
+            sage: G
+                    O 4
+                    |
+                    |
+            O---O---O---O
+            0   1   2   3
+            D5 relabelled by {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
+            sage: perm
+            {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
+
+            sage: perm = D.relabel(range(5), return_map=True, inplace=True)
+            sage: D
+                    O 4
+                    |
+                    |
+            O---O---O---O
+            0   1   2   3
+            D5 relabelled by {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
+            sage: perm
+            {1: 0, 2: 1, 3: 2, 4: 3, 5: 4}
         """
+        return_map = kwds.pop("return_map", False)
+        inplace = kwds.pop("inplace", False)
         if inplace:
-            DiGraph.relabel(self, relabelling, inplace, **kwds)
             G = self
         else:
-            # We must make a copy of ourselves first because of DiGraph's
-            #   relabel default behavior is to do so in place, and if not
-            #   then it recurses on itself with no argument for inplace
-            G = self.copy().relabel(relabelling, inplace=True, **kwds)
+            # We need to copy self because we want to return the
+            # permutation and that works when relabelling in place.
+            G = self.copy()
+
+        perm = DiGraph.relabel(G, *args, inplace=True, return_map=True, **kwds)
+        new_odds = [perm[i] for i in self._odd_isotropic_roots]
+        G._odd_isotropic_roots = tuple(new_odds)
         if self._cartan_type is not None:
-            G._cartan_type = self._cartan_type.relabel(relabelling)
-        return G
+            G._cartan_type = self._cartan_type.relabel(perm.__getitem__)
+        if return_map:
+            if inplace:
+                return perm
+            else:
+                return G, perm
+        else:
+            return G
 
     def subtype(self, index_set):
         """
@@ -607,8 +671,18 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
 
             sage: CartanType(['F',4]).dynkin_diagram().is_irreducible()
             True
+            sage: CM = CartanMatrix([[2,-6],[-4,2]])
+            sage: CM.dynkin_diagram().is_irreducible()
+            True
+            sage: CartanType("A2xB3").dynkin_diagram().is_irreducible()
+            False
+            sage: CM = CartanMatrix([[2,-6,0],[-4,2,0],[0,0,2]])
+            sage: CM.dynkin_diagram().is_irreducible()
+            False
         """
-        return self._cartan_type.is_irreducible()
+        if self._cartan_type is not None:
+            return self._cartan_type.is_irreducible()
+        return self.connected_components_number() == 1
 
     def is_crystallographic(self):
         """
@@ -658,6 +732,21 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
         """
         return self.cartan_matrix().symmetrizer()
 
+    def odd_isotropic_roots(self):
+        """
+        Return the odd isotropic roots of ``self``.
+
+        EXAMPLES::
+
+            sage: g = DynkinDiagram(['A',4])
+            sage: g.odd_isotropic_roots()
+            ()
+            sage: g = DynkinDiagram(['A',[4,3]])
+            sage: g.odd_isotropic_roots()
+            (0,)
+        """
+        return self._odd_isotropic_roots
+
     def __getitem__(self, i):
         r"""
         With a tuple (i,j) as argument, returns the scalar product
@@ -667,7 +756,7 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
 
         EXAMPLES:
 
-        We use the `C_4` Dynkin diagram as a cartan matrix::
+        We use the `C_4` Dynkin diagram as a Cartan matrix::
 
             sage: g = DynkinDiagram(['C',4])
             sage: matrix([[g[i,j] for j in range(1,5)] for i in range(1,5)])
@@ -685,6 +774,8 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             return DiGraph.__getitem__(self,i)
         [i,j] = i
         if i == j:
+            if i in self._odd_isotropic_roots:
+                return 0
             return 2
         elif self.has_edge(j, i):
             return -self.edge_label(j, i)
@@ -703,7 +794,8 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             sage: [ (i,a) for (i,a) in g.column(3) ]
             [(3, 2), (2, -1), (4, -2)]
         """
-        return [(j,2)] + [(i,-m) for (j1, i, m) in self.outgoing_edges(j)]
+        val = 2 if j not in self._odd_isotropic_roots else 0
+        return [(j,val)] + [(i,-m) for (j1, i, m) in self.outgoing_edges(j)]
 
     def row(self, i):
         """
@@ -717,7 +809,45 @@ class DynkinDiagram_class(DiGraph, CartanType_abstract):
             sage: [ (i,a) for (i,a) in g.row(3) ]
             [(3, 2), (2, -1), (4, -2)]
         """
-        return [(i,2)] + [(j,-m) for (j, i1, m) in self.incoming_edges(i)]
+        val = 2 if i not in self._odd_isotropic_roots else 0
+        return [(i,val)] + [(j,-m) for (j, i1, m) in self.incoming_edges(i)]
+
+    @cached_method
+    def coxeter_diagram(self):
+        r"""
+        Construct the Coxeter diagram of ``self``.
+
+        .. SEEALSO:: :meth:`CartanType_abstract.coxeter_diagram`
+
+        EXAMPLES::
+
+            sage: cm = CartanMatrix([[2,-5,0],[-2,2,-1],[0,-1,2]])
+            sage: D = cm.dynkin_diagram()
+            sage: G = D.coxeter_diagram(); G
+            Graph on 3 vertices
+            sage: G.edges(sort=True)
+            [(0, 1, +Infinity), (1, 2, 3)]
+
+            sage: ct = CartanType([['A',2,2], ['B',3]])
+            sage: ct.coxeter_diagram()
+            Graph on 5 vertices
+            sage: ct.dynkin_diagram().coxeter_diagram() == ct.coxeter_diagram()
+            True
+        """
+        from sage.rings.infinity import infinity
+        scalarproducts_to_order = {0: 2,  1: 3,  2: 4,  3: 6}
+        from sage.graphs.graph import Graph
+        coxeter_diagram = Graph(multiedges=False)
+        I = self.index_set()
+        coxeter_diagram.add_vertices(I)
+        for i in I:
+            for j in self.neighbors_out(i):
+                # avoid adding the edge twice
+                if not coxeter_diagram.has_edge(i,j):
+                    val = scalarproducts_to_order.get(self[i,j]*self[j,i], infinity)
+                    coxeter_diagram.add_edge(i,j, val)
+        return coxeter_diagram.copy(immutable=True)
+
 
 def precheck(t, letter=None, length=None, affine=None, n_ge=None, n=None):
     """
@@ -748,23 +878,23 @@ def precheck(t, letter=None, length=None, affine=None, n_ge=None, n=None):
     """
     if letter is not None:
         if t[0] != letter:
-            raise ValueError("t[0] must be = '%s'"%letter)
+            raise ValueError("t[0] must be = '%s'" % letter)
 
     if length is not None:
         if len(t) != length:
-            raise ValueError("len(t) must be = %s"%length)
+            raise ValueError("len(t) must be = %s" % length)
 
     if affine is not None:
         try:
             if t[2] != affine:
-                raise ValueError("t[2] must be = %s"%affine)
+                raise ValueError("t[2] must be = %s" % affine)
         except IndexError:
-            raise ValueError("t[2] must be = %s"%affine)
+            raise ValueError("t[2] must be = %s" % affine)
 
     if n_ge is not None:
         if t[1] < n_ge:
-            raise ValueError("t[1] must be >= %s"%n_ge)
+            raise ValueError("t[1] must be >= %s" % n_ge)
 
     if n is not None:
         if t[1] != n:
-            raise ValueError("t[1] must be = %s"%n)
+            raise ValueError("t[1] must be = %s" % n)

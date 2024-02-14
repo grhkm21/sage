@@ -6,15 +6,16 @@ AUTHORS:
  - Florent Hivert (2009-11): initial revision.
 
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2009 Florent Hivert <Florent.Hivert@univ-rouen.fr>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#******************************************************************************
+#                  https://www.gnu.org/licenses/
+# *****************************************************************************
 
 
 from sage.categories.category_with_axiom import CategoryWithAxiom
+
 
 class InfiniteEnumeratedSets(CategoryWithAxiom):
     """
@@ -47,7 +48,7 @@ class InfiniteEnumeratedSets(CategoryWithAxiom):
 
         def random_element(self):
             """
-            Returns an error since self is an infinite enumerated set.
+            Raise an error because ``self`` is an infinite enumerated set.
 
             EXAMPLES::
 
@@ -61,9 +62,23 @@ class InfiniteEnumeratedSets(CategoryWithAxiom):
             """
             raise NotImplementedError("infinite set")
 
+        def tuple(self):
+            """
+            Raise an error because ``self`` is an infinite enumerated set.
+
+            EXAMPLES::
+
+                sage: NN = InfiniteEnumeratedSets().example()
+                sage: NN.tuple()
+                Traceback (most recent call last):
+                ...
+                NotImplementedError: cannot list an infinite set
+            """
+            raise NotImplementedError("cannot list an infinite set")
+
         def list(self):
             """
-            Returns an error since self is an infinite enumerated set.
+            Raise an error because ``self`` is an infinite enumerated set.
 
             EXAMPLES::
 
@@ -71,23 +86,23 @@ class InfiniteEnumeratedSets(CategoryWithAxiom):
                 sage: NN.list()
                 Traceback (most recent call last):
                 ...
-                NotImplementedError: infinite list
+                NotImplementedError: cannot list an infinite set
             """
-            raise NotImplementedError("infinite list")
-        _list_default  = list # needed by the check system.
+            raise NotImplementedError("cannot list an infinite set")
+        _list_default = list # needed by the check system.
 
         def _test_enumerated_set_iter_cardinality(self, **options):
             """
             Check that the methods :meth:`.cardinality` and
-            :meth:`.__iter__`. are consistent.
+            :meth:`.__iter__` are consistent.
 
             See also :class:`TestSuite`.
 
             For infinite enumerated sets:
 
-               * :meth:`.cardinality` is supposed to return `infinity`
+            * :meth:`.cardinality` is supposed to return ``infinity``
 
-               * :meth:`.list`` is supposed to raise a ``NotImplementedError``.
+            * :meth:`.list` is supposed to raise a :class:`NotImplementedError`.
 
             EXAMPLES::
 

@@ -1,17 +1,18 @@
 """
 Examples of infinite enumerated sets
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2009 Florent Hivert <Florent.Hivert@univ-rouen.fr>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.structure.parent import Parent
 from sage.categories.infinite_enumerated_sets import InfiniteEnumeratedSets
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.rings.integer import Integer
+
 
 class NonNegativeIntegers(UniqueRepresentation, Parent):
     r"""
@@ -29,14 +30,14 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
         sage: NN.list()
         Traceback (most recent call last):
         ...
-        NotImplementedError: infinite list
+        NotImplementedError: cannot list an infinite set
         sage: NN.element_class
-        <type 'sage.rings.integer.Integer'>
+        <class 'sage.rings.integer.Integer'>
         sage: it = iter(NN)
         sage: [next(it), next(it), next(it), next(it), next(it)]
         [0, 1, 2, 3, 4]
         sage: x = next(it); type(x)
-        <type 'sage.rings.integer.Integer'>
+        <class 'sage.rings.integer.Integer'>
         sage: x.parent()
         Integer Ring
         sage: x+3
@@ -53,10 +54,12 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
         running ._test_an_element() . . . pass
         running ._test_cardinality() . . . pass
         running ._test_category() . . . pass
+        running ._test_construction() . . . pass
         running ._test_elements() . . .
           Running the test suite of self.an_element()
           running ._test_category() . . . pass
           running ._test_eq() . . . pass
+          running ._test_new() . . . pass
           running ._test_nonzero_equal() . . . pass
           running ._test_not_implemented_methods() . . . pass
           running ._test_pickling() . . . pass
@@ -69,6 +72,7 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
         running ._test_enumerated_set_iter_cardinality() . . . pass
         running ._test_enumerated_set_iter_list() . . . pass
         running ._test_eq() . . . pass
+        running ._test_new() . . . pass
         running ._test_not_implemented_methods() . . . pass
         running ._test_pickling() . . . pass
         running ._test_some_elements() . . . pass
@@ -85,7 +89,7 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
             Category of infinite enumerated sets
             sage: TestSuite(NN).run()
         """
-        Parent.__init__(self, category = InfiniteEnumeratedSets())
+        Parent.__init__(self, category=InfiniteEnumeratedSets())
 
     def _repr_(self):
         """
@@ -133,12 +137,12 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
             Integer Ring
             sage: NN(-1)
             Traceback (most recent call last):
+            ...
             ValueError: Value -1 is not a non negative integer.
         """
         if elt in self:
             return self._element_constructor_(elt)
-        else:
-            raise ValueError("Value %s is not a non negative integer."%(elt))
+        raise ValueError("Value %s is not a non negative integer." % (elt))
 
     def an_element(self):
         """
@@ -173,12 +177,13 @@ class NonNegativeIntegers(UniqueRepresentation, Parent):
             sage: x = NN(42); x
             42
             sage: type(x)
-            <type 'sage.rings.integer.Integer'>
+            <class 'sage.rings.integer.Integer'>
             sage: x.parent()
             Integer Ring
         """
         return self.element_class(i)
 
     Element = Integer
+
 
 Example = NonNegativeIntegers

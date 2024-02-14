@@ -1,7 +1,7 @@
 """
 Ellipses
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2010 Vincent Delecroix <20100.delecroix@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -13,14 +13,14 @@ Ellipses
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from primitive import GraphicPrimitive
-from sage.plot.misc import options, rename_keyword
+from .primitive import GraphicPrimitive
+from sage.misc.decorators import options, rename_keyword
 from sage.plot.colors import to_mpl_color
 from math import sin, cos, sqrt, pi, fmod
+
 
 class Ellipse(GraphicPrimitive):
     """
@@ -41,9 +41,10 @@ class Ellipse(GraphicPrimitive):
 
     Note that this construction should be done using ``ellipse``::
 
+        sage: from math import pi
         sage: from sage.plot.ellipse import Ellipse
         sage: Ellipse(0, 0, 2, 1, pi/4, {})
-        Ellipse centered at (0.0, 0.0) with radii (2.0, 1.0) and angle 0.785398163397
+        Ellipse centered at (0.0, 0.0) with radii (2.0, 1.0) and angle 0.78539816339...
     """
     def __init__(self, x, y, r1, r2, angle, options):
         """
@@ -66,13 +67,14 @@ class Ellipse(GraphicPrimitive):
         self.r2 = float(r2)
         if self.r1 <= 0 or self.r2 <= 0:
             raise ValueError("both radii must be positive")
-        self.angle = fmod(angle,2*pi)
-        if self.angle < 0: self.angle += 2*pi
+        self.angle = fmod(angle, 2 * pi)
+        if self.angle < 0:
+            self.angle += 2 * pi
         GraphicPrimitive.__init__(self, options)
 
     def get_minmax_data(self):
-        """
-        Returns a dictionary with the bounding box data.
+        r"""
+        Return a dictionary with the bounding box data.
 
         The bounding box is computed to be as minimal as possible.
 
@@ -93,6 +95,7 @@ class Ellipse(GraphicPrimitive):
 
         The same example with a rotation of angle `\pi/2`::
 
+            sage: from math import pi
             sage: p = ellipse((-2, 3), 1, 2, pi/2)
             sage: d = p.get_minmax_data()
             sage: d['xmin']
@@ -167,7 +170,7 @@ class Ellipse(GraphicPrimitive):
             sage: Ellipse(0,0,2,1,0,{})._repr_()
             'Ellipse centered at (0.0, 0.0) with radii (2.0, 1.0) and angle 0.0'
         """
-        return "Ellipse centered at (%s, %s) with radii (%s, %s) and angle %s"%(self.x, self.y, self.r1, self.r2, self.angle)
+        return "Ellipse centered at (%s, %s) with radii (%s, %s) and angle %s" % (self.x, self.y, self.r1, self.r2, self.angle)
 
     def _render_on_subplot(self, subplot):
         """
@@ -177,6 +180,7 @@ class Ellipse(GraphicPrimitive):
 
         TESTS::
 
+            sage: from math import pi
             sage: ellipse((0,0),3,1,pi/6,fill=True,alpha=0.3)
             Graphics object consisting of 1 graphics primitive
 
@@ -191,7 +195,8 @@ class Ellipse(GraphicPrimitive):
         options = self.options()
         p = patches.Ellipse(
                 (self.x,self.y),
-                self.r1*2.,self.r2*2.,self.angle/pi*180.)
+                self.r1*2.,self.r2*2.,
+                angle=self.angle/pi*180.)
         p.set_linewidth(float(options['thickness']))
         p.set_fill(options['fill'])
         a = float(options['alpha'])
@@ -215,7 +220,7 @@ class Ellipse(GraphicPrimitive):
         TESTS::
 
             sage: from sage.plot.ellipse import Ellipse
-            sage: Ellipse(0,0,2,1,pi/4,{}).plot3d()
+            sage: Ellipse(0,0,2,1,pi/4,{}).plot3d()                                     # needs sage.symbolic
             Traceback (most recent call last):
             ...
             NotImplementedError
@@ -271,23 +276,52 @@ def ellipse(center, r1, r2, angle=0, **options):
         sage: ellipse((0,0),2,1)
         Graphics object consisting of 1 graphics primitive
 
+    .. PLOT::
+
+        E=ellipse((0,0),2,1)
+        sphinx_plot(E)
+
     More complicated examples with tilted axes and drawing options::
 
-        sage: ellipse((0,0),3,1,pi/6,fill=True,alpha=0.3,linestyle="dashed")
+        sage: from math import pi
+        sage: ellipse((0,0), 3, 1, pi/6, fill=True, alpha=0.3, linestyle="dashed")
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        E = ellipse((0,0),3,1,pi/6,fill=True,alpha=0.3,linestyle="dashed")
+        sphinx_plot(E)
+
+    other way to indicate dashed linestyle::
+
         sage: ellipse((0,0),3,1,pi/6,fill=True,alpha=0.3,linestyle="--")
         Graphics object consisting of 1 graphics primitive
 
-    ::
+    .. PLOT::
+
+        E =ellipse((0,0),3,1,pi/6,fill=True,alpha=0.3,linestyle='--')
+        sphinx_plot(E)
+
+    with colors ::
 
         sage: ellipse((0,0),3,1,pi/6,fill=True,edgecolor='black',facecolor='red')
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        E=ellipse((0,0),3,1,pi/6,fill=True,edgecolor='black',facecolor='red')
+        sphinx_plot(E)
 
     We see that ``rgbcolor`` overrides these other options, as this plot
     is green::
 
         sage: ellipse((0,0),3,1,pi/6,fill=True,edgecolor='black',facecolor='red',rgbcolor='green')
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        E=ellipse((0,0),3,1,pi/6,fill=True,edgecolor='black',facecolor='red',rgbcolor='green')
+        sphinx_plot(E)
 
     The default aspect ratio for ellipses is 1.0::
 
@@ -305,6 +339,17 @@ def ellipse(center, r1, r2, angle=0, **options):
 
         sage: ellipse((0,0),2,1,legend_label="My ellipse", legend_color='green')
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        E=ellipse((0,0),2,1,legend_label="My ellipse", legend_color='green')
+        sphinx_plot(E)
+
+    TESTS:
+
+    Verify that :issue:`36153` does not arise::
+
+        sage: E = ellipse((0,0), 2, 1, legend_label="test")
     """
     from sage.plot.all import Graphics
     g = Graphics()
@@ -322,7 +367,7 @@ def ellipse(center, r1, r2, angle=0, **options):
     if options['legend_label']:
         g.legend(True)
         g._legend_colors = [options['legend_color']]
-    if len(center)==2:
+    if len(center) == 2:
         return g
-    elif len(center)==3:
+    elif len(center) == 3:
         raise NotImplementedError("plotting ellipse in 3D is not implemented")

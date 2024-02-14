@@ -1,16 +1,17 @@
+# sage.doctest: needs sage.groups
 r"""
-FiniteGroups
+Finite groups
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2010-2013 Nicolas M. Thiery <nthiery at users.sf.net>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#******************************************************************************
+#                  https://www.gnu.org/licenses/
+# *****************************************************************************
 
 from sage.categories.category_with_axiom import CategoryWithAxiom
 from sage.categories.algebra_functor import AlgebrasCategory
-from sage.categories.cartesian_product import CartesianProductsCategory
+
 
 class FiniteGroups(CategoryWithAxiom):
     r"""
@@ -93,21 +94,16 @@ class FiniteGroups(CategoryWithAxiom):
             We need to use a finite group which uses this default
             implementation of cardinality::
 
-                sage: R.<x> = PolynomialRing(QQ)
-                sage: f = x^4 - 17*x^3 - 2*x + 1
-                sage: G = f.galois_group(pari_group=True); G
-                PARI group [24, -1, 5, "S4"] of degree 4
+                sage: G = groups.misc.SemimonomialTransformation(GF(5), 3); G
+                Semimonomial transformation group over Finite Field of size 5 of degree 3
                 sage: G.cardinality.__module__
                 'sage.categories.finite_groups'
                 sage: G.cardinality()
-                24
+                384
             """
-            try:
-                o = self.order
-            except AttributeError:
-                return self._cardinality_from_iterator()
-            else:
-                return o()
+            if hasattr(self, 'order'):
+                return self.order()
+            return self._cardinality_from_iterator()
 
         def some_elements(self):
             """
@@ -135,10 +131,10 @@ class FiniteGroups(CategoryWithAxiom):
                 connecting_set = self.group_generators()
             else:
                 for g in connecting_set:
-                    if not g in self:
-                        raise RuntimeError("Each element of the connecting set must be in the group!")
+                    if g not in self:
+                        raise RuntimeError("each element of the connecting set must be in the group")
                 connecting_set = [self(g) for g in connecting_set]
-            from sage.graphs.all import DiGraph
+            from sage.graphs.digraph import DiGraph
             arrows = {}
             for x in self:
                 arrows[x] = {}
@@ -154,9 +150,9 @@ class FiniteGroups(CategoryWithAxiom):
             Return a list with all the conjugacy classes of the group.
 
             This will eventually be a fall-back method for groups not defined
-            over GAP. Right now just raises a ``NotImplementedError``, until
-            we include a non-GAP way of listing the conjugacy classes
-            representatives.
+            over GAP. Right now, it just raises a
+            :class:`NotImplementedError`, until we include a non-GAP
+            way of listing the conjugacy classes representatives.
 
             EXAMPLES::
 
@@ -165,10 +161,9 @@ class FiniteGroups(CategoryWithAxiom):
                 sage: G.conjugacy_classes()
                 Traceback (most recent call last):
                 ...
-                NotImplementedError: Listing the conjugacy classes for
-                group <type 'sage.groups.group.FiniteGroup'> is not implemented
+                NotImplementedError: Listing the conjugacy classes for group <sage.groups.group.FiniteGroup object at ...> is not implemented
             """
-            raise NotImplementedError("Listing the conjugacy classes for group %s is not implemented"%self)
+            raise NotImplementedError("Listing the conjugacy classes for group %s is not implemented" % self)
 
         def conjugacy_classes_representatives(self):
             r"""
@@ -179,14 +174,13 @@ class FiniteGroups(CategoryWithAxiom):
                 sage: G = SymmetricGroup(3)
                 sage: G.conjugacy_classes_representatives()
                 [(), (1,2), (1,2,3)]
-           """
+            """
             return [C.representative() for C in self.conjugacy_classes()]
 
     class ElementMethods:
         pass
 
     class Algebras(AlgebrasCategory):
-
         def extra_super_categories(self):
             r"""
             Implement Maschke's theorem.
@@ -197,17 +191,63 @@ class FiniteGroups(CategoryWithAxiom):
 
                 sage: FiniteGroups().Algebras(QQ).is_subcategory(Algebras(QQ).Semisimple())
                 True
-                sage: FiniteGroups().Algebras(FiniteField(7)).is_subcategory(Algebras(QQ).Semisimple())
+                sage: FiniteGroups().Algebras(FiniteField(7)).is_subcategory(Algebras(FiniteField(7)).Semisimple())
                 False
                 sage: FiniteGroups().Algebras(ZZ).is_subcategory(Algebras(ZZ).Semisimple())
                 False
                 sage: FiniteGroups().Algebras(Fields()).is_subcategory(Algebras(Fields()).Semisimple())
                 False
+
+                sage: Cat = CommutativeAdditiveGroups().Finite()
+                sage: Cat.Algebras(QQ).is_subcategory(Algebras(QQ).Semisimple())
+                True
+                sage: Cat.Algebras(GF(7)).is_subcategory(Algebras(GF(7)).Semisimple())
+                False
+                sage: Cat.Algebras(ZZ).is_subcategory(Algebras(ZZ).Semisimple())
+                False
+                sage: Cat.Algebras(Fields()).is_subcategory(Algebras(Fields()).Semisimple())
+                False
             """
             from sage.categories.fields import Fields
             K = self.base_ring()
-            if (K in Fields) and K.characteristic() == 0:
+            if K in Fields() and K.characteristic() == 0:
                 from sage.categories.algebras import Algebras
                 return [Algebras(self.base_ring()).Semisimple()]
             else:
                 return []
+
+        class ParentMethods:
+            def __init_extra__(self):
+                r"""
+                Implement Maschke's theorem.
+
+                EXAMPLES::
+
+                    sage: G = groups.permutation.Dihedral(8)
+                    sage: A = G.algebra(GF(5))
+                    sage: A in Algebras.Semisimple
+                    True
+                    sage: A = G.algebra(Zmod(4))
+                    sage: A in Algebras.Semisimple
+                    False
+
+                    sage: G = groups.misc.AdditiveCyclic(4)
+                    sage: Cat = CommutativeAdditiveGroups().Finite()
+                    sage: A = G.algebra(GF(5), category=Cat)
+                    sage: A in Algebras.Semisimple
+                    True
+                    sage: A = G.algebra(GF(2), category=Cat)
+                    sage: A in Algebras.Semisimple
+                    False
+                """
+                base_ring = self.base_ring()
+                group = self.group()
+                from sage.categories.fields import Fields
+                # If base_ring is of characteristic 0, this is handled
+                #    in the FiniteGroups.Algebras category
+                # Maschke's theorem: under some conditions, the algebra is semisimple.
+                if (base_ring in Fields
+                    and base_ring.characteristic() > 0
+                    and hasattr(group, "cardinality")
+                    and group.cardinality() % base_ring.characteristic() != 0):
+                    self._refine_category_(self.category().Semisimple())

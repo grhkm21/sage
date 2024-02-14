@@ -1,3 +1,4 @@
+# sage.doctest: optional - sage.libs.singular
 r"""
 Helper Functions For Freeness Of Hyperplane Arrangements
 
@@ -29,7 +30,7 @@ def less_generators(X):
     """
     Reduce the generator matrix of the module defined by ``X``.
 
-    This is Algorithm 6.4 in [BC12]_ and relies on the row syzygies of
+    This is Algorithm 6.4 in [BC2012]_ and relies on the row syzygies of
     the matrix ``X``.
 
     EXAMPLES::
@@ -68,7 +69,7 @@ def construct_free_chain(A):
 
     ALGORITHM:
 
-    We follow Algorithm 6.5 in [BC12]_.
+    We follow Algorithm 6.5 in [BC2012]_.
 
     INPUT:
 
@@ -100,7 +101,6 @@ def construct_free_chain(A):
     G = S.gens()
     r = len(G)
     indices = list(range(len(B)))
-    X = []
 
     # Helper function
     def next_step(indices, prev, T):
@@ -121,7 +121,7 @@ def construct_free_chain(A):
             ret = next_step(I, Y, U)
             if ret is not None:
                 return [prev] + ret
-        return None                
+        return None
 
     T = matrix.identity(S, r)
     for i in indices:
@@ -140,4 +140,3 @@ def construct_free_chain(A):
         if ret is not None:
             return ret
     return None
-

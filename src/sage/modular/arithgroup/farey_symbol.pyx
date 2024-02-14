@@ -1,6 +1,7 @@
-# distutils: language = c++
+# distutils: sources = sage/modular/arithgroup/sl2z.cpp sage/modular/arithgroup/farey.cpp
+# sage.doctest: needs sage.libs.pari
 r"""
-Farey Symbol for arithmetic subgroups of `{\rm PSL}_2(\ZZ)`
+Farey symbol for arithmetic subgroups of `\PSL_2(\ZZ)`
 
 AUTHORS:
 
@@ -20,38 +21,82 @@ for speed.
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-include "cysignals/signals.pxi"
-include 'sage/ext/cdefs.pxi'
+from cpython.object cimport PyObject_RichCompare
+from itertools import groupby
+from cysignals.signals cimport sig_on, sig_off
 
-from .farey cimport *
-from sage.rings.all import CC, RR
+from sage.libs.gmpxx cimport *
+
+from sage.rings.real_mpfr import RR
+from sage.rings.cc import CC
 from sage.rings.integer cimport Integer
 from sage.rings.infinity import infinity
-from congroup_gammaH import is_GammaH
-from congroup_gamma1 import is_Gamma1
-from congroup_gamma0 import is_Gamma0
-from congroup_gamma import is_Gamma
-from congroup_sl2z import SL2Z
+from .congroup_gammaH import is_GammaH
+from .congroup_gamma1 import is_Gamma1
+from .congroup_gamma0 import is_Gamma0
+from .congroup_gamma import is_Gamma
+from .congroup_sl2z import SL2Z
 from sage.modular.cusps import Cusp
 
-from sage.plot.all import Graphics
-from sage.plot.colors import to_mpl_color
-from sage.plot.misc import options, rename_keyword
-from sage.plot.all import hyperbolic_arc, hyperbolic_triangle, text
-
-from sage.misc.latex import latex
-from sage.misc.lazy_attribute import lazy_attribute
+from sage.misc.decorators import options, rename_keyword
 from sage.misc.cachefunc import cached_method
-from itertools import groupby
+from sage.structure.richcmp cimport richcmp_not_equal
+
+
+cdef extern from "sl2z.hpp":
+    cppclass cpp_SL2Z "SL2Z":
+        mpz_class a, b, c, d
+        cpp_SL2Z(int, int, int, int)
+        cpp_SL2Z(mpz_class, mpz_class, mpz_class, mpz_class)
+        mpz_class a()
+        mpz_class b()
+        mpz_class c()
+        mpz_class d()
+
+cdef extern from "farey.hpp":
+    cppclass is_element_Gamma0:
+        is_element_Gamma0(int)
+    cppclass is_element_Gamma1:
+        is_element_Gamma1(int)
+    cppclass is_element_Gamma:
+        is_element_Gamma(int)
+    cppclass is_element_GammaH:
+        is_element_GammaH(int, object)
+    cppclass cpp_farey "FareySymbol":
+        cpp_farey()
+        cpp_farey(object)
+        cpp_farey(object, is_element_Gamma*)
+        cpp_farey(object, is_element_Gamma0*)
+        cpp_farey(object, is_element_Gamma1*)
+        cpp_farey(object, is_element_GammaH*)
+        size_t genus()
+        size_t index()
+        size_t level()
+        size_t nu2()
+        size_t nu3()
+        object is_element(mpz_t, mpz_t, mpz_t, mpz_t)
+        object word_problem(mpz_t, mpz_t, mpz_t, mpz_t, cpp_SL2Z *)
+        size_t get_cusp_class(mpz_t, mpz_t)
+        object get_cusps()
+        object get_cusp_widths()
+        object get_transformation_to_cusp(mpz_t, mpz_t)
+        object get_fractions()
+        object get_coset()
+        object get_generators()
+        object get_pairings()
+        object get_paired_sides()
+        object get_pairing_matrices()
+        object dumps()
+
 
 cdef class Farey:
     r"""
     A class for calculating Farey symbols of arithmetics subgroups of
-    `{\rm PSL}_2(\ZZ)`.
+    `\PSL_2(\ZZ)`.
 
     The arithmetic subgroup can be either any of
     the congruence subgroups implemented in Sage, i.e. Gamma, Gamma0,
-    Gamma1 and GammaH or a subgroup of `{\rm PSL}_2(\ZZ)` which is
+    Gamma1 and GammaH or a subgroup of `\PSL_2(\ZZ)` which is
     given by a user written helper class defining membership in that
     group.
 
@@ -63,7 +108,7 @@ cdef class Farey:
 
     INPUT:
 
-    - `G` - an arithmetic subgroup of `{\rm PSL}_2(\ZZ)`
+    - `G` - an arithmetic subgroup of `\PSL_2(\ZZ)`
 
     EXAMPLES:
 
@@ -86,7 +131,7 @@ cdef class Farey:
          True
 
     Calculate the index of `\Gamma_H(33, [2, 5])` in
-    `{\rm PSL}_2(\ZZ)` via FareySymbol::
+    `\PSL_2(\ZZ)` via FareySymbol::
 
          sage: FareySymbol(GammaH(33, [2, 5])).index()
          48
@@ -114,9 +159,8 @@ cdef class Farey:
     \Gamma_0(8)\cap\Gamma_1(4)` using a helper class to define group membership::
 
          sage: class GPrime:
-         ....:   def __contains__(self, M):
-         ....:       return M in Gamma0(8) and M in Gamma1(4)
-         ....:
+         ....:     def __contains__(self, M):
+         ....:         return M in Gamma0(8) and M in Gamma1(4)
 
          sage: FareySymbol(GPrime()).generators()
          [
@@ -194,14 +238,14 @@ cdef class Farey:
             self.this_ptr = new cpp_farey(group)
             sig_off()
 
-    def __deallocpp__(self):
+    def __dealloc__(self):
         r"""
-        Remove reference to FareySymbol::
+        Remove reference to FareySymbol.
+
+        TESTS::
 
             sage: F = FareySymbol(Gamma0(23))
-
             sage: del F
-
         """
         del self.this_ptr
 
@@ -292,12 +336,12 @@ cdef class Farey:
         for i,g in enumerate(self.generators()):
             m = g.matrix()
             if (-m).is_one():
-                return [i+1]
+                return [i + 1]
             t = m.trace()
-            if t == 0: # order = 4
-                return 2 * [i+1]
-            elif t == 1: # order = 6
-                return 3 * [i+1]
+            if t == 0:  # order = 4
+                return 2 * [i + 1]
+            elif t == 1:  # order = 6
+                return 3 * [i + 1]
         return []
 
     def word_problem(self, M, output = 'standard', check = True):
@@ -306,7 +350,7 @@ cdef class Farey:
 
         INPUT:
 
-        - ``M`` -- An element `M` of `{\rm SL}_2(\ZZ)`.
+        - ``M`` -- An element `M` of `\SL_2(\ZZ)`.
         - ``output`` -- (default: ``'standard'``) Should be one of ``'standard'``,
           ``'syllables'``, ``'gens'``.
         - ``check`` -- (default: ``True``) Whether to check for correct input and output.
@@ -397,13 +441,12 @@ cdef class Farey:
             raise ValueError('Unrecognized output format')
         if check:
             if M not in self.group:
-                raise ValueError("Matrix ( %s ) is not in group ( %s )"%(M,self.group))
+                raise ValueError("Matrix ( %s ) is not in group ( %s )" % (M, self.group))
         cdef Integer a = M.d()
         cdef Integer b = -M.b()
         cdef Integer c = -M.c()
         cdef Integer d = M.a()
-        cdef cpp_SL2Z *cpp_beta = new cpp_SL2Z(1,0,0,1)
-        E = SL2Z([-1,0,0,-1])
+        cdef cpp_SL2Z *cpp_beta = new cpp_SL2Z(1, 0, 0, 1)
         sig_on()
         result = self.this_ptr.word_problem(a.value, b.value, c.value, d.value, cpp_beta)
         sig_off()
@@ -459,13 +502,13 @@ cdef class Farey:
             for i in range(len(tietze)):
                 t = tietze[i]
                 tmp = tmp * gens[t-1] if t > 0 else tmp * gens[-t-1]**-1
-            assert tmp.matrix() == M.matrix(),'%s %s %s'%(tietze, tmp.matrix(),M.matrix())
+            assert tmp.matrix() == M.matrix(),'%s %s %s' % (tietze, tmp.matrix(),M.matrix())
         if output == 'standard':
             return tuple(tietze)
         if output == 'syllables':
             return tuple((a-1,len(list(g))) if a > 0 else (-a-1,-len(list(g))) for a,g in groupby(tietze))
-        else: # output == 'gens'
-            return tuple((gens[a-1],len(list(g))) if a > 0 else (gens[-a-1],-len(list(g))) for a,g in groupby(tietze))
+        else:  # output == 'gens'
+            return tuple((gens[a-1],len(list(g))) if a > 0 else (gens[-a-1],-len(list(g))) for a, g in groupby(tietze))
 
     def __contains__(self, M):
         r"""
@@ -489,7 +532,7 @@ cdef class Farey:
         sig_off()
         return result
 
-    def __cmp__(self, other):
+    def __richcmp__(self, other, op):
         r"""
         Compare self to others.
 
@@ -501,23 +544,27 @@ cdef class Farey:
             sage: FareySymbol(Gamma0(23)) == loads(dumps(FareySymbol(Gamma0(23))))
             True
         """
-        cmp_fcts = [lambda fs: fs.coset_reps(),
-                    lambda fs: fs.cusps(),
-                    lambda fs: fs.fractions()]
+        if not isinstance(other, Farey):
+            return NotImplemented
 
-        for cf in cmp_fcts:
-            c = cmp(cf(self), cf(other))
-            if c != 0:
-                return c
+        cosetA = self.coset_reps()
+        cosetB = other.coset_reps()
+        if cosetA != cosetB:
+            return richcmp_not_equal(cosetA, cosetB, op)
 
-        return c
+        cuspA = self.cusps()
+        cuspB = other.cusps()
+        if cuspA != cuspB:
+            return richcmp_not_equal(cuspA, cuspB, op)
+
+        return PyObject_RichCompare(self.fractions(), other.fractions(), op)
 
     def __reduce__(self):
         r"""
         Serialization for pickling::
 
             sage: FareySymbol(Gamma0(4)).__reduce__()
-            (<type 'sage.modular.arithgroup.farey_symbol.Farey'>, ...))
+            (<class 'sage.modular.arithgroup.farey_symbol.Farey'>, ...))
 
         """
         return Farey, (self.group, self.this_ptr.dumps())
@@ -554,19 +601,15 @@ cdef class Farey:
             sage: FareySymbol(Gamma0(11))._latex_(forced_format = 'xymatrix')
             '\\begin{xy}\\xymatrix{& -\\infty \\ar@{-}@/_1pc/[r]_{1}& 0 \\ar@{-}@/_1pc/[r]_{2}& \\frac{1}{3} \\ar@{-}@/_1pc/[r]_{3}& \\frac{1}{2} \\ar@{-}@/_1pc/[r]_{2}& \\frac{2}{3} \\ar@{-}@/_1pc/[r]_{3}& 1 \\ar@{-}@/_1pc/[r]_{1}& \\infty }\\end{xy}'
 
-            sage: if '\\xymatrix' in sage.misc.latex.latex.mathjax_avoid_list():
-            ....:      'xymatrix' not in FareySymbol(Gamma0(11))._latex_()
-            ....: else:
-            ....:     'xymatrix' in FareySymbol(Gamma0(11))._latex_()
+            sage: 'xymatrix' in FareySymbol(Gamma0(11))._latex_()
             True
         """
-        if forced_format == 'plain' or \
-           (forced_format is None and '\\xymatrix' in latex.mathjax_avoid_list()):
+        if forced_format == 'plain':
             # output not using xymatrix
             s = r'\left( -\infty'
-            a = [x._latex_() for x in self.fractions()] + ['\infty']
+            a = [x._latex_() for x in self.fractions()] + [r'\infty']
             b = self.pairings()
-            for i in xrange(len(a)):
+            for i in range(len(a)):
                 u = b[i]
                 if u == -3:
                     u = r'\bullet'
@@ -577,7 +620,7 @@ cdef class Farey:
         else:
             # output using xymatrix
             s = r'\begin{xy}\xymatrix{& -\infty '
-            f = [x._latex_() for x in self.fractions()]+[r'\infty']
+            f = [x._latex_() for x in self.fractions()] + [r'\infty']
             f.reverse()
             for p in self.pairings():
                 if p >= 0:
@@ -593,7 +636,7 @@ cdef class Farey:
     def index(self):
         r"""
         Return the index of the arithmetic group of the FareySymbol
-        in `{\rm PSL}_2(\ZZ)`.
+        in `\PSL_2(\ZZ)`.
 
         EXAMPLES::
 
@@ -678,7 +721,7 @@ cdef class Farey:
             [0 1], [ 6 -1], [12 -5], [ 0 -1]
             ]
 
-        Calculate the generators of `{\rm SL}_2(\ZZ)`::
+        Calculate the generators of `\SL_2(\ZZ)`::
 
             sage: FareySymbol(SL2Z).generators()
             [
@@ -688,6 +731,7 @@ cdef class Farey:
 
         The unique index 2 even subgroup and index 4 odd subgroup each get handled correctly::
 
+            sage: # needs sage.groups
             sage: FareySymbol(ArithmeticSubgroup_Permutation(S2="(1,2)", S3="()")).generators()
             [
             [ 0  1]  [-1  1]
@@ -833,6 +877,7 @@ cdef class Farey:
 
         Reduce 11/17 to a cusp of for HsuExample10()::
 
+            sage: # needs sage.groups
             sage: from sage.modular.arithgroup.arithgroup_perm import HsuExample10
             sage: f = FareySymbol(HsuExample10())
             sage: f.reduce_to_cusp(11/17)
@@ -858,7 +903,7 @@ cdef class Farey:
     def fundamental_domain(self, **options):
         r"""
         Plot a fundamental domain of an arithmetic subgroup of
-        `{\rm PSL}_2(\ZZ)` corresponding to the Farey symbol.
+        `\PSL_2(\ZZ)` corresponding to the Farey symbol.
 
         OPTIONS:
 
@@ -889,7 +934,7 @@ cdef class Farey:
         For example, to plot the fundamental domain of `\Gamma_0(11)`
         with pairings use the following command::
 
-            sage: FareySymbol(Gamma0(11)).fundamental_domain()
+            sage: FareySymbol(Gamma0(11)).fundamental_domain()                          # needs sage.plot sage.symbolic
             Graphics object consisting of 54 graphics primitives
 
         indicating that side 1 is paired with side 3 and side 2 is
@@ -898,27 +943,31 @@ cdef class Farey:
         To plot the fundamental domain of `\Gamma(3)` without pairings
         use the following command::
 
-            sage: FareySymbol(Gamma(3)).fundamental_domain(show_pairing=False)
+            sage: FareySymbol(Gamma(3)).fundamental_domain(show_pairing=False)          # needs sage.plot sage.symbolic
             Graphics object consisting of 48 graphics primitives
 
         Plot the fundamental domain of `\Gamma_0(23)` showing the left
         coset representatives::
 
-            sage: FareySymbol(Gamma0(23)).fundamental_domain(tesselation='coset')
+            sage: FareySymbol(Gamma0(23)).fundamental_domain(tesselation='coset')       # needs sage.plot sage.symbolic
             Graphics object consisting of 58 graphics primitives
 
         The same as above but with a custom linestyle::
 
-            sage: FareySymbol(Gamma0(23)).fundamental_domain(tesselation='coset', linestyle=':', thickness='2')
+            sage: FareySymbol(Gamma0(23)).fundamental_domain(tesselation='coset',       # needs sage.plot sage.symbolic
+            ....:                                            linestyle=':',
+            ....:                                            thickness='2')
             Graphics object consisting of 58 graphics primitives
-
         """
+        from sage.plot.all import Graphics
         from sage.plot.colors import rainbow
+        from sage.plot.all import hyperbolic_arc, hyperbolic_triangle
+
         I = CC(0, 1)
         w = RR(3).sqrt()
         L = 1000
         g = Graphics()
-        ## show coset
+        # show coset
         for x in self.coset_reps():
             a, b, c, d = x[1, 1], -x[0, 1], -x[1, 0], x[0, 0]
             A, B = CC(0, L), CC(0, L)
@@ -985,30 +1034,30 @@ cdef class Farey:
 
 #--- conversions ------------------------------------------------------------
 
-cdef public long convert_to_long(n):
+cdef public long convert_to_long(n) noexcept:
     cdef long m = n
     return m
 
-cdef public object convert_to_Integer(mpz_class a):
+cdef public object convert_to_Integer(mpz_class a) noexcept:
     A = Integer()
     A.set_from_mpz(a.get_mpz_t())
     return A
 
-cdef public object convert_to_rational(mpq_class r):
+cdef public object convert_to_rational(mpq_class r) noexcept:
     a = Integer()
     a.set_from_mpz(r.get_num_mpz_t())
     b = Integer()
     b.set_from_mpz(r.get_den_mpz_t())
     return a/b
 
-cdef public object convert_to_cusp(mpq_class r):
+cdef public object convert_to_cusp(mpq_class r) noexcept:
     a = Integer()
     a.set_from_mpz(r.get_num_mpz_t())
     b = Integer()
     b.set_from_mpz(r.get_den_mpz_t())
     return Cusp(a/b)
 
-cdef public object convert_to_SL2Z(cpp_SL2Z M):
+cdef public object convert_to_SL2Z(cpp_SL2Z M) noexcept:
     a = convert_to_Integer(M.a())
     b = convert_to_Integer(M.b())
     c = convert_to_Integer(M.c())

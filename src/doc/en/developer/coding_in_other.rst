@@ -20,7 +20,7 @@ In this chapter, we discuss interfaces between Sage and :ref:`PARI
 
 .. _section-pari-library:
 
-The PARI C Library Interface
+The PARI C library interface
 ============================
 
 Here is a step-by-step guide to adding new PARI functions to Sage. We
@@ -43,8 +43,10 @@ polynomial or matrix, will have our new method. So you can do
 ``PariError`` in this case.
 
 The ``gen`` class is defined in
-:file:`SAGE_ROOT/src/sage/libs/pari/gen.pyx`, and this is where we
-add the method ``matfrobenius``::
+:file:`SAGE_ROOT/src/sage/libs/cypari2/gen.pyx`, and this is where we
+add the method ``matfrobenius``:
+
+.. CODE-BLOCK:: cython
 
     def matfrobenius(self, flag=0):
         r"""
@@ -95,15 +97,16 @@ In case you are familiar with gp, please note that the PARI C function
 may have a name that is different from the corresponding gp function
 (for example, see ``mathnf``), so always check the manual.
 
-We can also add a ``frobenius(flag)`` method to the ``matrix_integer``
+We can also add a ``frobenius_form(flag)`` method to the ``matrix_integer``
 class where we call the ``matfrobenius()`` method on the PARI object
 associated to the matrix after doing some sanity checking. Then we
-convert output from PARI to Sage objects::
+convert output from PARI to Sage objects:
 
-    def frobenius(self, flag=0, var='x'):
+.. CODE-BLOCK:: cython
+
+    def frobenius_form(self, flag=0, var='x'):
         """
-        Return the Frobenius form (rational canonical form) of this
-        matrix.
+        Return the Frobenius form (rational canonical form) of this matrix.
 
         INPUT:
 
@@ -121,33 +124,33 @@ convert output from PARI to Sage objects::
 
         -  ``var`` -- a string (default: 'x')
 
-        ALGORITHM: uses PARI's matfrobenius()
+        ALGORITHM: uses PARI's :pari:`matfrobenius`
 
         EXAMPLES::
 
             sage: A = MatrixSpace(ZZ, 3)(range(9))
-            sage: A.frobenius(0)
+            sage: A.frobenius_form(0)
             [ 0  0  0]
             [ 1  0 18]
             [ 0  1 12]
-            sage: A.frobenius(1)
+            sage: A.frobenius_form(1)
             [x^3 - 12*x^2 - 18*x]
-            sage: A.frobenius(1, var='y')
+            sage: A.frobenius_form(1, var='y')
             [y^3 - 12*y^2 - 18*y]
         """
         if not self.is_square():
             raise ArithmeticError("frobenius matrix of non-square matrix not defined.")
 
-        v = self._pari_().matfrobenius(flag)
-        if flag==0:
+        v = self.__pari__().matfrobenius(flag)
+        if flag == 0:
             return self.matrix_space()(v.python())
-        elif flag==1:
+        elif flag == 1:
             r = PolynomialRing(self.base_ring(), names=var)
             retr = []
             for f in v:
                 retr.append(eval(str(f).replace("^","**"), {'x':r.gen()}, r.gens_dict()))
             return retr
-        elif flag==2:
+        elif flag == 2:
             F = matrix_space.MatrixSpace(QQ, self.nrows())(v[0].python())
             B = matrix_space.MatrixSpace(QQ, self.nrows())(v[1].python())
             return F, B
@@ -166,7 +169,9 @@ hard.
 
 For example, suppose we want to make a wrapper for the computation of
 the Cartan matrix of a simple Lie algebra. The Cartan matrix of `G_2`
-is available in GAP using the commands::
+is available in GAP using the commands:
+
+.. CODE-BLOCK:: gap
 
     gap> L:= SimpleLieAlgebra( "G", 2, Rationals );
     <Lie algebra of dimension 14 over Rationals>
@@ -199,18 +204,20 @@ object.
 
 .. skip
 
-::
+.. CODE-BLOCK:: python
 
     def cartan_matrix(type, rank):
         """
         Return the Cartan matrix of given Chevalley type and rank.
 
         INPUT:
-            type -- a Chevalley letter name, as a string, for
-                    a family type of simple Lie algebras
-            rank -- an integer (legal for that type).
 
-        EXAMPLES:
+        - type -- a Chevalley letter name, as a string, for
+          a family type of simple Lie algebras
+        - rank -- an integer (legal for that type).
+
+        EXAMPLES::
+
             sage: cartan_matrix("A",5)
             [ 2 -1  0  0  0]
             [-1  2 -1  0  0]
@@ -221,19 +228,20 @@ object.
             [ 2 -1]
             [-3  2]
         """
-
-        L = gap.SimpleLieAlgebra('"%s"'%type, rank, 'Rationals')
+        L = gap.SimpleLieAlgebra('"%s"' % type, rank, 'Rationals')
         R = L.RootSystem()
         sM = R.CartanMatrix()
         ans = eval(str(sM))
-        MS  = MatrixSpace(QQ, rank)
+        MS = MatrixSpace(QQ, rank)
         return MS(ans)
 
 The output ``ans`` is a Python list. The last two lines convert that
 list to an instance of the Sage class ``Matrix``.
 
 Alternatively, one could replace the first line of the above function
-with this::
+with this:
+
+.. CODE-BLOCK:: python
 
         L = gap.new('SimpleLieAlgebra("%s", %s, Rationals);'%(type, rank))
 
@@ -325,7 +333,9 @@ finite field. (The command ``closed_points`` also does this in some
 cases.) This is "easy" since no new Python classes are needed in Sage
 to carry this out.
 
-Here is an example on how to use this command in Singular::
+Here is an example on how to use this command in Singular:
+
+.. CODE-BLOCK:: text
 
      A Computer Algebra System for Polynomial Computations   /   version 3-0-0
                                                            0<
@@ -401,7 +411,8 @@ interface to Singular::
 
     sage: singular.LIB("brnoeth.lib")
     sage: singular.ring(5,'(x,y)','lp')
-        //   characteristic : 5
+        polynomial ring, over a field, global ordering
+        //   coefficients: ZZ/5
         //   number of vars : 2
         //        block   1 : ordering lp
         //                  : names    x y
@@ -428,7 +439,7 @@ interface to Singular::
     ''
     sage: L = singular.eval("POINTS;")
 
-    sage: print(L)
+    sage: print(L) # random
     [1]:
        [1]:
           0
@@ -436,13 +447,6 @@ interface to Singular::
           1
        [3]:
           0
-    [2]:
-       [1]:
-          -2
-       [2]:
-          -1
-       [3]:
-          1
     ...
 
 From looking at the output, notice that our wrapper function will need
@@ -454,52 +458,53 @@ just that.
 
 .. skip
 
-::
+.. CODE-BLOCK:: python
 
-    def points_parser(string_points,F):
+    def points_parser(string_points, F):
         """
         This function will parse a string of points
         of X over a finite field F returned by Singular's NSplaces
         command into a Python list of points with entries from F.
 
-        EXAMPLES:
+        EXAMPLES::
+
             sage: F = GF(5)
             sage: points_parser(L,F)
             ((0, 1, 0), (3, 4, 1), (0, 0, 1), (2, 3, 1), (3, 1, 1), (2, 2, 1))
         """
-        Pts=[]
-        n=len(L)
-        #start block to compute a pt
-        L1=L
-        while len(L1)>32:
-            idx=L1.index("     ")
-            pt=[]
-            ## start block1 for compute pt
-            idx=L1.index("     ")
-            idx2=L1[idx:].index("\n")
-            L2=L1[idx:idx+idx2]
+        Pts = []
+        n = len(L)
+        # start block to compute a pt
+        L1 = L
+        while len(L1) > 32:
+            idx =L1.index("     ")
+            pt = []
+            # start block1 for compute pt
+            idx = L1.index("     ")
+            idx2 = L1[idx:].index("\n")
+            L2 = L1[idx:idx+idx2]
             pt.append(F(eval(L2)))
             # end block1 to compute pt
-            L1=L1[idx+8:] # repeat block 2 more times
-            ## start block2 for compute pt
-            idx=L1.index("     ")
-            idx2=L1[idx:].index("\n")
-            L2=L1[idx:idx+idx2]
+            L1 = L1[idx+8:] # repeat block 2 more times
+            # start block2 for compute pt
+            idx = L1.index("     ")
+            idx2 = L1[idx:].index("\n")
+            L2 = L1[idx:idx+idx2]
             pt.append(F(eval(L2)))
             # end block2 to compute pt
             L1=L1[idx+8:] # repeat block 1 more time
-            ## start block3 for compute pt
+            # start block3 for compute pt
             idx=L1.index("     ")
             if "\n" in L1[idx:]:
-                idx2=L1[idx:].index("\n")
+                idx2 = L1[idx:].index("\n")
             else:
-                idx2=len(L1[idx:])
-            L2=L1[idx:idx+idx2]
+                idx2 = len(L1[idx:])
+            L2 = L1[idx:idx+idx2]
             pt.append(F(eval(L2)))
             # end block3 to compute pt
-            #end block to compute a pt
+            # end block to compute a pt
             Pts.append(tuple(pt))  # repeat until no more pts
-            L1=L1[idx+8:] # repeat block 2 more times
+            L1 = L1[idx+8:] # repeat block 2 more times
         return tuple(Pts)
 
 Now it is an easy matter to put these ingredients together into a Sage
@@ -513,22 +518,25 @@ ourselves to points of degree one.
 
 .. skip
 
-::
+.. CODE-BLOCK:: python
 
-    def places_on_curve(f,F):
+    def places_on_curve(f, F):
         """
         INPUT:
-            f -- element of F[x,y], defining X: f(x,y)=0
-            F -- a finite field of *prime order*
+
+        - f -- element of F[x,y], defining X: f(x,y)=0
+        - F -- a finite field of *prime order*
 
         OUTPUT:
-            integer -- the number of places in X of degree d=1 over F
 
-        EXAMPLES:
-            sage: F=GF(5)
-            sage: R=PolynomialRing(F,2,names=["x","y"])
-            sage: x,y=R.gens()
-            sage: f=y^2-x^9-x
+        integer -- the number of places in X of degree d=1 over F
+
+        EXAMPLES::
+
+            sage: F = GF(5)
+            sage: R = PolynomialRing(F,2,names=["x","y"])
+            sage: x,y = R.gens()
+            sage: f = y^2-x^9-x
             sage: places_on_curve(f,F)
             ((0, 1, 0), (3, 4, 1), (0, 0, 1), (2, 3, 1), (3, 1, 1), (2, 2, 1))
         """
@@ -562,7 +570,7 @@ One more example (in addition to the one in the docstring):
     ((0, 1, 0), (1, 0, 0), (0, 0, 1))
 
 
-Singular: Another Approach
+Singular: another approach
 ==========================
 
 There is also a more Python-like interface to Singular. Using this,
@@ -592,9 +600,11 @@ representation:
 
 Next, we implement the general function (for brevity we omit the
 docstring, which is the same as above). Note that the ``point_parser``
-function is not required::
+function is not required:
 
-    def places_on_curve(f,F):
+.. CODE-BLOCK:: python
+
+    def places_on_curve(f, F):
         p = F.characteristic()
         if F.degree() > 1:
             raise NotImplementedError
@@ -616,7 +626,7 @@ implemented in the Sage/Singular interface, whereas the code in the
 previous section used only the barest minimum of that interface.
 
 
-Creating a New Pseudo-TTY Interface
+Creating a new pseudo-TTY interface
 ===================================
 
 You can create Sage pseudo-tty interfaces that allow Sage to work with
@@ -631,7 +641,9 @@ handles the communication between Sage and the external process.
 For example, here is part of the file
 ``SAGE_ROOT/src/sage/interfaces/octave.py``, which
 defines an interface between Sage and Octave, an open source program
-for doing numerical computations, among other things::
+for doing numerical computations, among other things:
+
+.. CODE-BLOCK:: python
 
     import os
     from expect import Expect, ExpectElement
@@ -643,7 +655,9 @@ The first two lines import the library ``os``, which contains
 operating system routines, and also the class ``Expect``, which is the
 basic class for interfaces. The third line defines the class
 ``Octave``; it derives from ``Expect`` as well. After this comes a
-docstring, which we omit here (see the file for details). Next comes::
+docstring, which we omit here (see the file for details). Next comes:
+
+.. CODE-BLOCK:: python
 
         def __init__(self, script_subdirectory="", logfile=None,
                      server=None, server_tmpdir=None):
@@ -659,13 +673,15 @@ docstring, which we omit here (see the file for details). Next comes::
                             logfile = logfile,
                             eval_using_file_cutoff=100)
 
-This uses the class ``Expect`` to set up the Octave interface::
+This uses the class ``Expect`` to set up the Octave interface:
+
+.. CODE-BLOCK:: python
 
         def set(self, var, value):
             """
             Set the variable var to the given value.
             """
-            cmd = '%s=%s;'%(var,value)
+            cmd = '%s=%s;' % (var,value)
             out = self.eval(cmd)
             if out.find("error") != -1:
                 raise TypeError("Error executing code in Octave\nCODE:\n\t%s\nOctave ERROR:\n\t%s"%(cmd, out))
@@ -674,7 +690,7 @@ This uses the class ``Expect`` to set up the Octave interface::
             """
             Get the value of the variable var.
             """
-            s = self.eval('%s'%var)
+            s = self.eval('%s' % var)
             i = s.find('=')
             return s[i+1:]
 
@@ -683,26 +699,31 @@ This uses the class ``Expect`` to set up the Octave interface::
 
 These let users type ``octave.set('x', 3)``, after which
 ``octave.get('x')`` returns ``' 3'``. Running ``octave.console()``
-dumps the user into an Octave interactive shell::
+dumps the user into an Octave interactive shell:
+
+.. CODE-BLOCK:: python
 
         def solve_linear_system(self, A, b):
             """
             Use octave to compute a solution x to A*x = b, as a list.
 
             INPUT:
-                A -- mxn matrix A with entries in QQ or RR
-                b -- m-vector b entries in QQ or RR (resp)
+
+            - A -- mxn matrix A with entries in QQ or RR
+            - b -- m-vector b entries in QQ or RR (resp)
 
             OUTPUT:
-                An list x (if it exists) which solves M*x = b
 
-            EXAMPLES:
+            A list x (if it exists) which solves M*x = b
+
+            EXAMPLES::
+
                 sage: M33 = MatrixSpace(QQ,3,3)
                 sage: A   = M33([1,2,3,4,5,6,7,8,0])
                 sage: V3  = VectorSpace(QQ,3)
                 sage: b   = V3([1,2,3])
                 sage: octave.solve_linear_system(A,b)    # optional - octave
-                [-0.33333299999999999, 0.66666700000000001, -3.5236600000000002e-18]
+                [-0.333333, 0.666667, 0]
 
             AUTHOR: David Joyner and William Stein
             """
@@ -712,16 +733,16 @@ dumps the user into an Octave interactive shell::
                 raise ValueError("dimensions of A and b must be compatible")
             from sage.matrix.all import MatrixSpace
             from sage.rings.all import QQ
-            MS = MatrixSpace(QQ,m,1)
-            b  = MS(list(b)) # converted b to a "column vector"
+            MS = MatrixSpace(QQ, m, 1)
+            b  = MS(list(b))  # converted b to a "column vector"
             sA = self.sage2octave_matrix_string(A)
             sb = self.sage2octave_matrix_string(b)
             self.eval("a = " + sA )
             self.eval("b = " + sb )
             soln = octave.eval("c = a \\ b")
-            soln = soln.replace("\n\n ","[")
-            soln = soln.replace("\n\n","]")
-            soln = soln.replace("\n",",")
+            soln = soln.replace("\n\n ", "[")
+            soln = soln.replace("\n\n", "]")
+            soln = soln.replace("\n", ",")
             sol  = soln[3:]
             return eval(sol)
 

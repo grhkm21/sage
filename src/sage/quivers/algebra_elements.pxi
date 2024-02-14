@@ -1,5 +1,5 @@
 """
-Boilerplate functions for a cython implementation of elements of path algebras.
+Boilerplate functions for a cython implementation of elements of path algebras
 
 AUTHORS:
 
@@ -7,21 +7,23 @@ AUTHORS:
 
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #     Copyright (C) 2015 Simon King <simon.king@uni-jena.de>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-include "cysignals/signals.pxi"
-include "cysignals/memory.pxi"
-include "sage/data_structures/bitset.pxi"
+from cysignals.memory cimport check_malloc, check_allocarray, sig_free
+from cysignals.signals cimport sig_check, sig_on, sig_off
 
 from cpython.ref cimport *
 from cython.operator cimport predecrement as predec, postincrement as postinc
+
+from sage.data_structures.bitset_base cimport *
+from sage.structure.richcmp cimport richcmp_not_equal, rich_to_bool
 from sage.libs.gmp.mpn cimport mpn_cmp
 from libc.stdlib cimport free
 
@@ -66,7 +68,7 @@ cdef bint mon_create_keep(path_mon_t out, biseq_t Mon, long Pos, mp_size_t L_len
 # It changes an existing monomial in-place (which should NEVER
 # be done on a monomial that is in use), re-allocating memory
 # and filling it with the given bounded integer sequence (not a copy).
-cdef bint mon_realloc_keep(path_mon_t out, biseq_t Mon, long Pos, mp_size_t L_len, mp_size_t S_len):
+cdef bint mon_realloc_keep(path_mon_t out, biseq_t Mon, long Pos, mp_size_t L_len, mp_size_t S_len) noexcept:
     biseq_dealloc(out.path)
     out.path[0] = Mon[0]
     out.pos = Pos
@@ -82,11 +84,11 @@ cdef inline bint mon_copy(path_mon_t out, path_mon_t M) except -1:
 
 # Deallocate the monomial, which means to decrease the reference count,
 # or to actually deallocate the data if there is no reference left.
-cdef inline void mon_free(path_mon_t M):
+cdef inline void mon_free(path_mon_t M) noexcept:
     biseq_dealloc(M.path)
 
 # Linearisation
-cdef inline tuple mon_pickle(path_mon_t M):
+cdef inline tuple mon_pickle(path_mon_t M) noexcept:
     return (bitset_pickle(M.path.data) if M.path.length>0 else (),
             M.path.itembitsize, M.path.length, M.pos, M.l_len, M.s_len)
 
@@ -217,7 +219,7 @@ cdef int negdeglex(path_mon_t M1, path_mon_t M2) except -2:
         if M1.s_len < M2.s_len:
             return -1
         return 1
-    for index from 0 <= index < M1.path.length:
+    for index in range(M1.path.length):
         item1 = biseq_getitem(M1.path, index)
         item2 = biseq_getitem(M2.path, index)
         sig_check()
@@ -254,7 +256,7 @@ cdef int deglex(path_mon_t M1, path_mon_t M2) except -2:
         if M1.s_len < M2.s_len:
             return 1
         return -1
-    for index from 0 <= index < M1.path.length:
+    for index in range(M1.path.length):
         item1 = biseq_getitem(M1.path, index)
         item2 = biseq_getitem(M2.path, index)
         sig_check()
@@ -284,7 +286,7 @@ freelist.used = 0
 freelist.pool = <path_term_t**>check_allocarray(poolsize, sizeof(path_term_t*))
 
 # Deallocate the term, and return the pointer .nxt, without using kill list
-cdef inline path_term_t *term_free_force(path_term_t *T):
+cdef inline path_term_t *term_free_force(path_term_t *T) noexcept:
     mon_free(T.mon)
     cdef path_term_t *out = T.nxt
     sig_free(T)
@@ -321,7 +323,7 @@ _freelist_protector = _FreeListProtector()
 
 # Put the term on the freelist (unless the list is full),
 # and return the pointer .nxt
-cdef inline path_term_t *term_free(path_term_t *T):
+cdef inline path_term_t *term_free(path_term_t *T) noexcept:
     if T.coef!=NULL:
         Py_XDECREF(T.coef)
     if likely(freelist.used < poolsize):
@@ -406,18 +408,18 @@ cdef path_term_t *term_copy_recursive(path_term_t *T) except NULL:
     return first
 
 # Hash of a term; probably not a good one.
-cdef inline long term_hash(path_term_t *T):
+cdef inline long term_hash(path_term_t *T) noexcept:
     return (<long>hash(<object>T.coef)+(T.mon.l_len<<5)+(T.mon.pos<<10))^bitset_hash(T.mon.path.data)
 
 # Recall that a monomial a*I*b (with I a generator of a free module)
 # is encoded by a path a*s*b for some monomial s that refers to a
 # so-called Schreyer ordering. The total degree of a*I*b is the length
 # of a plus the length of b.
-cdef inline mp_size_t term_total_degree(path_term_t *T):
+cdef inline mp_size_t term_total_degree(path_term_t *T) noexcept:
     return T.mon.path.length-T.mon.s_len
 
 # Linearisation
-cdef inline tuple term_pickle(path_term_t *T):
+cdef inline tuple term_pickle(path_term_t *T) noexcept:
     return (<object>T.coef, mon_pickle(T.mon))
 
 # De-linearisation
@@ -576,7 +578,7 @@ cdef path_term_t *term_mul_term(path_term_t *T1, path_term_t *T2) except NULL:
     cdef mp_size_t new_s_len
     if T1.mon.pos!=-1:
         if T2.mon.pos!=-1:
-            raise ValueError("We cannot multiply two module elements")
+            raise ValueError("we cannot multiply two module elements")
         new_l_len = T1.mon.l_len
         new_pos = T1.mon.pos
         new_s_len = T1.mon.s_len
@@ -626,14 +628,14 @@ cdef inline path_poly_t *poly_create() except NULL:
     return out
 
 # Deallocate all terms of the polynomial, but NOT the polynomial itself
-cdef inline void poly_dealloc(path_poly_t *P):
+cdef inline void poly_dealloc(path_poly_t *P) noexcept:
     cdef path_term_t *T = P.lead
     while T!=NULL:
         T = term_free(T)
 
 # Deallocate all terms of the polynomial, and free the chunk of memory
 # used by the polynomial.
-cdef inline void poly_free(path_poly_t *P):
+cdef inline void poly_free(path_poly_t *P) noexcept:
     poly_dealloc(P)
     sig_free(P)
 
@@ -687,7 +689,7 @@ cdef bint poly_icopy_scale(path_poly_t *out, path_poly_t *P, object coef) except
     return True
 
 # Linearisation of a path polynomials
-cdef list poly_pickle(path_poly_t *P):
+cdef list poly_pickle(path_poly_t *P) noexcept:
     cdef list L = []
     cdef path_term_t *T = P.lead
     while T != NULL:
@@ -718,30 +720,34 @@ cdef bint poly_inplace_unpickle(path_poly_t *P, list data) except -1:
 ##
 ## Polynomial arithmetics
 
-# Comparison of P1 and P2, using the given monomial ordering cmp_terms.
-# Return -1, 0, 1, if P1<P2, P1==P2, P1>P2, respectively.
-cdef int poly_cmp(path_poly_t *P1, path_poly_t *P2, path_order_t cmp_terms) except -2:
+# Rich comparison of P1 and P2, using the given monomial ordering cmp_terms.
+# Return a boolean.
+cdef bint poly_richcmp(path_poly_t *P1, path_poly_t *P2, path_order_t cmp_terms, int op) noexcept:
     cdef path_term_t *T1 = P1.lead
     cdef path_term_t *T2 = P2.lead
     cdef int c
+    cdef object t1
+    cdef object t2
     while T1 != NULL and T2 != NULL:
         sig_check()
         c = cmp_terms(T1.mon, T2.mon)
-        if c != 0:
-            return c
-        c = cmp(<object>T1.coef, <object>T2.coef)
-        if c != 0:
-            return c
+        if c:
+            return rich_to_bool(op, c)
+
+        t1 = <object>T1.coef
+        t2 = <object>T2.coef
+        if t1 != t2:
+            return richcmp_not_equal(t1, t2, op)
         T1 = T1.nxt
         T2 = T2.nxt
     if T1 == NULL:
         if T2 == NULL:
-            return 0
-        return -1
-    return 1
+            return rich_to_bool(op, 0)
+        return rich_to_bool(op, -1)
+    return rich_to_bool(op, 1)
 
 # Hash of a polynomial. Probably not a very strong hash.
-cdef inline long poly_hash(path_poly_t *P):
+cdef inline long poly_hash(path_poly_t *P) noexcept:
     cdef path_term_t *T = P.lead
     cdef long out = 0
     while T != NULL:
@@ -752,7 +758,7 @@ cdef inline long poly_hash(path_poly_t *P):
 
 # Change T1 inplace to T1+T2.coeff*T1. If the new coefficient is zero,
 # then T1.coef becomes NULL
-cdef inline void term_iadd(path_term_t *T1, path_term_t *T2):
+cdef inline void term_iadd(path_term_t *T1, path_term_t *T2) noexcept:
     cdef object coef = <object>(T1.coef) + <object>(T2.coef)
     Py_XDECREF(T1.coef)
     if coef:
@@ -764,7 +770,7 @@ cdef inline void term_iadd(path_term_t *T1, path_term_t *T2):
 # Change P inplace to P+T. It is assumed that initially the terms of P are
 # decreasingly sorted wrt. cmp_terms, and then it is guaranteed that they
 # are decreasingly sorted wrt. cmp_terms after adding T.
-# The adddition is "destructive" for T, which means that one MUST NOT
+# The addition is "destructive" for T, which means that one MUST NOT
 # call term_free(T) after the addition!
 cdef bint poly_iadd_term_d(path_poly_t *P, path_term_t *T, path_order_t cmp_terms) except -1:
     if P.lead == NULL:
@@ -792,7 +798,7 @@ cdef bint poly_iadd_term_d(path_poly_t *P, path_term_t *T, path_order_t cmp_term
             P.lead = term_free(tmp)
         elif <object>(tmp.coef)==0:
             sig_off()
-            raise RuntimeError("This should never happen")
+            raise RuntimeError("this should never happen")
         sig_off()
         return True
     while True:
@@ -819,7 +825,7 @@ cdef bint poly_iadd_term_d(path_poly_t *P, path_term_t *T, path_order_t cmp_term
                 P.nterms -= 1
                 tmp.nxt = term_free(tmp.nxt)
             elif <object>(tmp.coef)==0:
-                raise RuntimeError("This should never happen")
+                raise RuntimeError("this should never happen")
             return True
         # otherwise, tmp is still larger than T. Hence, move to the next term
         # of P.
@@ -1199,7 +1205,7 @@ cdef path_homog_poly_t *homog_poly_init_list(int start, int end, list L, path_or
         poly_iadd_term_d(out.poly, term_create(coef, P._path, pos, 0, 0), cmp_terms)
     return out
 
-cdef void homog_poly_free(path_homog_poly_t *P):
+cdef void homog_poly_free(path_homog_poly_t *P) noexcept:
     cdef path_homog_poly_t *nxt
     while P!=NULL:
         nxt = P.nxt
@@ -1212,7 +1218,7 @@ cdef path_homog_poly_t *homog_poly_copy(path_homog_poly_t *H) except NULL:
     cdef path_homog_poly_t *out
     cdef path_homog_poly_t *tmp
     if H == NULL:
-        raise ValueError("The polynomial to be copied is the NULL pointer")
+        raise ValueError("the polynomial to be copied is the NULL pointer")
     out = homog_poly_create(H.start, H.end)
     poly_icopy(out.poly, H.poly)
     tmp = out
@@ -1226,7 +1232,7 @@ cdef path_homog_poly_t *homog_poly_copy(path_homog_poly_t *H) except NULL:
     return out
 
 # Linearisation
-cdef list homog_poly_pickle(path_homog_poly_t *H):
+cdef list homog_poly_pickle(path_homog_poly_t *H) noexcept:
     cdef list L = []
     while H != NULL:
         L.append((H.start, H.end, poly_pickle(H.poly)))
@@ -1255,7 +1261,7 @@ cdef path_homog_poly_t *homog_poly_neg(path_homog_poly_t *H) except NULL:
     cdef path_homog_poly_t *out
     cdef path_homog_poly_t *tmp
     if H == NULL:
-        raise ValueError("The polynomial to be copied is the NULL pointer")
+        raise ValueError("the polynomial to be copied is the NULL pointer")
     out = homog_poly_create(H.start, H.end)
     poly_icopy_neg(out.poly, H.poly)
     tmp = out
@@ -1274,7 +1280,7 @@ cdef path_homog_poly_t *homog_poly_scale(path_homog_poly_t *H, object coef) exce
     cdef path_homog_poly_t *out
     cdef path_homog_poly_t *tmp
     if H == NULL:
-        raise ValueError("The polynomial to be copied is the NULL pointer")
+        raise ValueError("the polynomial to be copied is the NULL pointer")
     out = homog_poly_create(H.start, H.end)
     poly_icopy_scale(out.poly, H.poly, coef)
     tmp = out
@@ -1291,7 +1297,7 @@ cdef path_homog_poly_t *homog_poly_scale(path_homog_poly_t *H, object coef) exce
         H = H.nxt
     return out
 
-cdef path_homog_poly_t *homog_poly_get_predecessor_of_component(path_homog_poly_t *H, int s, int e):
+cdef path_homog_poly_t *homog_poly_get_predecessor_of_component(path_homog_poly_t *H, int s, int e) noexcept:
     # Search through H.nxt.nxt... and return the pointer C to a component of H
     # such that either C.nxt.start==s and C.nxt.end==e, or the component for
     # (s,e) should be inserted between C and C.nxt. Return NULL if H==NULL or

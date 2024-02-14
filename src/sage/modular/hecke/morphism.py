@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.libs.flint
 """
 Morphisms of Hecke modules
 
@@ -6,8 +7,8 @@ AUTHORS:
 - William Stein
 """
 
-#*****************************************************************************
-#       Sage: System for Algebra and Geometry Experimentation
+# ****************************************************************************
+#       Sage: Open Source Mathematical Software
 #
 #       Copyright (C) 2005 William Stein <wstein@gmail.com>
 #
@@ -20,8 +21,8 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 
 import sage.misc.misc as misc
@@ -33,9 +34,10 @@ from sage.categories.morphism import Morphism
 # modular abelian varieties (which are specified by matrices, but on
 # integral homology). All morphisms derive from HeckeModuleMorphism.
 
+
 def is_HeckeModuleMorphism(x):
     r"""
-    Return True if x is of type HeckeModuleMorphism.
+    Return ``True`` if x is of type HeckeModuleMorphism.
 
     EXAMPLES::
 
@@ -43,6 +45,7 @@ def is_HeckeModuleMorphism(x):
         True
     """
     return isinstance(x, HeckeModuleMorphism)
+
 
 def is_HeckeModuleMorphism_matrix(x):
     """
@@ -54,11 +57,13 @@ def is_HeckeModuleMorphism_matrix(x):
     """
     return isinstance(x, HeckeModuleMorphism_matrix)
 
+
 class HeckeModuleMorphism(Morphism):
     r"""
     Abstract base class for morphisms of Hecke modules.
     """
     pass
+
 
 class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
     """
@@ -69,7 +74,7 @@ class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
     -> B and G : B -> C are morphisms, the composition A -> C is G*F, but its
     matrix is F.matrix() * G.matrix().
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: A = ModularForms(1, 4)
         sage: B = ModularForms(1, 16)
@@ -86,7 +91,7 @@ class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
         ...
         TypeError: Incompatible composition of morphisms: domain of left morphism must be codomain of right.
     """
-    def __init__(self, parent, A, name=''):
+    def __init__(self, parent, A, name='', side="left"):
         """
         INPUT:
 
@@ -97,7 +102,7 @@ class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
         -  ``name`` - str (defaults to '') name of the morphism
            (used for printing)
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: M = ModularSymbols(6)
             sage: t = M.Hom(M)(matrix(QQ,3,3,srange(9)), name="spam"); t
@@ -113,7 +118,7 @@ class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
         if not isinstance(name, str):
             raise TypeError("name must be a string")
         self.__name = name
-        MatrixMorphism.__init__(self, parent, A)
+        MatrixMorphism.__init__(self, parent, A, side)
 
     def name(self, new=None):
         r"""
@@ -146,10 +151,8 @@ class HeckeModuleMorphism_matrix(MatrixMorphism, HeckeModuleMorphism):
             'Hecke module morphism spam defined by the matrix\n[0 1 2]\n[3 4 5]\n[6 7 8]\nDomain: Modular Symbols space of dimension 3 for Gamma_0(6) of weight ...\nCodomain: Modular Symbols space of dimension 3 for Gamma_0(6) of weight ...'
         """
         name = self.__name
-        if name != '':
+        if name:
             name += ' '
-        return "Hecke module morphism %sdefined by the matrix\n%s\nDomain: %s\nCodomain: %s"%(\
-                name, str(self.matrix()), misc.strunc(self.domain()), misc.strunc(self.codomain()))
+        return "Hecke module morphism %sdefined by the matrix\n%r\nDomain: %s\nCodomain: %s" % (name, self.matrix(), misc.strunc(self.domain()), misc.strunc(self.codomain()))
 
 # __mul__ method removed by David Loeffler 2009-04-14 as it is an exact duplicate of sage.modules.matrix_morphism.__mul__
-

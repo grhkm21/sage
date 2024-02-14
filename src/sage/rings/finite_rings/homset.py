@@ -1,5 +1,6 @@
+# sage.doctest: needs sage.rings.finite_rings
 """
-Homset for Finite Fields
+Homset for finite fields
 
 This is the set of all field homomorphisms between two finite fields.
 
@@ -37,7 +38,9 @@ We can also create endomorphisms::
 
 from sage.rings.homset import RingHomset_generic
 from sage.rings.finite_rings.hom_finite_field import FiniteFieldHomomorphism_generic
+from sage.rings.finite_rings.finite_field_base import FiniteField
 from sage.rings.integer import Integer
+from sage.rings.morphism import RingHomomorphism_im_gens
 from sage.structure.sequence import Sequence
 
 class FiniteFieldHomset(RingHomset_generic):
@@ -50,7 +53,7 @@ class FiniteFieldHomset(RingHomset_generic):
 #             category = FiniteFields()
 #         RingHomset_generic.__init__(self, R, S, category)
 
-    def __call__(self, im_gens, check=True):
+    def __call__(self, im_gens, base_map=None, check=True):
         """
         Construct the homomorphism defined by ``im_gens``.
 
@@ -87,13 +90,22 @@ class FiniteFieldHomset(RingHomset_generic):
             True
         """
         if isinstance(im_gens, FiniteFieldHomomorphism_generic):
+            if base_map is not None:
+                raise ValueError("Cannot specify base map when providing morphism")
             return self._coerce_impl(im_gens)
         try:
             if self.domain().degree() == 1:
                 from sage.rings.finite_rings.hom_prime_finite_field import FiniteFieldHomomorphism_prime
-                return FiniteFieldHomomorphism_prime(self, im_gens, check=check)
-            return FiniteFieldHomomorphism_generic(self, im_gens, check=check)
-        except (NotImplementedError, ValueError) as err:
+                return FiniteFieldHomomorphism_prime(self, im_gens, base_map=base_map, check=check)
+            if isinstance(self.codomain(), FiniteField):
+                return FiniteFieldHomomorphism_generic(self, im_gens, base_map=base_map, check=check)
+            # Currently, FiniteFieldHomomorphism_generic does not work if
+            # the codomain is not derived from the finite field base class;
+            # in that case, we have to fall back to the generic
+            # implementation for rings
+            else:
+                return RingHomomorphism_im_gens(self, im_gens, base_map=base_map, check=check)
+        except (NotImplementedError, ValueError):
             try:
                 return self._coerce_impl(im_gens)
             except TypeError:
@@ -127,7 +139,7 @@ class FiniteFieldHomset(RingHomset_generic):
 
     def _repr_(self):
         """
-        Return a string represention of ``self``.
+        Return a string representation of ``self``.
 
         EXAMPLES::
 
@@ -141,9 +153,9 @@ class FiniteFieldHomset(RingHomset_generic):
         D = self.domain()
         C = self.codomain()
         if C == D:
-            return "Automorphism group of %s"%D
+            return "Automorphism group of %s" % D
         else:
-            return "Set of field embeddings from %s to %s"%(D, C)
+            return "Set of field embeddings from %s to %s" % (D, C)
 
     def is_aut(self):
         """
@@ -182,6 +194,18 @@ class FiniteFieldHomset(RingHomset_generic):
         n = len(self.list())
         self.__order = n
         return n
+
+    def __len__(self):
+        """
+        Return the number of elements of ``self``.
+
+        EXAMPLES::
+
+            sage: K.<a> = GF(25)
+            sage: len(End(K))
+            2
+        """
+        return self.order()
 
     def list(self):
         """
@@ -310,7 +334,7 @@ class FiniteFieldHomset(RingHomset_generic):
 
         TESTS::
 
-            sage: Hom(GF(3^3, 'a'), GF(3^6, 'b')).an_element()
+            sage: Hom(GF(3^3, 'a'), GF(3^6, 'b')).an_element()  # random
             Ring morphism:
               From: Finite Field in a of size 3^3
               To:   Finite Field in b of size 3^6
@@ -336,5 +360,5 @@ class FiniteFieldHomset(RingHomset_generic):
         return K.hom([K.modulus().any_root(L)])
 
 
-from sage.structure.sage_object import register_unpickle_override
+from sage.misc.persist import register_unpickle_override
 register_unpickle_override('sage.rings.finite_field_morphism', 'FiniteFieldHomset', FiniteFieldHomset)

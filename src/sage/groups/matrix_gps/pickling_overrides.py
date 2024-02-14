@@ -2,12 +2,11 @@
 Overrides to unpickle old matrix groups
 """
 
-from sage.structure.sage_object import SageObject, register_unpickle_override
+from sage.structure.sage_object import register_unpickle_override
 
-from sage.groups.matrix_gps.finitely_generated import FinitelyGeneratedMatrixGroup_gap
-from sage.groups.matrix_gps.group_element import MatrixGroupElement_gap
+from sage.groups.matrix_gps.finitely_generated_gap import FinitelyGeneratedMatrixGroup_gap
+from sage.groups.matrix_gps.group_element_gap import MatrixGroupElement_gap
 from sage.groups.matrix_gps.linear import GL, LinearMatrixGroup_generic
-
 
 
 class LegacyMatrixGroup(FinitelyGeneratedMatrixGroup_gap):
@@ -18,7 +17,7 @@ class LegacyMatrixGroup(FinitelyGeneratedMatrixGroup_gap):
 
         EXAMPLES::
 
-            sage: from sage.groups.matrix_gps.pickling_overrides import *
+            sage: from sage.groups.matrix_gps.pickling_overrides import LegacyMatrixGroup
             sage: state = dict()
             sage: state['_MatrixGroup_gap__n'] = 2
             sage: state['_MatrixGroup_gap__R'] = GF(3)
@@ -34,7 +33,7 @@ class LegacyMatrixGroup(FinitelyGeneratedMatrixGroup_gap):
         matrix_gens = state['_gensG']
         ring = state['_MatrixGroup_gap__R']
         degree = state['_MatrixGroup_gap__n']
-        from sage.libs.all import libgap
+        from sage.libs.gap.libgap import libgap
         libgap_group = libgap.Group(libgap(matrix_gens))
         self.__init__(degree, ring, libgap_group)
 
@@ -52,7 +51,7 @@ class LegacyMatrixGroupElement(MatrixGroupElement_gap):
 
         EXAMPLES::
 
-            sage: from sage.groups.matrix_gps.pickling_overrides import *
+            sage: from sage.groups.matrix_gps.pickling_overrides import LegacyMatrixGroup, LegacyMatrixGroupElement
             sage: state = dict()
             sage: state['_MatrixGroup_gap__n'] = 2
             sage: state['_MatrixGroup_gap__R'] = GF(3)
@@ -91,7 +90,7 @@ class LegacyGeneralLinearGroup(LinearMatrixGroup_generic):
         EXAMPLES::
 
             sage: from sage.groups.group import Group
-            sage: from sage.groups.matrix_gps.pickling_overrides import *
+            sage: from sage.groups.matrix_gps.pickling_overrides import LegacyGeneralLinearGroup
             sage: state = dict()
             sage: state['_MatrixGroup_gap__n'] = 2
             sage: state['_MatrixGroup_gap__R'] = ZZ

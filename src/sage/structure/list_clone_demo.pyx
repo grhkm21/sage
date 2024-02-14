@@ -30,7 +30,7 @@ cdef class IncreasingArray(ClonableArray):
         sage: TestSuite(IncreasingArrays()([])).run()
     """
 
-    cpdef check(self):
+    cpdef check(self) noexcept:
         """
         Check that ``self`` is increasing.
 
@@ -59,7 +59,7 @@ class IncreasingArrays(UniqueRepresentation, Parent):
 
         sage: from sage.structure.list_clone_demo import IncreasingArrays
         sage: IncreasingArrays().element_class
-        <type 'sage.structure.list_clone_demo.IncreasingArray'>
+        <... 'sage.structure.list_clone_demo.IncreasingArray'>
     """
 
     def __init__(self):
@@ -68,7 +68,7 @@ class IncreasingArrays(UniqueRepresentation, Parent):
 
             sage: from sage.structure.list_clone_demo import IncreasingArrays
             sage: IncreasingArrays()
-            <class 'sage.structure.list_clone_demo.IncreasingArrays_with_category'>
+            <sage.structure.list_clone_demo.IncreasingArrays_with_category object at ...>
             sage: IncreasingArrays() == IncreasingArrays()
             True
         """
@@ -97,7 +97,7 @@ class IncreasingLists(IncreasingArrays):
 
         sage: from sage.structure.list_clone_demo import IncreasingLists
         sage: IncreasingLists().element_class
-        <type 'sage.structure.list_clone_demo.IncreasingList'>
+        <... 'sage.structure.list_clone_demo.IncreasingList'>
     """
     Element = IncreasingList
 
@@ -113,7 +113,7 @@ cdef class IncreasingList(ClonableList):
         sage: TestSuite(IncreasingLists()([])).run()
     """
 
-    cpdef check(self):
+    cpdef check(self) noexcept:
         """
         Check that ``self`` is increasing
 
@@ -130,7 +130,7 @@ cdef class IncreasingList(ClonableList):
         cdef int i
         for i in range(len(self)-1):
             if self._getitem(i) >= self._getitem(i+1):
-                raise ValueError , "array is not increasing"
+                raise ValueError("array is not increasing")
 
 
 
@@ -146,7 +146,7 @@ cdef class IncreasingIntArray(ClonableIntArray):
         sage: TestSuite(IncreasingIntArrays()([])).run()
     """
 
-    cpdef check(self):
+    cpdef check(self) noexcept:
         """
         Check that ``self`` is increasing.
 
@@ -176,7 +176,7 @@ class IncreasingIntArrays(IncreasingArrays):
 
         sage: from sage.structure.list_clone_demo import IncreasingIntArrays
         sage: IncreasingIntArrays().element_class
-        <type 'sage.structure.list_clone_demo.IncreasingIntArray'>
+        <... 'sage.structure.list_clone_demo.IncreasingIntArray'>
     """
     Element = IncreasingIntArray
 
@@ -193,7 +193,7 @@ cdef class SortedList(NormalizedClonableList):
         sage: TestSuite(IncreasingIntArrays()([1,2,3])).run()
         sage: TestSuite(IncreasingIntArrays()([])).run()
     """
-    cpdef normalize(self):
+    cpdef normalize(self) noexcept:
         """
         Normalize ``self``
 
@@ -213,7 +213,7 @@ cdef class SortedList(NormalizedClonableList):
         self._require_mutable()
         self._get_list().sort()
 
-    cpdef check(self):
+    cpdef check(self) noexcept:
         """
         Check that ``self`` is strictly increasing
 

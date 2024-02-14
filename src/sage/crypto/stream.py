@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.rings.finite_rings
 """
 Stream Cryptosystems
 """
@@ -12,16 +13,15 @@ Stream Cryptosystems
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from cryptosystem import SymmetricKeyCryptosystem
-from stream_cipher import LFSRCipher, ShrinkingGeneratorCipher
-
+from sage.arith.misc import gcd, power_mod
+from sage.crypto.cryptosystem import SymmetricKeyCryptosystem
+from sage.crypto.stream_cipher import LFSRCipher, ShrinkingGeneratorCipher
 from sage.crypto.util import random_blum_prime
 from sage.monoids.string_monoid import BinaryStrings
-from sage.arith.all import gcd, power_mod
 from sage.rings.finite_rings.finite_field_constructor import FiniteField
 from sage.rings.finite_rings.integer_mod_ring import IntegerModFactory
-from sage.rings.polynomial.polynomial_element import is_Polynomial
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+from sage.rings.polynomial.polynomial_element import Polynomial
+
 
 IntegerModRing = IntegerModFactory("IntegerModRing")
 
@@ -29,7 +29,7 @@ class LFSRCryptosystem(SymmetricKeyCryptosystem):
     """
     Linear feedback shift register cryptosystem class
     """
-    def __init__(self, field = None):
+    def __init__(self, field=None):
         """
         Create a linear feedback shift cryptosystem.
 
@@ -54,15 +54,14 @@ class LFSRCryptosystem(SymmetricKeyCryptosystem):
         because of the dependence on binary strings.
         """
         if field is None:
-           field = FiniteField(2)
+            field = FiniteField(2)
         if field.cardinality() != 2:
             raise NotImplementedError("Not yet implemented.")
         S = BinaryStrings()
-        P = PolynomialRing(FiniteField(2),'x')
         SymmetricKeyCryptosystem.__init__(self, S, S, None)
         self._field = field
 
-    def __eq__(self,right):
+    def __eq__(self, right):
         return type(self) is type(right) and self._field == right._field
 
     def __call__(self, key):
@@ -71,13 +70,13 @@ class LFSRCryptosystem(SymmetricKeyCryptosystem):
 
         INPUT: A polynomial and initial state of the LFSR.
         """
-        if not isinstance(key, (list,tuple)) and len(key) == 2:
+        if not isinstance(key, (list, tuple)) and len(key) == 2:
             raise TypeError("Argument key (= %s) must be a list of tuple of length 2" % key)
-        poly = key[0]; IS = key[1]
-        if not is_Polynomial(poly):
+        poly, IS = key
+        if not isinstance(poly, Polynomial):
             raise TypeError("poly (= %s) must be a polynomial." % poly)
-        if not isinstance(IS, (list,tuple)):
-            raise TypeError("IS (= %s) must be an initial in the key space."%K)
+        if not isinstance(IS, (list, tuple)):
+            raise TypeError("IS (= %s) must be an initial in the key space." % IS)
         if len(IS) != poly.degree():
             raise TypeError("The length of IS (= %s) must equal the degree of poly (= %s)" % (IS, poly))
         return LFSRCipher(self, poly, IS)
@@ -104,7 +103,7 @@ class ShrinkingGeneratorCryptosystem(SymmetricKeyCryptosystem):
     """
     Shrinking generator cryptosystem class
     """
-    def __init__(self, field = None):
+    def __init__(self, field=None):
         """
         Create a shrinking generator cryptosystem.
 
@@ -119,11 +118,10 @@ class ShrinkingGeneratorCryptosystem(SymmetricKeyCryptosystem):
             Shrinking generator cryptosystem over Finite Field of size 2
         """
         if field is None:
-           field = FiniteField(2)
+            field = FiniteField(2)
         if field.cardinality() != 2:
             raise NotImplementedError("Not yet implemented.")
         S = BinaryStrings()
-        P = PolynomialRing(field, 'x')
         SymmetricKeyCryptosystem.__init__(self, S, S, None)
         self._field = field
 
@@ -136,9 +134,10 @@ class ShrinkingGeneratorCryptosystem(SymmetricKeyCryptosystem):
         OUTPUT: The shrinking generator cipher with key stream generator e1
         and decimating cipher e2.
         """
-        if not isinstance(key, (list,tuple)) and len(key) == 2:
+        if not isinstance(key, (list, tuple)) and len(key) == 2:
             raise TypeError("Argument key (= %s) must be a list of tuple of length 2" % key)
-        e1 = key[0]; e2 = key[1]
+        e1 = key[0]
+        e2 = key[1]
         if not isinstance(e1, LFSRCipher) or not isinstance(e2, LFSRCipher):
             raise TypeError("The key (= (%s,%s)) must be a tuple of two LFSR ciphers." % key)
         return ShrinkingGeneratorCipher(self, e1, e2)
@@ -167,8 +166,8 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
     r"""
     The Blum-Blum-Shub (BBS) pseudorandom bit generator.
 
-    See the original paper by Blum, Blum and Shub [BlumBlumShub1986]_. The
-    BBS algorithm is also discussed in section 5.5.2 of [MenezesEtAl1996]_.
+    See the original paper by Blum, Blum and Shub [BBS1986]_. The
+    BBS algorithm is also discussed in section 5.5.2 of [MvOV1996]_.
 
     INPUT:
 
@@ -242,7 +241,7 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
     ALGORITHM:
 
     The BBS algorithm as described below is adapted from the presentation
-    in Algorithm 5.40, page 186 of [MenezesEtAl1996]_.
+    in Algorithm 5.40, page 186 of [MvOV1996]_.
 
     #. Let `L` be the desired number of bits in the output bit sequence.
        That is, `L` is the desired length of the bit string.
@@ -279,7 +278,7 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
         sage: blum_blum_shub(length=6, lbound=10**4, ubound=10**5)  # random
         110111
 
-    Under some reasonable hypotheses, Blum-Blum-Shub [BlumBlumShub1982]_
+    Under some reasonable hypotheses, Blum-Blum-Shub [BBS1982]_
     sketch a proof that the period of the BBS stream cipher is equal to
     `\lambda(\lambda(n))`, where `\lambda(n)` is the Carmichael function of
     `n`. This is verified below in a few examples by using the function
@@ -289,7 +288,7 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
     is the period. ::
 
         sage: from sage.crypto.stream import blum_blum_shub
-        sage: from sage.crypto.util import carmichael_lambda
+        sage: from sage.arith.misc import carmichael_lambda
         sage: carmichael_lambda(carmichael_lambda(7*11))
         4
         sage: s = [GF(2)(int(str(x))) for x in blum_blum_shub(60, p=7, q=11, seed=13)]
@@ -342,17 +341,6 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
         Traceback (most recent call last):
         ...
         ValueError: The lower bound must be less than the upper bound.
-
-    REFERENCES:
-
-    .. [BlumBlumShub1982] \L. Blum, M. Blum, and M. Shub.
-      Comparison of Two Pseudo-Random Number Generators.
-      *Advances in Cryptology: Proceedings of Crypto '82*,
-      pp.61--78, 1982.
-
-    .. [BlumBlumShub1986] \L. Blum, M. Blum, and M. Shub.
-      A Simple Unpredictable Pseudo-Random Number Generator.
-      *SIAM Journal on Computing*, 15(2):364--383, 1986.
     """
     # sanity checks
     if length < 0:
@@ -388,7 +376,7 @@ def blum_blum_shub(length, seed=None, p=None, q=None,
         x0 = power_mod(s, 2, n)
     # start generating pseudorandom bits
     z = []
-    for i in xrange(length):
+    for i in range(length):
         x1 = power_mod(x0, 2, n)
         z.append(x1 % 2)
         x0 = x1

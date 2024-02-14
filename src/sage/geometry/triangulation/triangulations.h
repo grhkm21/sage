@@ -5,7 +5,6 @@
 #include <Python.h>
 
 
-
 class triangulations: public std::vector<compact_simplices>
 {
 private:

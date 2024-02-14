@@ -7,7 +7,7 @@ AUTHORS:
   up.
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2006 William Stein <wstein@gmail.com>
 #       Copyright (C) 2016 Jeroen Demeyer <jdemeyer@cage.ugent.be>
 #
@@ -15,17 +15,16 @@ AUTHORS:
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from __future__ import division, print_function
 
 from libc.math cimport ceil
-from sage.rings.integer cimport Integer
-from sage.structure.element cimport parent_c as parent
-from sage.structure.sequence import Sequence
+from cysignals.signals cimport sig_check
 
-include "cysignals/signals.pxi"
+from sage.rings.integer cimport Integer
+from sage.structure.element cimport parent
+from sage.structure.sequence import Sequence
 
 
 def xsrange(start, end=None, step=1, universe=None, *, coerce=True, bint include_endpoint=False, endpoint_tolerance=1e-5):
@@ -85,7 +84,7 @@ def xsrange(start, end=None, step=1, universe=None, *, coerce=True, bint include
     EXAMPLES::
 
         sage: xsrange(10)
-        <generator object at 0x...>
+        <...generator object at 0x...>
         sage: for i in xsrange(1,5):
         ....:     print(i)
         1
@@ -157,7 +156,7 @@ def xsrange(start, end=None, step=1, universe=None, *, coerce=True, bint include
         return
 
     cur = start
-    # yield in chuncks of 1024
+    # yield in chunks of 1024
     cdef long k
     while icount > 1024:
         for k in range(1024):
@@ -208,21 +207,22 @@ def srange(*args, **kwds):
 
     OUTPUT: a list
 
-    .. note::
+    .. NOTE::
 
        This function is called ``srange`` to distinguish
        it from the built-in Python ``range`` command.  The s
        at the beginning of the name stands for "Sage".
 
-    .. seealso: :func:`xsrange` -- iterator which is used to implement
-       :func:`srange`.
+    .. SEEALSO::
+
+        :func:`xsrange` -- iterator which is used to implement :func:`srange`.
 
     EXAMPLES::
 
         sage: v = srange(5); v
         [0, 1, 2, 3, 4]
         sage: type(v[2])
-        <type 'sage.rings.integer.Integer'>
+        <class 'sage.rings.integer.Integer'>
         sage: srange(1, 10)
         [1, 2, 3, 4, 5, 6, 7, 8, 9]
         sage: srange(10, 1, -1)
@@ -244,8 +244,8 @@ def srange(*args, **kwds):
         [1.00000000000000]
         sage: srange(1.0, 1.0)
         []
-        sage: V = VectorSpace(QQ, 2)
-        sage: srange(V([0,0]), V([5,5]), step=V([2,2]))
+        sage: V = VectorSpace(QQ, 2)                                                    # needs sage.modules
+        sage: srange(V([0,0]), V([5,5]), step=V([2,2]))                                 # needs sage.modules
         [(0, 0), (2, 2), (4, 4)]
 
     Including the endpoint::
@@ -385,7 +385,7 @@ def ellipsis_iter(*args, step=None):
     step = universe(step)
 
     # this is a bit more complicated because we can't pop what's already been yielded
-    next = None
+    next_ = None
     skip = False
     last_end = None
     # first we handle step_magic (which may require two pops if the range is empty)
@@ -395,12 +395,11 @@ def ellipsis_iter(*args, step=None):
         if len(args) > step_magic+1:
             i = step_magic
             more = xsrange(args[i-2], args[i+1], step, coerce=False, include_endpoint=True)
-            a = None
             for a in more:
+                last_end = a
                 yield a
-            last_end = a
             skip = True
-            next = None
+            next_ = None
             step_magic += 1
         else:
             yield args[step_magic-2]
@@ -420,23 +419,23 @@ def ellipsis_iter(*args, step=None):
                     yield cur
             start, end = args[i-1], args[i+1]
             if i < 2 or args[i-2] is not Ellipsis:
-                next = None
+                next_ = None
             more = xsrange(start, end, step, coerce=False, include_endpoint=True)
             try:
-                first = more.next()
+                first = next(more)
                 if last_end != first:
                     yield first
                 for a in more:
+                    last_end = a
                     yield a
-                last_end = a
             except StopIteration:
                 last_end = None
             skip = True
-            next = None
+            next_ = None
         else:
-            if next is not None:
-                yield next
-            next = args[i]
+            if next_ is not None:
+                yield next_
+            next_ = args[i]
             last_end = None
 
 
@@ -542,7 +541,7 @@ def ellipsis_range(*args, step=None):
             skip = False
         elif args[i] is Ellipsis:
             if len(args) == i+1:
-                raise IndexError("Ellipsis range must have an endpoint, use (n..) for infinite sequence.")
+                raise IndexError("ellipsis range must have an endpoint, use (n..) for infinite sequence")
             start, end = args[i-1], args[i+1]
             if i < 2 or args[i-2] is not Ellipsis:
                 L.pop()
@@ -550,7 +549,7 @@ def ellipsis_range(*args, step=None):
                     L.pop()
                     start = args[i-2]
             more = srange(start, end, step, coerce=False, include_endpoint=True)
-            if len(more) > 0:
+            if more:
                 if last_end == more[0]:
                     L.pop()
                 last_end = more[-1]

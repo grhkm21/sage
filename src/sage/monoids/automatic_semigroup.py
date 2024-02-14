@@ -9,18 +9,18 @@ AUTHORS:
 - Nicolas M. Thiéry
 - Aladin Virmaux
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2010-2015 Nicolas M. Thiéry
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from sage.misc.all import cached_method
+import operator
+from sage.misc.cachefunc import cached_method
 from sage.categories.semigroups import Semigroups
 from sage.categories.sets_cat import Sets
 from sage.categories.monoids import Monoids
@@ -30,7 +30,8 @@ from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.element_wrapper import ElementWrapper
 from sage.sets.family import Family
 from sage.rings.integer import Integer
-import operator
+from sage.cpython.getattr import raw_getattr
+
 
 class AutomaticSemigroup(UniqueRepresentation, Parent):
     r"""
@@ -118,7 +119,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
 
         sage: G = M.cayley_graph(side = "twosided"); G
         Looped multi-digraph on 4 vertices
-        sage: sorted(G.edges(), key=str)
+        sage: G.edges(sort=True, key=str)
         [([1, 1], [1, 1], (2, 'left')),
          ([1, 1], [1, 1], (2, 'right')),
          ([1, 1], [1], (1, 'left')),
@@ -135,18 +136,18 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
          ([], [1], (1, 'right')),
          ([], [2], (2, 'left')),
          ([], [2], (2, 'right'))]
-        sage: map(sorted, M.j_classes())
+        sage: list(map(sorted, M.j_classes()))
         [[[1], [1, 1]], [[], [2]]]
         sage: M.j_classes_of_idempotents()
         [[[1, 1]], [[]]]
         sage: M.j_transversal_of_idempotents()
         [[1, 1], []]
 
-        sage: map(attrcall('pseudo_order'), M.list())
+        sage: list(map(attrcall('pseudo_order'), M.list()))
         [[1, 0], [3, 1], [2, 0], [2, 1]]
 
     We can also use it to get submonoids from groups. We check that in the
-    symmetric group, a transposition and a cyle generate the whole group::
+    symmetric group, a transposition and a long cycle generate the whole group::
 
         sage: G5 = SymmetricGroup(5)
         sage: N = AutomaticSemigroup(Family({1: G5([2,1,3,4,5]), 2: G5([2,3,4,5,1])}), one=G5.one())
@@ -158,8 +159,8 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
         sage: N.from_reduced_word([1, 2, 1, 2, 2, 1, 2, 1, 2, 2]).lift()
         (1,4,3,5,2)
 
-   We can also create a semigroup of matrices, where we define the
-   multiplication as matrix multiplication::
+    We can also create a semigroup of matrices, where we define the
+    multiplication as matrix multiplication::
 
         sage: M1=matrix([[0,0,1],[1,0,0],[0,1,0]])
         sage: M2=matrix([[0,0,0],[1,1,0],[0,0,1]])
@@ -169,7 +170,6 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
         ....:     z=x*y
         ....:     z.set_immutable()
         ....:     return z
-        ....:
         sage: Mon = AutomaticSemigroup([M1,M2], mul=prod_m, category=Monoids().Finite().Subobjects())
         sage: Mon.cardinality()
         24
@@ -202,7 +202,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
 
         sage: len(M.idempotents())
         16
-        sage: all([len(j) == 1 for j in M.j_classes()])
+        sage: all(len(j) == 1 for j in M.j_classes())
         True
 
     TESTS::
@@ -302,8 +302,8 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
                 ambient = one.parent()
             else:
                 raise ValueError("AutomaticSemigroup requires at least one generator or `one` to determine the ambient space")
-        elif ambient not in Sets:
-            raise ValueError("ambient (=%s) should be a set"%ambient)
+        elif ambient not in Sets():
+            raise ValueError("ambient (=%s) should be a set" % ambient)
 
         # if mul is not operator.mul  and category.is_subcategory(Monoids().Subobjects())  error
 
@@ -338,8 +338,8 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             category = default_category
         else:
             category = default_category & category
-        return super(AutomaticSemigroup, cls).__classcall__(cls, generators, ambient=ambient, one=one, mul=mul, category=category)
-
+        return super().__classcall__(cls, generators, ambient=ambient,
+                                     one=one, mul=mul, category=category)
 
     def __init__(self, generators, ambient, one, mul, category):
         """
@@ -373,8 +373,10 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
         # Attributes for the lazy construction of the elements
         self._constructed = False
         self._done = 0
-        self._elements = [self.one()] if one is not None else []
-        self._elements += list(self._generators)
+        if one is not None and self._one not in self._generators:
+            self._elements = [self._one] + list(self._generators)
+        else:
+            self._elements = list(self._generators)
         self._elements_set = set(self._elements)
         self._iter = self.__init__iter()
 
@@ -406,17 +408,17 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
         categories = [Groups(), Monoids(), Semigroups()]
         for category in categories:
             if self in category:
-                typ = "A "+category._repr_object_names()[:-1]
+                typ = "A " + category._repr_object_names()[:-1]
         for category in [Groups(), Monoids(), Semigroups()]:
             if self.ambient() in category and self in category.Subobjects():
-                typ = "A sub"+category._repr_object_names()[:-1]
+                typ = "A sub" + category._repr_object_names()[:-1]
                 break
         if self._mul is operator.mul:
-            of = " of (%s)"%self.ambient()
+            of = " of (%s)" % self.ambient()
         else:
             of = ""
 
-        return "%s%s with %s generators"%(typ, of, len(self._generators))
+        return "%s%s with %s generators" % (typ, of, len(self._generators))
 
     def repr_element_method(self, style="ambient"):
         """
@@ -475,7 +477,6 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             ....:     z=x*y
             ....:     z.set_immutable()
             ....:     return z
-            ....:
             sage: Mon = AutomaticSemigroup([M1,M2], mul=prod_m)
             sage: Mon.ambient()
             Full MatrixSpace of 3 by 3 dense matrices over Integer Ring
@@ -513,7 +514,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             if element not in self._elements_set:
                 cache = self._retract.cache
                 del cache[((ambient_element,), ())]
-                raise ValueError("%s not in %s"%(ambient_element, self))
+                raise ValueError("%s not in %s" % (ambient_element, self))
         return element
 
     @cached_method
@@ -556,7 +557,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             sage: [m.lift() for m in M]
             [1, 3, 5, 9, 0, 10, 12, 6]
         """
-        assert(x in self)
+        assert x in self
         return x.lift()
 
     def semigroup_generators(self):
@@ -603,7 +604,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
                     continue
                 self._elements.append(y)
                 self._elements_set.add(y)
-                y._reduced_word = x.reduced_word()+[i]
+                y._reduced_word = x.reduced_word() + [i]
                 yield y
             self._done += 1
         self._constructed = True
@@ -628,9 +629,9 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
         if self._constructed:
             return iter(self._elements)
         else:
-            return self._iter_concurent()
+            return self._iter_concurrent()
 
-    def _iter_concurent(self):
+    def _iter_concurrent(self):
         """
         We need to take special care since several iterators may run
         concurrently.
@@ -680,7 +681,12 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             # been called before we move on to the next line
             i += 1
             if i == len(self._elements) and not self._constructed:
-                next(self._iter)
+                try:
+                    next(self._iter)
+                except StopIteration:
+                    # Don't allow StopIteration to bubble up from generator
+                    # see PEP-479
+                    break
 
     def cardinality(self):
         """
@@ -738,14 +744,14 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
             sage: a*b
             [1]
         """
-        assert(x in self)
-        assert(y in self)
+        assert x in self
+        assert y in self
         red = y._reduced_word
         if red is None:
             return self._retract(self._mul(x.lift(), y.lift()))
-        else:
-            for i in red:
-                x = x.transition(i)
+
+        for i in red:
+            x = x.transition(i)
         return x
 
     def from_reduced_word(self, l):
@@ -907,7 +913,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
                 sage: m.lift()
                 3
                 sage: type(m.lift())
-                <type 'sage.rings.finite_rings.integer_mod.IntegerMod_int'>
+                <class 'sage.rings.finite_rings.integer_mod.IntegerMod_int'>
             """
             return self.value
 
@@ -936,7 +942,7 @@ class AutomaticSemigroup(UniqueRepresentation, Parent):
                 [1, 2]
             """
             parent = self.parent()
-            assert(i in parent._generators.keys())
+            assert i in parent._generators.keys()
             return parent._retract(parent._mul(self.lift(), parent._generators_in_ambient[i]))
 
         def _repr_(self):
@@ -1007,7 +1013,7 @@ class AutomaticMonoid(AutomaticSemigroup):
         return self._one
 
     # This method takes the monoid generators and adds the unit
-    semigroup_generators = Monoids.ParentMethods.semigroup_generators.__func__
+    semigroup_generators = raw_getattr(Monoids.ParentMethods, "semigroup_generators")
 
     def monoid_generators(self):
         """

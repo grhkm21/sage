@@ -1,6 +1,9 @@
-"Plotting utilities"
+# sage.doctest: needs sage.symbolic
+"""
+Plotting utilities
+"""
 
-#*****************************************************************************
+# ****************************************************************************
 #  Distributed under the terms of the GNU General Public License (GPL)
 #
 #    This code is distributed in the hope that it will be useful,
@@ -10,17 +13,18 @@
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+from sage.ext.fast_callable import FastCallableFloatWrapper
+from collections.abc import Iterable
 
-from functools import wraps
 
-from sage.ext.fast_eval import fast_float, fast_float_constant, is_fast_float
-
-from sage.structure.element import is_Vector
-
-def setup_for_eval_on_grid(funcs, ranges, plot_points=None, return_vars=False):
-    """
+def setup_for_eval_on_grid(funcs,
+                           ranges,
+                           plot_points=None,
+                           return_vars=False,
+                           imaginary_tolerance=1e-8):
+    r"""
     Calculate the necessary parameters to construct a list of points,
     and make the functions fast_callable.
 
@@ -39,6 +43,11 @@ def setup_for_eval_on_grid(funcs, ranges, plot_points=None, return_vars=False):
     - ``return_vars`` -- (default ``False``) If ``True``, return the variables,
       in order.
 
+    - ``imaginary_tolerance`` -- (default: ``1e-8``); if an imaginary
+      number arises (due, for example, to numerical issues), this
+      tolerance specifies how large it has to be in magnitude before
+      we raise an error. In other words, imaginary parts smaller than
+      this are ignored in your plot points.
 
     OUTPUT:
 
@@ -60,17 +69,17 @@ def setup_for_eval_on_grid(funcs, ranges, plot_points=None, return_vars=False):
         sage: g(x,y)=x+y
         sage: h(y)=-y
         sage: sage.plot.misc.setup_for_eval_on_grid(f, [(0, 2),(1,3),(-4,1)], plot_points=5)
-        (<sage.ext...>, [(0.0, 2.0, 0.5), (1.0, 3.0, 0.5), (-4.0, 1.0, 1.25)])
+        (<sage...>, [(0.0, 2.0, 0.5), (1.0, 3.0, 0.5), (-4.0, 1.0, 1.25)])
         sage: sage.plot.misc.setup_for_eval_on_grid([g,h], [(0, 2),(-1,1)], plot_points=5)
-        ((<sage.ext...>, <sage.ext...>), [(0.0, 2.0, 0.5), (-1.0, 1.0, 0.5)])
+        ((<sage...>, <sage...>), [(0.0, 2.0, 0.5), (-1.0, 1.0, 0.5)])
         sage: sage.plot.misc.setup_for_eval_on_grid([sin,cos], [(-1,1)], plot_points=9)
-        ((<sage.ext...>, <sage.ext...>), [(-1.0, 1.0, 0.25)])
+        ((<sage...>, <sage...>), [(-1.0, 1.0, 0.25)])
         sage: sage.plot.misc.setup_for_eval_on_grid([lambda x: x^2,cos], [(-1,1)], plot_points=9)
-        ((<function <lambda> ...>, <sage.ext...>), [(-1.0, 1.0, 0.25)])
+        ((<function <lambda> ...>, <sage...>), [(-1.0, 1.0, 0.25)])
         sage: sage.plot.misc.setup_for_eval_on_grid([x+y], [(x,-1,1),(y,-2,2)])
-        ((<sage.ext...>,), [(-1.0, 1.0, 2.0), (-2.0, 2.0, 4.0)])
+        ((<sage...>,), [(-1.0, 1.0, 2.0), (-2.0, 2.0, 4.0)])
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(x,-1,1),(y,-1,1)], plot_points=[4,9])
-        (<sage.ext...>, [(-1.0, 1.0, 0.6666666666666666), (-1.0, 1.0, 0.25)])
+        (<sage...>, [(-1.0, 1.0, 0.6666666666666666), (-1.0, 1.0, 0.25)])
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(x,-1,1),(y,-1,1)], plot_points=[4,9,10])
         Traceback (most recent call last):
         ...
@@ -79,15 +88,16 @@ def setup_for_eval_on_grid(funcs, ranges, plot_points=None, return_vars=False):
         Traceback (most recent call last):
         ...
         ValueError: Some variable ranges specify variables while others do not
-        sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(1,-1),(-1,1)], plot_points=5)
-        doctest:...: DeprecationWarning:
-        Unnamed ranges for more than one variable is deprecated and
-        will be removed from a future release of Sage; you can used
-        named ranges instead, like (x,0,2)
-        See http://trac.sagemath.org/7008 for details.
-        (<sage.ext...>, [(1.0, -1.0, 0.5), (-1.0, 1.0, 0.5)])
+
+    Beware typos: a comma which should be a period, for instance::
+
+        sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(x, 1, 2), (y, 0,1, 0.2)], plot_points=[4,9,10])
+        Traceback (most recent call last):
+        ...
+        ValueError: At least one variable range has more than 3 entries: each should either have 2 or 3 entries, with one of the forms (xmin, xmax) or (x, xmin, xmax)
+
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(y,1,-1),(x,-1,1)], plot_points=5)
-        (<sage.ext...>, [(1.0, -1.0, 0.5), (-1.0, 1.0, 0.5)])
+        (<sage...>, [(-1.0, 1.0, 0.5), (-1.0, 1.0, 0.5)])
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(x,1,-1),(x,-1,1)], plot_points=5)
         Traceback (most recent call last):
         ...
@@ -97,57 +107,122 @@ def setup_for_eval_on_grid(funcs, ranges, plot_points=None, return_vars=False):
         ...
         ValueError: plot start point and end point must be different
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(x,1,-1),(y,-1,1)], return_vars=True)
-        (<sage.ext...>, [(1.0, -1.0, 2.0), (-1.0, 1.0, 2.0)], [x, y])
+        (<sage...>, [(-1.0, 1.0, 2.0), (-1.0, 1.0, 2.0)], [x, y])
         sage: sage.plot.misc.setup_for_eval_on_grid(x+y, [(y,1,-1),(x,-1,1)], return_vars=True)
-        (<sage.ext...>, [(1.0, -1.0, 2.0), (-1.0, 1.0, 2.0)], [y, x])
+        (<sage...>, [(-1.0, 1.0, 2.0), (-1.0, 1.0, 2.0)], [y, x])
+
+    TESTS:
+
+    Ensure that we can plot expressions with intermediate complex
+    terms as in :trac:`8450`::
+
+        sage: x, y = SR.var('x y')
+        sage: contour_plot(abs(x+i*y), (x,-1,1), (y,-1,1))
+        Graphics object consisting of 1 graphics primitive
+        sage: density_plot(abs(x+i*y), (x,-1,1), (y,-1,1))
+        Graphics object consisting of 1 graphics primitive
+        sage: plot3d(abs(x+i*y), (x,-1,1),(y,-1,1))
+        Graphics3d Object
+        sage: streamline_plot(abs(x+i*y), (x,-1,1),(y,-1,1))
+        Graphics object consisting of 1 graphics primitive
+
     """
+    if max(map(len, ranges)) > 3:
+        raise ValueError("At least one variable range has more than 3 entries: each should either have 2 or 3 entries, with one of the forms (xmin, xmax) or (x, xmin, xmax)")
     if max(map(len, ranges)) != min(map(len, ranges)):
         raise ValueError("Some variable ranges specify variables while others do not")
 
-    if len(ranges[0])==3:
+    if len(ranges[0]) == 3:
         vars = [r[0] for r in ranges]
         ranges = [r[1:] for r in ranges]
-        if len(set(vars))<len(vars):
+        if len(set(vars)) < len(vars):
             raise ValueError("range variables should be distinct, but there are duplicates")
     else:
         vars, free_vars = unify_arguments(funcs)
-        if len(free_vars)>1:
-            from sage.misc.superseded import deprecation
-            deprecation(7008, "Unnamed ranges for more than one variable is deprecated and will be removed from a future release of Sage; you can used named ranges instead, like (x,0,2)")
+
+    # check for invalid range (xmin > xmax or ymin > ymax) and swap
+    if len(ranges) > 1:
+        for i in range(len(ranges)):
+            if ranges[i][-2] > ranges[i][-1]:
+                ranges[i] = list(ranges[i])
+                ranges[i][-1], ranges[i][-2] = ranges[i][-2], ranges[i][-1]
+                ranges[i] = tuple(ranges[i])
 
     # pad the variables if we don't have enough
     nargs = len(ranges)
-    if len(vars)<nargs:
+    if len(vars) < nargs:
         vars += ('_',)*(nargs-len(vars))
 
     ranges = [[float(z) for z in r] for r in ranges]
 
     if plot_points is None:
-        plot_points=2
+        plot_points = 2
 
     if not isinstance(plot_points, (list, tuple)):
         plot_points = [plot_points]*len(ranges)
-    elif len(plot_points)!=nargs:
+    elif len(plot_points) != nargs:
         raise ValueError("plot_points must be either an integer or a list of integers, one for each range")
 
-    plot_points = [int(p) if p>=2 else 2 for p in plot_points]
+    plot_points = [int(p) if p >= 2 else 2 for p in plot_points]
     range_steps = [abs(range[1] - range[0])/(p-1) for range, p in zip(ranges, plot_points)]
     if min(range_steps) == float(0):
         raise ValueError("plot start point and end point must be different")
 
-    options={}
-    if nargs==1:
-        options['expect_one_var']=True
+    eov = False  # eov = "expect one value"
+    if nargs == 1:
+        eov = True
 
-    if is_Vector(funcs):
-        funcs = list(funcs)
+    from sage.ext.fast_callable import fast_callable
+
+    def try_make_fast(f):
+        # If "f" supports fast_callable(), use it. We can't guarantee
+        # that our arguments will actually support fast_callable()
+        # because, for example, the user may already have done it
+        # himself, and the result of fast_callable() can't be
+        # fast-callabled again.
+        from sage.rings.complex_double import CDF
+        from sage.ext.interpreters.wrapper_cdf import Wrapper_cdf
+
+        if hasattr(f, '_fast_callable_'):
+            ff = fast_callable(f, vars=vars, expect_one_var=eov, domain=CDF)
+            return FastCallablePlotWrapper(ff, imag_tol=imaginary_tolerance)
+        elif isinstance(f, Wrapper_cdf):
+            # Already a fast-callable, just wrap it. This can happen
+            # if, for example, a symbolic expression is passed to a
+            # higher-level plot() function that converts it to a
+            # fast-callable with expr._plot_fast_callable() before
+            # we ever see it.
+            return FastCallablePlotWrapper(f, imag_tol=imaginary_tolerance)
+        elif callable(f):
+            # This will catch python functions, among other things. We don't
+            # wrap these yet because we don't know what type they'll return.
+            return f
+        else:
+            # Convert things like ZZ(0) into constant functions.
+            from sage.symbolic.ring import SR
+            ff = fast_callable(SR(f),
+                               vars=vars,
+                               expect_one_var=eov,
+                               domain=CDF)
+            return FastCallablePlotWrapper(ff, imag_tol=imaginary_tolerance)
+
+    # Handle vectors, lists, tuples, etc.
+    if isinstance(funcs, Iterable):
+        funcs = tuple( try_make_fast(f) for f in funcs )
+    else:
+        funcs = try_make_fast(funcs)
 
     #TODO: raise an error if there is a function/method in funcs that takes more values than we have ranges
 
     if return_vars:
-        return fast_float(funcs, *vars,**options), [tuple(range+[range_step]) for range,range_step in zip(ranges, range_steps)], vars
+        return (funcs,
+                [tuple(_range + [range_step])
+                 for _range, range_step in zip(ranges, range_steps)],
+                vars)
     else:
-        return fast_float(funcs, *vars,**options), [tuple(range+[range_step]) for range,range_step in zip(ranges, range_steps)]
+        return (funcs,
+                [tuple(_range + [range_step])
+                 for _range, range_step in zip(ranges, range_steps)])
 
 
 def unify_arguments(funcs):
@@ -184,19 +259,18 @@ def unify_arguments(funcs):
         sage: sage.plot.misc.unify_arguments((x+y,x-y))
         ((x, y), (x, y))
     """
-    from sage.symbolic.callable import is_CallableSymbolicExpression
-
-    vars=set()
-    free_variables=set()
+    vars = set()
+    free_variables = set()
     if not isinstance(funcs, (list, tuple)):
-        funcs=[funcs]
+        funcs = [funcs]
 
+    from sage.structure.element import Expression
     for f in funcs:
-        if is_CallableSymbolicExpression(f):
-            f_args=set(f.arguments())
+        if isinstance(f, Expression) and f.is_callable():
+            f_args = set(f.arguments())
             vars.update(f_args)
         else:
-            f_args=set()
+            f_args = set()
 
         try:
             free_vars = set(f.variables()).difference(f_args)
@@ -205,13 +279,11 @@ def unify_arguments(funcs):
         except AttributeError:
             # we probably have a constant
             pass
-    return tuple(sorted(vars, key=lambda x: str(x))), tuple(sorted(free_variables, key=lambda x: str(x)))
+    return tuple(sorted(vars, key=str)), tuple(sorted(free_variables, key=str))
 
-#For backward compatibility -- see #9907.
-from sage.misc.decorators import options, suboptions, rename_keyword
 
-def _multiple_of_constant(n,pos,const):
-    """
+def _multiple_of_constant(n, pos, const):
+    r"""
     Function for internal use in formatting ticks on axes with
     nice-looking multiples of various symbolic constants, such
     as `\pi` or `e`.  Should only be used via keyword argument
@@ -245,7 +317,7 @@ def _multiple_of_constant(n,pos,const):
     k = 1
     while cf.quotient(k) != Infinity and cf.denominator(k) < 12:
         k += 1
-    return '$%s$'%latex(cf.convergent(k-1)*const)
+    return '$%s$' % latex(cf.convergent(k-1)*const)
 
 
 def get_matplotlib_linestyle(linestyle, return_type):
@@ -332,9 +404,9 @@ def get_matplotlib_linestyle(linestyle, return_type):
         '--', ':', '-.', ''}
 
     """
-    long_to_short_dict={'solid' : '-','dashed' : '--', 'dotted' : ':',
+    long_to_short_dict = {'solid' : '-','dashed' : '--', 'dotted' : ':',
                         'dashdot':'-.'}
-    short_to_long_dict={'-' : 'solid','--' : 'dashed', ':' : 'dotted',
+    short_to_long_dict = {'-' : 'solid','--' : 'dashed', ':' : 'dotted',
                         '-.':'dashdot'}
 
     # We need this to take care of region plot. Essentially, if None is
@@ -369,7 +441,7 @@ def get_matplotlib_linestyle(linestyle, return_type):
             raise ValueError("WARNING: Unrecognized linestyle '%s'. "
                              "Possible linestyle options are:\n{'solid', "
                              "'dashed', 'dotted', dashdot', 'None'}, "
-                             "respectively {'-', '--', ':', '-.', ''}"%
+                             "respectively {'-', '--', ':', '-.', ''}" %
                              (linestyle))
 
     elif return_type == 'long':
@@ -383,5 +455,50 @@ def get_matplotlib_linestyle(linestyle, return_type):
             raise ValueError("WARNING: Unrecognized linestyle '%s'. "
                              "Possible linestyle options are:\n{'solid', "
                              "'dashed', 'dotted', dashdot', 'None'}, "
-                             "respectively {'-', '--', ':', '-.', ''}"%
+                             "respectively {'-', '--', ':', '-.', ''}" %
                              (linestyle))
+
+
+class FastCallablePlotWrapper(FastCallableFloatWrapper):
+    r"""
+    A fast-callable wrapper for plotting that returns ``nan`` instead
+    of raising an error whenever the imaginary tolerance is exceeded.
+
+    A detailed rationale for this can be found in the superclass
+    documentation.
+
+    EXAMPLES:
+
+    The ``float`` incarnation of "not a number" is returned instead
+    of an error being thrown if the answer is complex::
+
+        sage: from sage.plot.misc import FastCallablePlotWrapper
+        sage: f = sqrt(x)
+        sage: ff = fast_callable(f, vars=[x], domain=CDF)
+        sage: fff = FastCallablePlotWrapper(ff, imag_tol=1e-8)
+        sage: fff(1)
+        1.0
+        sage: fff(-1)
+        nan
+    """
+    def __call__(self, *args):
+        r"""
+        Evaluate the underlying fast-callable and convert the result to
+        ``float``.
+
+        TESTS:
+
+        Evaluation never fails and always returns a ``float``::
+
+            sage: from sage.plot.misc import FastCallablePlotWrapper
+            sage: f = x
+            sage: ff = fast_callable(f, vars=[x], domain=CDF)
+            sage: fff = FastCallablePlotWrapper(ff, imag_tol=0.1)
+            sage: type(fff(CDF.random_element())) is float
+            True
+
+        """
+        try:
+            return super().__call__(*args)
+        except ValueError:
+            return float("nan")

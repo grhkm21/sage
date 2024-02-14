@@ -1,13 +1,26 @@
+# sage.doctest: needs sage.graphs sage.combinat
 r"""
 Crystals
+
+TESTS:
+
+Catch warnings produced by :func:`check_tkz_graph`::
+
+    sage: from sage.graphs.graph_latex import check_tkz_graph
+    sage: check_tkz_graph()  # random
 """
+
 #*****************************************************************************
-#  Copyright (C) 2010    Anne Schilling <anne at math.ucdavis.edu>
+#       Copyright (C) 2010 Anne Schilling <anne at math.ucdavis.edu>
 #
-#  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#******************************************************************************
-from __future__ import print_function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+#*****************************************************************************
+
+import collections.abc
 
 from sage.misc.cachefunc import cached_method
 from sage.misc.abstract_method import abstract_method
@@ -17,12 +30,6 @@ from sage.categories.enumerated_sets import EnumeratedSets
 from sage.categories.tensor import TensorProductsCategory
 from sage.categories.morphism import Morphism
 from sage.categories.homset import Hom, Homset
-from sage.misc.latex import latex
-from sage.combinat import ranker
-from sage.graphs.dot2tex_utils import have_dot2tex
-from sage.rings.integer import Integer
-from sage.sets.recursively_enumerated_set import RecursivelyEnumeratedSet
-from sage.sets.family import Family
 
 class Crystals(Category_singleton):
     r"""
@@ -72,10 +79,12 @@ class Crystals(Category_singleton):
         running ._test_an_element() . . . pass
         running ._test_cardinality() . . . pass
         running ._test_category() . . . pass
+        running ._test_construction() . . . pass
         running ._test_elements() . . .
           Running the test suite of self.an_element()
           running ._test_category() . . . pass
           running ._test_eq() . . . pass
+          running ._test_new() . . . pass
           running ._test_not_implemented_methods() . . . pass
           running ._test_pickling() . . . pass
           running ._test_stembridge_local_axioms() . . . pass
@@ -89,6 +98,7 @@ class Crystals(Category_singleton):
         running ._test_enumerated_set_iter_list() . . . pass
         running ._test_eq() . . . pass
         running ._test_fast_iter() . . . pass
+        running ._test_new() . . . pass
         running ._test_not_implemented_methods() . . . pass
         running ._test_pickling() . . . pass
         running ._test_some_elements() . . . pass
@@ -130,6 +140,7 @@ class Crystals(Category_singleton):
         if choice == "naive":
             return examples.NaiveCrystal(**kwds)
         else:
+            from sage.rings.integer import Integer
             if isinstance(choice, Integer):
                 return examples.HighestWeightCrystalOfTypeA(n=choice, **kwds)
             else:
@@ -232,15 +243,20 @@ class Crystals(Category_singleton):
             """
             return self.first()
 
+        @cached_method
         def weight_lattice_realization(self):
             """
-            Returns the weight lattice realization used to express weights.
+            Return the weight lattice realization used to express weights
+            in ``self``.
 
             This default implementation uses the ambient space of the
             root system for (non relabelled) finite types and the
             weight lattice otherwise. This is a legacy from when
             ambient spaces were partially implemented, and may be
             changed in the future.
+
+            For affine types, this returns the extended weight lattice
+            by default.
 
             EXAMPLES::
 
@@ -250,10 +266,43 @@ class Crystals(Category_singleton):
                 sage: K = crystals.KirillovReshetikhin(['A',2,1], 1, 1)
                 sage: K.weight_lattice_realization()
                 Weight lattice of the Root system of type ['A', 2, 1]
+
+            TESTS:
+
+            Check that crystals have the correct weight lattice realization::
+
+                sage: A = crystals.KirillovReshetikhin(['A',2,1], 1, 1).affinization()
+                sage: A.weight_lattice_realization()
+                Extended weight lattice of the Root system of type ['A', 2, 1]
+
+                sage: B = crystals.AlcovePaths(['A',2,1],[1,0,0])
+                sage: B.weight_lattice_realization()
+                Extended weight lattice of the Root system of type ['A', 2, 1]
+
+                sage: C = crystals.AlcovePaths("B3",[1,0,0])
+                sage: C.weight_lattice_realization()
+                Ambient space of the Root system of type ['B', 3]
+
+                sage: M = crystals.infinity.NakajimaMonomials(['A',3,2])
+                sage: M.weight_lattice_realization()
+                Extended weight lattice of the Root system of type ['B', 2, 1]^*
+                sage: M = crystals.infinity.NakajimaMonomials(['A',2])
+                sage: M.weight_lattice_realization()
+                Ambient space of the Root system of type ['A', 2]
+                sage: A = CartanMatrix([[2,-3],[-3,2]])
+                sage: M = crystals.infinity.NakajimaMonomials(A)
+                sage: M.weight_lattice_realization()
+                Weight lattice of the Root system of type Dynkin diagram of rank 2
+
+                sage: Y = crystals.infinity.GeneralizedYoungWalls(3)
+                sage: Y.weight_lattice_realization()
+                Extended weight lattice of the Root system of type ['A', 3, 1]
             """
             F = self.cartan_type().root_system()
             if self.cartan_type().is_finite() and F.ambient_space() is not None:
                 return F.ambient_space()
+            if self.cartan_type().is_affine():
+                return F.weight_lattice(extended=True)
             return F.weight_lattice()
 
         def cartan_type(self):
@@ -317,8 +366,8 @@ class Crystals(Category_singleton):
                 sage: g = C.__iter__()
                 sage: for _ in range(5): next(g)
                 (-Lambda[0] + Lambda[2],)
-                (Lambda[0] - Lambda[1] + delta,)
                 (Lambda[1] - Lambda[2],)
+                (Lambda[0] - Lambda[1] + delta,)
                 (Lambda[0] - Lambda[1],)
                 (Lambda[1] - Lambda[2] + delta,)
 
@@ -336,9 +385,9 @@ class Crystals(Category_singleton):
             if index_set is None:
                 index_set = self.index_set()
             succ = lambda x: [x.f(i) for i in index_set] + [x.e(i) for i in index_set]
+            from sage.sets.recursively_enumerated_set import RecursivelyEnumeratedSet
             R = RecursivelyEnumeratedSet(self.module_generators, succ, structure=None)
             return R.breadth_first_search_iterator(max_depth)
-
 
         def subcrystal(self, index_set=None, generators=None, max_depth=float("inf"),
                        direction="both", contained=None,
@@ -382,7 +431,7 @@ class Crystals(Category_singleton):
 
                 sage: C = crystals.KirillovReshetikhin(['A',3,1], 1, 2)
                 sage: S = list(C.subcrystal(index_set=[1,2])); S
-                [[[1, 1]], [[1, 2]], [[1, 3]], [[2, 2]], [[2, 3]], [[3, 3]]]
+                [[[1, 1]], [[1, 2]], [[2, 2]], [[1, 3]], [[2, 3]], [[3, 3]]]
                 sage: C.cardinality()
                 10
                 sage: len(S)
@@ -430,6 +479,20 @@ class Crystals(Category_singleton):
                 sage: B = crystals.Tableaux(['B',2], shape=[1])
                 sage: S.digraph().is_isomorphic(B.digraph(), edge_labels=True)
                 True
+
+            TESTS:
+
+            Check that :trac:`23942` is fixed::
+
+                sage: B = crystals.infinity.Tableaux(['A',2])
+                sage: S = B.subcrystal(max_depth=3, category=HighestWeightCrystals())
+                sage: S.category()
+                Category of finite highest weight crystals
+
+                sage: K = crystals.KirillovReshetikhin(['A',3,1], 2,3)
+                sage: S = K.subcrystal(index_set=[1,3], category=HighestWeightCrystals())
+                sage: S.category()
+                Category of finite highest weight crystals
             """
             from sage.combinat.crystals.subcrystal import Subcrystal
             from sage.categories.finite_crystals import FiniteCrystals
@@ -454,8 +517,12 @@ class Crystals(Category_singleton):
                                       virtualization, scaling_factors,
                                       cartan_type, index_set, category)
 
+                # else self is a finite crystal
                 if direction == 'both':
-                    category = FiniteCrystals().or_subcategory(category)
+                    if category is None:
+                        category = FiniteCrystals()
+                    else:
+                        category = FiniteCrystals() & category
                     return Subcrystal(self, contained, generators,
                                       virtualization, scaling_factors,
                                       cartan_type, index_set, category)
@@ -470,6 +537,7 @@ class Crystals(Category_singleton):
             else:
                 raise ValueError("direction must be either 'both', 'upper', or 'lower'")
 
+            from sage.sets.recursively_enumerated_set import RecursivelyEnumeratedSet
             subset = RecursivelyEnumeratedSet(generators, succ,
                                               structure=None, enumeration='breadth',
                                               max_depth=max_depth)
@@ -487,7 +555,7 @@ class Crystals(Category_singleton):
             if category is None:
                 category = FiniteCrystals()
             else:
-               category = FiniteCrystals().join(category)
+                category = FiniteCrystals() & category
 
             if self in FiniteCrystals() and len(subset) == self.cardinality():
                 if index_set == self.index_set():
@@ -510,7 +578,7 @@ class Crystals(Category_singleton):
             The sole purpose of this method is to construct the homset
             as a :class:`~sage.categories.crystals.CrystalHomset`. If
             ``category`` is specified and is not a subcategory of
-            :class:`Crystals`, a ``TypeError`` is raised instead.
+            :class:`Crystals`, a :class:`TypeError` is raised instead.
 
             This method is not meant to be called directly. Please use
             :func:`sage.categories.homset.Hom` instead.
@@ -589,7 +657,7 @@ class Crystals(Category_singleton):
                          [The crystal of tableaux of type ['A', 2] and shape(s) [[1]],
                           The crystal of tableaux of type ['A', 2] and shape(s) [[1]],
                           The crystal of tableaux of type ['A', 2] and shape(s) [[1]]]
-                  Defn: [2, 1, 1] |--> [[[1]], [[2]], [[1]]]
+                  Defn: [[1, 1], [2]] |--> [[[1]], [[2]], [[1]]]
                 sage: b = B.module_generators[0]
                 sage: b.pp()
                   1  1
@@ -631,7 +699,7 @@ class Crystals(Category_singleton):
                 ['D', 4] -> ['D', 4, 1] Virtual Crystal morphism:
                   From: The crystal of tableaux of type ['D', 4] and shape(s) [[1, 1]]
                   To:   Kirillov-Reshetikhin crystal of type ['D', 4, 1] with (r,s)=(2,2)
-                  Defn: [2, 1] |--> [[1], [2]]
+                  Defn: [[1], [2]] |--> [[1], [2]]
                 sage: b = B.module_generators[0]
                 sage: psi(b)
                 [[1], [2]]
@@ -712,12 +780,12 @@ class Crystals(Category_singleton):
             if codomain is None:
                 if hasattr(on_gens, 'codomain'):
                     codomain = on_gens.codomain()
-                elif isinstance(on_gens, (list, tuple)):
+                elif isinstance(on_gens, collections.abc.Sequence):
                     if on_gens:
                         codomain = on_gens[0].parent()
-                elif isinstance(on_gens, dict):
+                elif isinstance(on_gens, collections.abc.Mapping):
                     if on_gens:
-                        codomain = on_gens.values()[0].parent()
+                        codomain = next(iter(on_gens.values())).parent()
                 else:
                     for x in self.module_generators:
                         y = on_gens(x)
@@ -735,7 +803,7 @@ class Crystals(Category_singleton):
 
         def digraph(self, subset=None, index_set=None):
             """
-            Returns the DiGraph associated to ``self``.
+            Return the :class:`DiGraph` associated to ``self``.
 
             INPUT:
 
@@ -755,21 +823,21 @@ class Crystals(Category_singleton):
 
                 sage: C = Crystals().example(3)
                 sage: G = C.digraph()
-                sage: view(G, tightpage=True)  # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(G)  # optional - dot2tex graphviz, not tested (opens external window)
 
             One may also overwrite the colors::
 
                 sage: C = Crystals().example(3)
                 sage: G = C.digraph()
                 sage: G.set_latex_options(color_by_label = {1:"red", 2:"purple", 3:"blue"})
-                sage: view(G, tightpage=True)  # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(G)  # optional - dot2tex graphviz, not tested (opens external window)
 
             Or one may add colors to yet unspecified edges::
 
                 sage: C = Crystals().example(4)
                 sage: G = C.digraph()
                 sage: C.cartan_type()._index_set_coloring[4]="purple"
-                sage: view(G, tightpage=True)  # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(G)  # optional - dot2tex graphviz, not tested (opens external window)
 
             Here is an example of how to take the top part up to a
             given depth of an infinite dimensional crystal::
@@ -780,7 +848,7 @@ class Crystals(Category_singleton):
                 sage: S = T.subcrystal(max_depth=3)
                 sage: G = T.digraph(subset=S); G
                 Digraph on 5 vertices
-                sage: sorted(G.vertices(), key=str)
+                sage: G.vertices(sort=True, key=str)
                 [(-Lambda[0] + 2*Lambda[1] - delta,),
                  (1/2*Lambda[0] + Lambda[1] - Lambda[2] - 1/2*delta, -1/2*Lambda[0] + Lambda[1] - 1/2*delta),
                  (1/2*Lambda[0] - Lambda[1] + Lambda[2] - 1/2*delta, -1/2*Lambda[0] + Lambda[1] - 1/2*delta),
@@ -794,31 +862,42 @@ class Crystals(Category_singleton):
                 sage: t = B.highest_weight_vector()
                 sage: D = B.demazure_subcrystal(t, [2,1])
                 sage: list(D)
-                [[[1, 1], [2]], [[1, 1], [3]], [[1, 2], [2]],
+                [[[1, 1], [2]], [[1, 2], [2]], [[1, 1], [3]],
                  [[1, 3], [2]], [[1, 3], [3]]]
-                sage: view(D, tightpage=True)  # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(D)  # optional - dot2tex graphviz, not tested (opens external window)
 
             We can also choose to display particular arrows using the
             ``index_set`` option::
 
                 sage: C = crystals.KirillovReshetikhin(['D',4,1], 2, 1)
                 sage: G = C.digraph(index_set=[1,3])
-                sage: len(G.edges())
+                sage: len(G.edges(sort=False))
                 20
-                sage: view(G, tightpage=True)  # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(G)  # optional - dot2tex graphviz, not tested (opens external window)
+
+            TESTS:
+
+            We check that infinite crystals raise an error (:trac:`21986`)::
+
+                sage: B = crystals.infinity.Tableaux(['A',2])
+                sage: B.digraph()
+                Traceback (most recent call last):
+                ...
+                NotImplementedError: crystals not known to be finite
+                 must specify either the subset or depth
+                sage: B.digraph(depth=10)
+                Digraph on 161 vertices
 
             .. TODO:: Add more tests.
             """
-            from sage.graphs.all import DiGraph
-            from sage.categories.highest_weight_crystals import HighestWeightCrystals
+            from sage.graphs.digraph import DiGraph
             d = {}
-            if self in HighestWeightCrystals:
-                f = lambda u_v_label: ({})
-            else:
-                f = lambda u_v_label: ({"backward": u_v_label[2] == 0})
 
             # Parse optional arguments
             if subset is None:
+                if self not in Crystals().Finite():
+                    raise NotImplementedError("crystals not known to be finite"
+                                              " must specify the subset")
                 subset = self
             if index_set is None:
                 index_set = self.index_set()
@@ -829,25 +908,28 @@ class Crystals(Category_singleton):
                     child = x.f(i)
                     if child is None or child not in subset:
                         continue
-                    d[x][child]=i
+                    d[x][child] = i
             G = DiGraph(d)
+            from sage.graphs.dot2tex_utils import have_dot2tex
             if have_dot2tex():
                 G.set_latex_options(format="dot2tex",
-                                    edge_labels = True,
-                                    color_by_label = self.cartan_type()._index_set_coloring,
-                                    edge_options = f)
+                                    edge_labels=True,
+                                    color_by_label=self.cartan_type()._index_set_coloring)
             return G
 
         def latex_file(self, filename):
             r"""
-            Exports a file, suitable for pdflatex, to 'filename'. This requires
+            Export a file, suitable for pdflatex, to ``filename``.
+
+            This requires
             a proper installation of ``dot2tex`` in sage-python. For more
             information see the documentation for ``self.latex()``.
 
             EXAMPLES::
 
                 sage: C = crystals.Letters(['A', 5])
-                sage: C.latex_file('/tmp/test.tex')  # optional - dot2tex graphviz
+                sage: fn = tmp_filename(ext='.tex')
+                sage: C.latex_file(fn)
             """
             header = r"""\documentclass{article}
             \usepackage[x11names, rgb]{xcolor}
@@ -872,19 +954,19 @@ class Crystals(Category_singleton):
         def _latex_(self, **options):
             r"""
             Returns the crystal graph as a latex string. This can be exported
-            to a file with self.latex_file('filename').
+            to a file with ``self.latex_file('filename')``.
 
             EXAMPLES::
 
                 sage: T = crystals.Tableaux(['A',2],shape=[1])
-                sage: T._latex_()  # optional - dot2tex graphviz
+                sage: T._latex_()
                 '...tikzpicture...'
-                sage: view(T, tightpage = True) # optional - dot2tex graphviz, not tested (opens external window)
+                sage: view(T) # optional - dot2tex graphviz, not tested (opens external window)
 
             One can for example also color the edges using the following options::
 
                 sage: T = crystals.Tableaux(['A',2],shape=[1])
-                sage: T._latex_(color_by_label = {0:"black", 1:"red", 2:"blue"})   #optional - dot2tex graphviz
+                sage: T._latex_(color_by_label={0:"black", 1:"red", 2:"blue"})
                 '...tikzpicture...'
             """
             G = self.digraph()
@@ -895,15 +977,9 @@ class Crystals(Category_singleton):
 
         def metapost(self, filename, thicklines=False, labels=True, scaling_factor=1.0, tallness=1.0):
             r"""
-            Use C.metapost("filename.mp",[options]), where options can be:
+            Export a file, suitable for MetaPost, to ``filename``.
 
-            thicklines = True (for thicker edges) labels = False (to suppress
-            labeling of the vertices) scaling_factor=value, where value is a
-            floating point number, 1.0 by default. Increasing or decreasing the
-            scaling factor changes the size of the image. tallness=1.0.
-            Increasing makes the image taller without increasing the width.
-
-            Root operators e(1) or f(1) move along red lines, e(2) or f(2)
+            Root operators `e(1)` or `f(1)` move along red lines, `e(2)` or `f(2)`
             along green. The highest weight is in the lower left. Vertices with
             the same weight are kept close together. The concise labels on the
             nodes are strings introduced by Berenstein and Zelevinsky and
@@ -912,19 +988,33 @@ class Crystals(Category_singleton):
 
             For Cartan types B2 or C2, the pattern has the form
 
-            a2 a3 a4 a1
+            `a_2 a_3 a_4 a_1`
 
-            where c\*a2 = a3 = 2\*a4 =0 and a1=0, with c=2 for B2, c=1 for C2.
-            Applying e(2) a1 times, e(1) a2 times, e(2) a3 times, e(1) a4 times
+            where `c*a_2 = a_3 = 2*a_4 = 0` and `a_1=0`, with `c=2` for B2, `c=1` for C2.
+            Applying `e(2)` `a_1` times, `e(1)` `a_2` times, `e(2)` `a_3` times, `e(1)` `a_4` times
             returns to the highest weight. (Observe that Littelmann writes the
-            roots in opposite of the usual order, so our e(1) is his e(2) for
+            roots in opposite of the usual order, so our `e(1)` is his `e(2)` for
             these Cartan types.) For type A2, the pattern has the form
 
-            a3 a2 a1
+            `a_3 a_2 a_1`
 
-            where applying e(1) a1 times, e(2) a2 times then e(3) a1 times
+            where applying `e(1)` `a_3` times, `e(2)` `a_2` times then `e(1)` `a_1` times
             returns to the highest weight. These data determine the vertex and
             may be translated into a Gelfand-Tsetlin pattern or tableau.
+
+            INPUT:
+
+            - ``filename`` -- name of the output file, e.g., ``'filename.mp'``
+
+            - ``thicklines`` -- (default: ``True``) for thicker edges
+
+            - ``labels`` -- (default: False) to suppress labeling of the vertices
+
+            - ``scaling_factor`` -- (default: ``1.0``) Increasing or decreasing the
+              scaling factor changes the size of the image
+
+            - ``tallness`` -- (default: ``1.0``) Increasing makes the image taller
+              without increasing the width
 
             EXAMPLES::
 
@@ -975,12 +1065,12 @@ class Crystals(Category_singleton):
                     c2 = int(35*tallness*scaling_factor)
                     c3 = int(12*scaling_factor)
                     c4 = int(-12*scaling_factor)
-                outstring = "verbatimtex\n\\magnification=600\netex\n\nbeginfig(-1);\nsx:=35; sy:=30;\n\nz1000=(%d,0);\nz1001=(%d,%d);\nz1002=(%d,%d);\nz2001=(-3,3);\nz2002=(3,3);\nz2003=(0,-3);\nz2004=(7,0);\nz2005=(0,7);\nz2006=(-7,0);\nz2007=(0,7);\n\n"%(c0,c1,c2,c3,c4)
+                outstring = "verbatimtex\n\\magnification=600\netex\n\nbeginfig(-1);\nsx:=35; sy:=30;\n\nz1000=(%d,0);\nz1001=(%d,%d);\nz1002=(%d,%d);\nz2001=(-3,3);\nz2002=(3,3);\nz2003=(0,-3);\nz2004=(7,0);\nz2005=(0,7);\nz2006=(-7,0);\nz2007=(0,7);\n\n" % (c0,c1,c2,c3,c4)
             else:
                 if labels:
-                    outstring = "verbatimtex\n\\magnification=600\netex\n\nbeginfig(-1);\n\nsx := %d;\nsy=%d;\n\nz1000=(2*sx,0);\nz1001=(-sx,sy);\nz1002=(-16,-10);\n\nz2001=(0,-3);\nz2002=(-5,3);\nz2003=(0,3);\nz2004=(5,3);\nz2005=(10,1);\nz2006=(0,10);\nz2007=(-10,1);\nz2008=(0,-8);\n\n"%(int(scaling_factor*40),int(tallness*scaling_factor*40))
+                    outstring = "verbatimtex\n\\magnification=600\netex\n\nbeginfig(-1);\n\nsx := %d;\nsy=%d;\n\nz1000=(2*sx,0);\nz1001=(-sx,sy);\nz1002=(-16,-10);\n\nz2001=(0,-3);\nz2002=(-5,3);\nz2003=(0,3);\nz2004=(5,3);\nz2005=(10,1);\nz2006=(0,10);\nz2007=(-10,1);\nz2008=(0,-8);\n\n" % (int(scaling_factor*40),int(tallness*scaling_factor*40))
                 else:
-                    outstring = "beginfig(-1);\n\nsx := %d;\nsy := %d;\n\nz1000=(2*sx,0);\nz1001=(-sx,sy);\nz1002=(-5,-5);\n\nz1003=(10,10);\n\n"%(int(scaling_factor*35),int(tallness*scaling_factor*35))
+                    outstring = "beginfig(-1);\n\nsx := %d;\nsy := %d;\n\nz1000=(2*sx,0);\nz1001=(-sx,sy);\nz1002=(-5,-5);\n\nz1003=(10,10);\n\n" % (int(scaling_factor*35),int(tallness*scaling_factor*35))
             for i in range(size):
                 if self.cartan_type()[0] == 'A':
                     [a1,a2,a3] = string_data[i]
@@ -997,12 +1087,12 @@ class Crystals(Category_singleton):
                         if b1+b3 == a1+a3 and b2+b4 == a2+a4:
                             shift += 1
                 if self.cartan_type()[0] == 'A':
-                    outstring = outstring +"z%d=%d*z1000+%d*z1001+%d*z1002;\n"%(i,a1+a3,a2,shift)
+                    outstring = outstring + "z%d=%d*z1000+%d*z1001+%d*z1002;\n" % (i,a1+a3,a2,shift)
                 else:
-                    outstring = outstring +"z%d=%d*z1000+%d*z1001+%d*z1002;\n"%(i,a1+a3,a2+a4,shift)
+                    outstring = outstring + "z%d=%d*z1000+%d*z1001+%d*z1002;\n" % (i,a1+a3,a2+a4,shift)
             outstring = outstring + "\n"
             if thicklines:
-                outstring = outstring +"pickup pencircle scaled 2\n\n"
+                outstring = outstring + "pickup pencircle scaled 2\n\n"
             for i in range(size):
                 for j in range(1,3):
                     dest = self.list()[i].f(j)
@@ -1014,19 +1104,19 @@ class Crystals(Category_singleton):
                             col = "green;  "
                         if self.cartan_type()[0] == 'A':
                             [a1,a2,a3] = string_data[i] # included to facilitate hand editing of the .mp file
-                            outstring = outstring+"draw z%d--z%d withcolor %s   %% %d %d %d\n"%(i,dest,col,a1,a2,a3)
+                            outstring = outstring+"draw z%d--z%d withcolor %s   %% %d %d %d\n" % (i,dest,col,a1,a2,a3)
                         else:
                             [a1,a2,a3,a4] = string_data[i]
-                            outstring = outstring+"draw z%d--z%d withcolor %s   %% %d %d %d %d\n"%(i,dest,col,a1,a2,a3,a4)
+                            outstring = outstring+"draw z%d--z%d withcolor %s   %% %d %d %d %d\n" % (i,dest,col,a1,a2,a3,a4)
             outstring += "\npickup pencircle scaled 3;\n\n"
             for i in range(self.cardinality()):
                 if labels:
                     if self.cartan_type()[0] == 'A':
-                        outstring = outstring+"pickup pencircle scaled 15;\nfill z%d+z2004..z%d+z2006..z%d+z2006..z%d+z2007..cycle withcolor white;\nlabel(btex %d etex, z%d+z2001);\nlabel(btex %d etex, z%d+z2002);\nlabel(btex %d etex, z%d+z2003);\npickup pencircle scaled .5;\ndraw z%d+z2004..z%d+z2006..z%d+z2006..z%d+z2007..cycle;\n"%(i,i,i,i,string_data[i][2],i,string_data[i][1],i,string_data[i][0],i,i,i,i,i)
+                        outstring = outstring+"pickup pencircle scaled 15;\nfill z%d+z2004..z%d+z2006..z%d+z2006..z%d+z2007..cycle withcolor white;\nlabel(btex %d etex, z%d+z2001);\nlabel(btex %d etex, z%d+z2002);\nlabel(btex %d etex, z%d+z2003);\npickup pencircle scaled .5;\ndraw z%d+z2004..z%d+z2006..z%d+z2006..z%d+z2007..cycle;\n" % (i,i,i,i,string_data[i][2],i,string_data[i][1],i,string_data[i][0],i,i,i,i,i)
                     else:
-                        outstring = outstring+"%%%d %d %d %d\npickup pencircle scaled 1;\nfill z%d+z2005..z%d+z2006..z%d+z2007..z%d+z2008..cycle withcolor white;\nlabel(btex %d etex, z%d+z2001);\nlabel(btex %d etex, z%d+z2002);\nlabel(btex %d etex, z%d+z2003);\nlabel(btex %d etex, z%d+z2004);\npickup pencircle scaled .5;\ndraw z%d+z2005..z%d+z2006..z%d+z2007..z%d+z2008..cycle;\n\n"%(string_data[i][0],string_data[i][1],string_data[i][2],string_data[i][3],i,i,i,i,string_data[i][0],i,string_data[i][1],i,string_data[i][2],i,string_data[i][3],i,i,i,i,i)
+                        outstring = outstring+"%%%d %d %d %d\npickup pencircle scaled 1;\nfill z%d+z2005..z%d+z2006..z%d+z2007..z%d+z2008..cycle withcolor white;\nlabel(btex %d etex, z%d+z2001);\nlabel(btex %d etex, z%d+z2002);\nlabel(btex %d etex, z%d+z2003);\nlabel(btex %d etex, z%d+z2004);\npickup pencircle scaled .5;\ndraw z%d+z2005..z%d+z2006..z%d+z2007..z%d+z2008..cycle;\n\n" % (string_data[i][0],string_data[i][1],string_data[i][2],string_data[i][3],i,i,i,i,string_data[i][0],i,string_data[i][1],i,string_data[i][2],i,string_data[i][3],i,i,i,i,i)
                 else:
-                    outstring += "drawdot z%d;\n"%i
+                    outstring += "drawdot z%d;\n" % i
             outstring += "\nendfig;\n\nend;\n\n"
 
             f = open(filename, 'w')
@@ -1044,12 +1134,15 @@ class Crystals(Category_singleton):
                 'digraph G { \n  node [ shape=plaintext ];\n  N_0 [ label = " ", texlbl = "$1$" ];\n  N_1 [ label = " ", texlbl = "$2$" ];\n  N_2 [ label = " ", texlbl = "$3$" ];\n  N_0 -> N_1 [ label = " ", texlbl = "1" ];\n  N_1 -> N_2 [ label = " ", texlbl = "2" ];\n}'
             """
             import re
+            from sage.combinat import ranker
+
             rank = ranker.from_list(self.list())[0]
             vertex_key = lambda x: "N_"+str(rank(x))
 
             # To do: check the regular expression
             # Removing %-style comments, newlines, quotes
             # This should probably be moved to sage.misc.latex
+            from sage.misc.latex import latex
             quoted_latex = lambda x: re.sub("\"|\r|(%[^\n]*)?\n","", latex(x))
 
             result = "digraph G { \n  node [ shape=plaintext ];\n"
@@ -1068,8 +1161,8 @@ class Crystals(Category_singleton):
                     else:
                         option = ""
                         (source, target) = (x, child)
-                    result += "  " + vertex_key(source) + " -> "+vertex_key(target)+ " [ "+option+"label = \" \", texlbl = \""+quoted_latex(i)+"\" ];\n"
-            result+="}"
+                    result += "  " + vertex_key(source) + " -> "+vertex_key(target) + " [ "+option+"label = \" \", texlbl = \""+quoted_latex(i)+"\" ];\n"
+            result += "}"
             return result
 
         def plot(self, **options):
@@ -1120,7 +1213,7 @@ class Crystals(Category_singleton):
                   The crystal of letters for type ['A', 2],
                   The crystal of letters for type ['A', 2]]
                 sage: T.module_generators
-                [[2, 1, 1], [1, 2, 1]]
+                ([2, 1, 1], [1, 2, 1])
             """
             from sage.combinat.crystals.tensor_product import TensorProductOfCrystals
             return TensorProductOfCrystals(self, *crystals, **options)
@@ -1365,7 +1458,7 @@ class Crystals(Category_singleton):
 
         def f_string(self, list):
             r"""
-            Applies `f_{i_r} \cdots f_{i_1}` to self for ``list`` as
+            Applies `f_{i_r} \cdots f_{i_1}` to ``self`` for ``list`` as
             `[i_1, ..., i_r]`
 
             EXAMPLES::
@@ -1385,7 +1478,7 @@ class Crystals(Category_singleton):
 
         def e_string(self, list):
             r"""
-            Applies `e_{i_r} \cdots e_{i_1}` to self for ``list`` as
+            Applies `e_{i_r} \cdots e_{i_1}` to ``self`` for ``list`` as
             `[i_1, ..., i_r]`
 
             EXAMPLES::
@@ -1431,9 +1524,10 @@ class Crystals(Category_singleton):
                     b = b.e(i)
             return b
 
-        def is_highest_weight(self, index_set = None):
+        def is_highest_weight(self, index_set=None):
             r"""
-            Returns ``True`` if ``self`` is a highest weight.
+            Return ``True`` if ``self`` is a highest weight.
+
             Specifying the option ``index_set`` to be a subset `I` of the
             index set of the underlying crystal, finds all highest
             weight vectors for arrows in `I`.
@@ -1452,7 +1546,7 @@ class Crystals(Category_singleton):
                 index_set = self.index_set()
             return all(self.e(i) is None for i in index_set)
 
-        def is_lowest_weight(self, index_set = None):
+        def is_lowest_weight(self, index_set=None):
             r"""
             Returns ``True`` if ``self`` is a lowest weight.
             Specifying the option ``index_set`` to be a subset `I` of the
@@ -1473,12 +1567,14 @@ class Crystals(Category_singleton):
                 index_set = self.index_set()
             return all(self.f(i) is None for i in index_set)
 
-        def to_highest_weight(self, index_set = None):
+        def to_highest_weight(self, index_set=None):
             r"""
             Return the highest weight element `u` and a list `[i_1,...,i_k]`
-            such that `self = f_{i_1} ... f_{i_k} u`, where `i_1,...,i_k` are
-            elements in `index_set`. By default the index set is assumed to be
-            the full index set of self.
+            such that ``self`` `= f_{i_1} ... f_{i_k} u`, where `i_1,...,i_k` are
+            elements in ``index_set``.
+
+            By default the ``index_set`` is assumed to be
+            the full index set of ``self``.
 
             EXAMPLES::
 
@@ -1498,26 +1594,28 @@ class Crystals(Category_singleton):
                 sage: t.to_highest_weight()
                 Traceback (most recent call last):
                 ...
-                ValueError: This is not a highest weight crystals!
+                ValueError: this is not a highest weight crystal
             """
             from sage.categories.highest_weight_crystals import HighestWeightCrystals
             if index_set is None:
                 if HighestWeightCrystals() not in self.parent().categories():
-                    raise ValueError("This is not a highest weight crystals!")
+                    raise ValueError("this is not a highest weight crystal")
                 index_set = self.index_set()
             for i in index_set:
                 next = self.e(i)
                 if next is not None:
-                    hw = next.to_highest_weight(index_set = index_set)
+                    hw = next.to_highest_weight(index_set=index_set)
                     return [hw[0], [i] + hw[1]]
             return [self, []]
 
-        def to_lowest_weight(self, index_set = None):
+        def to_lowest_weight(self, index_set=None):
             r"""
             Return the lowest weight element `u` and a list `[i_1,...,i_k]`
-            such that `self = e_{i_1} ... e_{i_k} u`, where `i_1,...,i_k` are
-            elements in `index_set`. By default the index set is assumed to be
-            the full index set of self.
+            such that ``self`` `= e_{i_1} ... e_{i_k} u`, where `i_1,...,i_k` are
+            elements in ``index_set``.
+
+            By default the ``index_set`` is assumed to be the full index
+            set of ``self``.
 
             EXAMPLES::
 
@@ -1539,24 +1637,24 @@ class Crystals(Category_singleton):
                 sage: t.to_lowest_weight()
                 Traceback (most recent call last):
                 ...
-                ValueError: This is not a highest weight crystals!
+                ValueError: this is not a highest weight crystal
             """
             from sage.categories.highest_weight_crystals import HighestWeightCrystals
             if index_set is None:
                 if HighestWeightCrystals() not in self.parent().categories():
-                    raise ValueError("This is not a highest weight crystals!")
+                    raise ValueError("this is not a highest weight crystal")
                 index_set = self.index_set()
             for i in index_set:
                 next = self.f(i)
                 if next is not None:
-                    lw = next.to_lowest_weight(index_set = index_set)
+                    lw = next.to_lowest_weight(index_set=index_set)
                     return [lw[0], [i] + lw[1]]
             return [self, []]
 
         def all_paths_to_highest_weight(self, index_set=None):
             r"""
             Iterate over all paths to the highest weight from ``self``
-            with respect to `index_set`.
+            with respect to ``index_set``.
 
             INPUT:
 
@@ -1643,9 +1741,46 @@ class Crystals(Category_singleton):
                 [[[1, 4]], [[1, 3]]]
                 sage: list(elt.subcrystal(index_set=[1,3], direction='lower'))
                 [[[1, 4]], [[2, 4]]]
+
+            TESTS:
+
+            Check that :trac:`23942` is fixed::
+
+                sage: K = crystals.KirillovReshetikhin(['A',2,1], 1,1)
+                sage: cat = HighestWeightCrystals().Finite()
+                sage: S = K.module_generator().subcrystal(index_set=[1,2], category=cat)
+                sage: S.category()
+                Category of finite highest weight crystals
             """
             return self.parent().subcrystal(generators=[self], index_set=index_set,
-                                            max_depth=max_depth, direction=direction)
+                                            max_depth=max_depth, direction=direction,
+                                            category=category)
+
+        def tensor(self, *elts):
+            r"""
+            Return the tensor product of ``self`` with the crystal
+            elements ``elts``.
+
+            EXAMPLES::
+
+                sage: C = crystals.Letters(['A', 3])
+                sage: B = crystals.infinity.Tableaux(['A', 3])
+                sage: c = C[0]
+                sage: b = B.highest_weight_vector()
+                sage: t = c.tensor(c, b)
+                sage: ascii_art(t)
+                          1  1  1
+                1 # 1 #   2  2
+                          3
+                sage: tensor([c, c, b]) == t
+                True
+                sage: ascii_art(tensor([b, b, c]))
+                  1  1  1     1  1  1
+                  2  2    #   2  2    # 1
+                  3           3
+            """
+            T = self.parent().tensor(*[b.parent() for b in elts])
+            return T(self, *elts)
 
     class SubcategoryMethods:
         """
@@ -1723,11 +1858,12 @@ class CrystalMorphism(Morphism):
             scaling_factors = {i: 1 for i in index_set}
         if virtualization is None:
             virtualization = {i: (i,) for i in index_set}
-        elif not isinstance(virtualization, dict):
+        elif not isinstance(virtualization, collections.abc.Mapping):
             try:
                 virtualization = dict(virtualization)
             except (TypeError, ValueError):
                 virtualization = {i: (virtualization(i),) for i in index_set}
+        from sage.sets.family import Family
         self._virtualization = Family(virtualization)
         self._scaling_factors = Family(scaling_factors)
 
@@ -1855,10 +1991,10 @@ class CrystalMorphism(Morphism):
         """
         if x is None:
             return None
-        return super(CrystalMorphism, self).__call__(x, *args, **kwds)
+        return super().__call__(x, *args, **kwds)
 
     def virtualization(self):
-        """
+        r"""
         Return the virtualization sets `\sigma_i`.
 
         EXAMPLES::
@@ -1872,7 +2008,7 @@ class CrystalMorphism(Morphism):
         return self._virtualization
 
     def scaling_factors(self):
-        """
+        r"""
         Return the scaling factors `\gamma_i`.
 
         EXAMPLES::
@@ -1934,19 +2070,19 @@ class CrystalMorphismByGenerators(CrystalMorphism):
                                  virtualization, scaling_factors)
 
         if gens is None:
-            if isinstance(on_gens, dict):
+            if isinstance(on_gens, collections.abc.Mapping):
                 gens = on_gens.keys()
             else:
                 gens = parent.domain().module_generators
         self._gens = tuple(gens)
 
         # Make sure on_gens is a function
-        if isinstance(on_gens, dict):
+        if isinstance(on_gens, collections.abc.Mapping):
             f = lambda x: on_gens[x]
-        elif isinstance(on_gens, (list, tuple)):
+        elif isinstance(on_gens, collections.abc.Sequence):
             if len(self._gens) != len(on_gens):
                 raise ValueError("invalid generator images")
-            d = {x: y for x,y in zip(self._gens, on_gens)}
+            d = dict(zip(self._gens, on_gens))
             f = lambda x: d[x]
         else:
             f = on_gens
@@ -1971,12 +2107,12 @@ class CrystalMorphismByGenerators(CrystalMorphism):
             sage: psi = H((None, b, b, None), generators=T.highest_weight_vectors())
             sage: print(psi._repr_defn())
             [[[1]], [[1]], [[1]]] |--> None
-            [[[2]], [[1]], [[1]]] |--> [2, 1, 1]
-            [[[1]], [[2]], [[1]]] |--> [2, 1, 1]
+            [[[2]], [[1]], [[1]]] |--> [[1, 1], [2]]
+            [[[1]], [[2]], [[1]]] |--> [[1, 1], [2]]
             [[[3]], [[2]], [[1]]] |--> None
         """
-        return '\n'.join(['{} |--> {}'.format(mg, im)
-                          for mg,im in zip(self._gens, self.im_gens())])
+        return '\n'.join('{} |--> {}'.format(mg, im)
+                         for mg, im in zip(self._gens, self.im_gens()))
 
     def _check(self):
         """
@@ -2045,7 +2181,7 @@ class CrystalMorphismByGenerators(CrystalMorphism):
         """
         mg, ef, indices = self.to_module_generator(x)
         cur = self._on_gens(mg)
-        for op,i in reversed(zip(ef, indices)):
+        for op, i in reversed(list(zip(ef, indices))):
             if cur is None:
                 return None
 
@@ -2059,7 +2195,7 @@ class CrystalMorphismByGenerators(CrystalMorphism):
                 cur = cur.e_string(s)
         return cur
 
-    def __nonzero__(self):
+    def __bool__(self) -> bool:
         """
         Return if ``self`` is a non-zero morphism.
 
@@ -2103,13 +2239,13 @@ class CrystalMorphismByGenerators(CrystalMorphism):
             return self._path_mg_cache[x]
 
         mg = set(self._path_mg_cache.keys())
-        visited = set([None, x])
+        visited = {None, x}
         index_set = self._cartan_type.index_set()
         todo = [x]
         ef = [[]]
         indices = [[]]
 
-        while len(todo) > 0:
+        while todo:
             cur = todo.pop(0)
             cur_ef = ef.pop(0)
             cur_indices = indices.pop(0)
@@ -2208,7 +2344,7 @@ class CrystalHomset(Homset):
       `f_i b = b^{\prime}`, then `f_i \Psi(b) = \Psi(b^{\prime})` and
       `\Psi(b) = e_i \Psi(b^{\prime})` for all `i \in I`.
 
-    If the Cartan type is unambiguous, it is surpressed from the notation.
+    If the Cartan type is unambiguous, it is suppressed from the notation.
 
     We can also generalize the definition of a crystal morphism by considering
     a map of `\sigma` of the (now possibly different) Dynkin diagrams
@@ -2293,7 +2429,7 @@ class CrystalHomset(Homset):
           To:   Direct sum of the crystals Family
            (The crystal of tableaux of type ['A', 1] and shape(s) [[2]],
             The crystal of tableaux of type ['A', 1] and shape(s) [[]])
-          Defn: [[[1]], [[1]]] |--> [1, 1]
+          Defn: [[[1]], [[1]]] |--> [[1, 1]]
                 [[[2]], [[1]]] |--> []
         sage: psi.is_isomorphism()
         True
@@ -2347,15 +2483,15 @@ class CrystalHomset(Homset):
         ['B', 3] -> ['D', 4] Virtual Crystal morphism:
           From: The crystal of tableaux of type ['B', 3] and shape(s) [[1]]
           To:   The crystal of tableaux of type ['D', 4] and shape(s) [[2]]
-          Defn: [1] |--> [1, 1]
+          Defn: [[1]] |--> [[1, 1]]
         sage: for b in B: print("{} |--> {}".format(b, psi(b)))
-        [1] |--> [1, 1]
-        [2] |--> [2, 2]
-        [3] |--> [3, 3]
-        [0] |--> [3, -3]
-        [-3] |--> [-3, -3]
-        [-2] |--> [-2, -2]
-        [-1] |--> [-1, -1]
+        [[1]] |--> [[1, 1]]
+        [[2]] |--> [[2, 2]]
+        [[3]] |--> [[3, 3]]
+        [[0]] |--> [[3, -3]]
+        [[-3]] |--> [[-3, -3]]
+        [[-2]] |--> [[-2, -2]]
+        [[-1]] |--> [[-1, -1]]
     """
     def __init__(self, X, Y, category=None):
         """
@@ -2395,7 +2531,7 @@ class CrystalHomset(Homset):
             sage: H = Hom(B, B)
             sage: H(H.an_element()) # indirect doctest
             ['B', 3] Crystal endomorphism of The crystal of tableaux of type ['B', 3] and shape(s) [[2, 1]]
-              Defn: [2, 1, 1] |--> None
+              Defn: [[1, 1], [2]] |--> None
         """
         if not isinstance(x, CrystalMorphism):
             raise TypeError
@@ -2454,7 +2590,7 @@ class CrystalHomset(Homset):
         if automorphism is not None:
             if virtualization is not None:
                 raise ValueError("the automorphism and virtualization cannot both be specified")
-            if not isinstance(automorphism, dict):
+            if not isinstance(automorphism, collections.abc.Mapping):
                 try:
                     automorphism = dict(automorphism)
                     virtualization = {i: (automorphism[i],) for i in automorphism}
@@ -2481,9 +2617,8 @@ class CrystalHomset(Homset):
             ['A', 2] Crystal morphism:
               From: The crystal of tableaux of type ['A', 2] and shape(s) [[2, 1]]
               To:   The infinity crystal of tableaux of type ['A', 2]
-              Defn: [2, 1, 1] |--> None
+              Defn: [[1, 1], [2]] |--> None
         """
         return self.element_class(self, lambda x: None)
 
     Element = CrystalMorphismByGenerators
-

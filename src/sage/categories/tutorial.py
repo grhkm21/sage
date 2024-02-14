@@ -1,5 +1,5 @@
 r"""
-Implementing a new parent: a (draft of) tutorial
+Implementing a new parent: a tutorial
 
 
 The easiest approach for implementing a new parent is to start from a
@@ -19,7 +19,7 @@ Or by browsing the source code of
 :class:`sage.categories.examples.finite_semigroups.LeftRegularBand`.
 
 Copy-paste this code into, say, a cell of the notebook, and replace
-every occurence of ``FiniteSemigroups().example(...)`` in the
+every occurrence of ``FiniteSemigroups().example(...)`` in the
 documentation by ``LeftRegularBand``. This will be equivalent to::
 
     sage: from sage.categories.examples.finite_semigroups import LeftRegularBand
@@ -50,7 +50,9 @@ endowed with union as product. What is its category? What are the
 extra functionalities available there? Implement iteration and
 cardinality.
 
-TODO: the tutorial should explain there how to reuse the enumerated
-set of subsets, and endow it with more structure.
+.. TODO::
+
+   The tutorial should explain there how to reuse the enumerated
+   set of subsets, and endow it with more structure.
 
 """

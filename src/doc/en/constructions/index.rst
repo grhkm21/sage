@@ -2,8 +2,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the Sage Constructions documentation!
-================================================
+.. _constructions:
+
+=============================
+Welcome to Sage Constructions
+=============================
 
 This document collects the answers to some questions along the line
 "How do I construct ... in Sage?" Though much of this material can
@@ -21,8 +24,8 @@ Please send suggestions, additions, corrections to the ``sage-devel``
 Google group!
 
 The Sage wiki http://wiki.sagemath.org/ contains a wealth of
-information. Moreover, all these can be tested in the Sage notebook
-interface http://www.sagenb.org/ on the web.
+information. Moreover, all these can be tested in the Sage
+interface http://sagecell.sagemath.org/ on the web.
 
 
 .. toctree::
@@ -49,6 +52,5 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
 

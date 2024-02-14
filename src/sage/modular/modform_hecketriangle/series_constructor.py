@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.libs.gap
 r"""
 Series constructor for modular forms for Hecke triangle groups
 
@@ -6,34 +7,34 @@ AUTHORS:
 - Based on the thesis of John Garrett Leo (2008)
 - Jonas Jermann (2013): initial version
 
-.. NOTE:
+.. NOTE::
 
    ``J_inv_ZZ`` is the main function used to determine all Fourier expansions.
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013-2014 Jonas Jermann <jjermann2@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from sage.rings.all import ZZ, QQ, infinity, PolynomialRing, LaurentSeries, PowerSeriesRing, FractionField
+from sage.arith.misc import bernoulli, sigma, rising_factorial
+from sage.misc.cachefunc import cached_method
 from sage.rings.big_oh import O
-from sage.functions.all import exp
-from sage.arith.all import bernoulli, sigma, rising_factorial
-
+from sage.rings.infinity import infinity
+from sage.rings.integer_ring import ZZ
+from sage.rings.power_series_ring import PowerSeriesRing
+from sage.rings.rational_field import QQ
 from sage.structure.sage_object import SageObject
 from sage.structure.unique_representation import UniqueRepresentation
-from sage.misc.cachefunc import cached_method
 
-from hecke_triangle_groups import HeckeTriangleGroup
-
+from .hecke_triangle_groups import HeckeTriangleGroup
 
 
-class MFSeriesConstructor(SageObject,UniqueRepresentation):
+class MFSeriesConstructor(SageObject, UniqueRepresentation):
     r"""
     Constructor for the Fourier expansion of some
     (specific, basic) modular forms.
@@ -43,11 +44,11 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
     """
 
     @staticmethod
-    def __classcall__(cls, group = HeckeTriangleGroup(3), prec=ZZ(10)):
+    def __classcall__(cls, group=HeckeTriangleGroup(3), prec=ZZ(10)):
         r"""
         Return a (cached) instance with canonical parameters.
 
-        .. NOTE:
+        .. NOTE::
 
             For each choice of group and precision the constructor is
             cached (only) once. Further calculations with different
@@ -64,20 +65,19 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
             sage: MFSeriesConstructor(group=5, prec=12).prec()
             12
         """
-
-        if (group==infinity):
+        if (group == infinity):
             group = HeckeTriangleGroup(infinity)
         else:
             try:
                 group = HeckeTriangleGroup(ZZ(group))
             except TypeError:
                 group = HeckeTriangleGroup(group.n())
-        prec=ZZ(prec)
+        prec = ZZ(prec)
         # We don't need this assumption the precision may in principle also be negative.
         # if (prec<1):
         #     raise Exception("prec must be an Integer >=1")
 
-        return super(MFSeriesConstructor,cls).__classcall__(cls, group, prec)
+        return super().__classcall__(cls, group, prec)
 
     def __init__(self, group, prec):
         r"""
@@ -116,9 +116,9 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
             Power series constructor for Hecke modular forms for n=+Infinity with (basic series) precision 10
         """
 
-        self._group          = group
-        self._prec           = prec
-        self._series_ring    = PowerSeriesRing(QQ,'q',default_prec=self._prec)
+        self._group = group
+        self._prec = prec
+        self._series_ring = PowerSeriesRing(QQ,'q',default_prec=self._prec)
 
     def _repr_(self):
         r"""
@@ -186,12 +186,12 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
 
         This is the main function used to determine all Fourier expansions!
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``J_inv`` for ``d!=1``
-        is given by ``J_inv_ZZ(q/d)``.
+            The Fourier expansion of ``J_inv`` for ``d!=1``
+            is given by ``J_inv_ZZ(q/d)``.
 
-        .. TODO:
+        .. TODO::
 
           The functions that are used in this implementation are
           products of hypergeometric series with other, elementary,
@@ -211,7 +211,7 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
             q^-1 + 3/8 + 69/1024*q + O(q^2)
         """
 
-        F1       = lambda a,b:   self._series_ring(
+        F1 = lambda a,b:   self._series_ring(
                        [ ZZ(0) ]
                        + [
                            rising_factorial(a,k) * rising_factorial(b,k) / (ZZ(k).factorial())**2
@@ -223,23 +223,23 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
                        ZZ(self._prec+1)
                    )
 
-        F        = lambda a,b,c: self._series_ring(
+        F = lambda a,b,c: self._series_ring(
                        [
                          rising_factorial(a,k) * rising_factorial(b,k) / rising_factorial(c,k) / ZZ(k).factorial()
                          for k in range(ZZ(0), ZZ(self._prec+1))
                        ],
                        ZZ(self._prec+1)
                    )
-        a        = self._group.alpha()
-        b        = self._group.beta()
-        Phi      = F1(a,b) / F(a,b,ZZ(1))
-        q        = self._series_ring.gen()
+        a = self._group.alpha()
+        b = self._group.beta()
+        Phi = F1(a,b) / F(a,b,ZZ(1))
+        q = self._series_ring.gen()
 
         # the current implementation of power series reversion is slow
         # J_inv_ZZ = ZZ(1) / ((q*Phi.exp()).reverse())
 
-        temp_f   = (q*Phi.exp()).polynomial()
-        new_f    = temp_f.revert_series(temp_f.degree()+1)
+        temp_f = (q*Phi.exp()).polynomial()
+        new_f = temp_f.revert_series(temp_f.degree()+1)
         J_inv_ZZ = ZZ(1) / (new_f + O(q**(temp_f.degree()+1)))
 
         return J_inv_ZZ
@@ -250,10 +250,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``f_rho``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``f_rho`` for ``d!=1``
-        is given by ``f_rho_ZZ(q/d)``.
+            The Fourier expansion of ``f_rho`` for ``d!=1``
+            is given by ``f_rho_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -284,10 +284,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``f_i``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``f_i`` for ``d!=1``
-        is given by ``f_i_ZZ(q/d)``.
+            The Fourier expansion of ``f_i`` for ``d!=1``
+            is given by ``f_i_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -318,10 +318,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``f_inf``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``f_inf`` for ``d!=1``
-        is given by ``d*f_inf_ZZ(q/d)``.
+            The Fourier expansion of ``f_inf`` for ``d!=1``
+            is given by ``d*f_inf_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -342,7 +342,7 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         if (n == infinity):
             f_inf_ZZ = ((-q*self.J_inv_ZZ().derivative())**2/(self.J_inv_ZZ()**2*(self.J_inv_ZZ()-1))).power_series()
         else:
-            temp_expr  = ((-q*self.J_inv_ZZ().derivative())**(2*n)/(self.J_inv_ZZ()**(2*n-2)*(self.J_inv_ZZ()-1)**n)/q**(n-2)).power_series()
+            temp_expr = ((-q*self.J_inv_ZZ().derivative())**(2*n)/(self.J_inv_ZZ()**(2*n-2)*(self.J_inv_ZZ()-1)**n)/q**(n-2)).power_series()
             f_inf_ZZ = (temp_expr.log()/(n-2)).exp()*q
         return f_inf_ZZ
 
@@ -352,10 +352,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``G_inv``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``G_inv`` for ``d!=1``
-        is given by ``d*G_inv_ZZ(q/d)``.
+            The Fourier expansion of ``G_inv`` for ``d!=1``
+            is given by ``d*G_inv_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -370,17 +370,15 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
             sage: MFSeriesConstructor(group=infinity, prec=3).G_inv_ZZ()
             q^-1 - 1/8 - 59/1024*q + O(q^2)
         """
-
         n = self.hecke_n()
         # Note that G_inv is not a weakly holomorphic form (because of the behavior at -1)
-        if (n == infinity):
+        if n == infinity:
             q = self._series_ring.gen()
             temp_expr = (self.J_inv_ZZ()/self.f_inf_ZZ()*q**2).power_series()
             return 1/q*self.f_i_ZZ()*(temp_expr.log()/2).exp()
         elif (ZZ(2).divides(n)):
             return self.f_i_ZZ()*(self.f_rho_ZZ()**(ZZ(n/ZZ(2))))/self.f_inf_ZZ()
         else:
-            #return self._qseries_ring([])
             raise ValueError("G_inv doesn't exist for n={}.".format(self.hecke_n()))
 
     @cached_method
@@ -389,10 +387,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``E_4``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``E4`` for ``d!=1``
-        is given by ``E4_ZZ(q/d)``.
+            The Fourier expansion of ``E4`` for ``d!=1``
+            is given by ``E4_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -418,10 +416,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``E_6``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``E6`` for ``d!=1``
-        is given by ``E6_ZZ(q/d)``.
+            The Fourier expansion of ``E6`` for ``d!=1``
+            is given by ``E6_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -447,10 +445,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``Delta``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``Delta`` for ``d!=1``
-        is given by ``d*Delta_ZZ(q/d)``.
+            The Fourier expansion of ``Delta`` for ``d!=1``
+            is given by ``d*Delta_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -474,10 +472,10 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         Return the rational Fourier expansion of ``E2``,
         where the parameter ``d`` is replaced by ``1``.
 
-        .. NOTE:
+        .. NOTE::
 
-        The Fourier expansion of ``E2`` for ``d!=1``
-        is given by ``E2_ZZ(q/d)``.
+            The Fourier expansion of ``E2`` for ``d!=1``
+            is given by ``E2_ZZ(q/d)``.
 
         EXAMPLES::
 
@@ -505,9 +503,9 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
 
         Only arithmetic groups with ``n < infinity`` are supported!
 
-        .. NOTE:
+        .. NOTE::
 
-        THe Fourier expansion of the series is given by ``EisensteinSeries_ZZ(q/d)``.
+            THe Fourier expansion of the series is given by ``EisensteinSeries_ZZ(q/d)``.
 
         INPUT:
 
@@ -564,7 +562,7 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
         if k == 0:
             return self._series_ring(1)
 
-        M    = ZZ(self.group().lam()**2)
+        M = ZZ(self.group().lam()**2)
         lamk = M**(ZZ(k/2))
         dval = self.group().dvalue()
 
@@ -576,7 +574,7 @@ class MFSeriesConstructor(SageObject,UniqueRepresentation):
                 return ZZ(1)
 
             factor = -2*k / QQ(bernoulli(k)) / lamk
-            sum1   = sigma(m, k-1)
+            sum1 = sigma(m, k-1)
             if M.divides(m):
                 sum2 = (lamk-1) * sigma(ZZ(m/M), k-1)
             else:

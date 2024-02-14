@@ -1,7 +1,7 @@
 r"""
 Automorphism groups and canonical labels.
 
-For details see section 3 of [Feu13]_.
+For details see section 3 of [Feu2013]_.
 
 Definitions
 ###########
@@ -104,7 +104,7 @@ We are able to speed up the computation by making use of refinements
 (i.e. `(S_n)_C`-homomorphisms). Suppose we constructed a node
 `(C, I_C, y, G_{\Pi^{(I_C)}(y))})`. We define
 `Y := \{z \in X^n \mid \Pi^{(I_C)}(z) = \Pi^{(I_C)}(y)\}`
-and we search for functions `\omega: Y \rightarrow \mathbb{Z}^n` which are
+and we search for functions `\omega: Y \rightarrow \ZZ^n` which are
 constant on the orbits of `G_{\Pi^{(I_C)}(y)}` and compatible with the action
 of `(S_n)_C` on both sides. Then we compute a permutation `\pi \in (S_n)_C`
 which cell-wisely sorts the entries of `\omega(y)`. Afterwards we are allowed
@@ -169,11 +169,7 @@ AUTHORS:
 
 REFERENCES:
 
-.. [Feu13] Feulner, Thomas, "Eine kanonische Form
-           zur Darstellung aequivalenter Codes --
-           Computergestuetzte Berechnung und ihre Anwendung
-           in der Codierungstheorie, Kryptographie und Geometrie --",
-           Dissertation, University of Bayreuth, 2013.
+- [Feu2013]_
 """
 
 #*****************************************************************************
@@ -184,15 +180,18 @@ REFERENCES:
 #  the License, or (at your option) any later version.
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
-
-include 'sage/groups/perm_gps/partn_ref/data_structures_pyx.pxi'
 
 from copy import copy
 
+from cysignals.memory cimport sig_malloc, sig_realloc, sig_free
+
+from sage.groups.perm_gps.partn_ref.data_structures cimport *
+from sage.data_structures.bitset_base cimport *
+
+
 cdef tuple PS_refinement(PartitionStack * part, long *refine_vals, long *best,
                          int begin, int end,
-                         bint * cand_initialized, bint *changed_partition):
+                         bint * cand_initialized, bint *changed_partition) noexcept:
     """
     Refine the partition stack by the values given by ``refine_vals``.
     We also compare our actual refinement result with the vector ``best`` in the
@@ -220,8 +219,8 @@ cdef tuple PS_refinement(PartitionStack * part, long *refine_vals, long *best,
         if part.levels[i] <= part.depth:
             # [loc_begin, ..., i] is a block of the old partition
             if i > loc_begin:
-                global_refine_vals_array = refine_vals;
-                qsort(part.entries + loc_begin, (i+1)-loc_begin, sizeof(int), my_comp_func);
+                global_refine_vals_array = refine_vals
+                qsort(part.entries + loc_begin, (i+1)-loc_begin, sizeof(int), my_comp_func)
             last_val = refine_vals[ part.entries[loc_begin] ]
             j = loc_begin
             while True:
@@ -258,6 +257,7 @@ cdef tuple PS_refinement(PartitionStack * part, long *refine_vals, long *best,
         i += 1
     return (True, newly_fixed)
 
+
 cdef class _BestValStore:
     r"""
     This class implements a dynamic array of integer vectors of length `n`.
@@ -273,9 +273,7 @@ cdef class _BestValStore:
         """
         self.default_data_length = n
         self.storage_length = 0
-        self.values = <long *> sig_malloc(0)
-        if self.values is NULL:
-            raise MemoryError('allocating _BestValStore')
+        self.values = NULL
 
     def __dealloc__(self):
         """
@@ -283,7 +281,7 @@ cdef class _BestValStore:
         """
         sig_free(self.values)
 
-    cdef long * get_row(self, int i):
+    cdef long * get_row(self, int i) noexcept:
         r"""
         Return the i-th row.
 
@@ -297,6 +295,7 @@ cdef class _BestValStore:
                 raise MemoryError('resizing _BestValStore')
             self.storage_length = i + 1
         return self.values+(i*self.default_data_length)
+
 
 cdef class LabelledBranching:
     r"""
@@ -333,11 +332,13 @@ cdef class LabelledBranching:
             sage: L = LabelledBranching(3)
         """
         from sage.libs.gap.libgap import libgap
+        from sage.groups.perm_gps.permgroup_named import SymmetricGroup
 
         self.n = n
         self.group = libgap.eval("Group(())")
         self.ClosureGroup = libgap.eval("ClosureGroup")
         self.father = < int *> sig_malloc(n * sizeof(int))
+        self.sym_gp = SymmetricGroup(self.n)
         if self.father is NULL:
             raise MemoryError('allocating LabelledBranching')
         self.act_perm = < int *> sig_malloc(n * sizeof(int))
@@ -355,7 +356,7 @@ cdef class LabelledBranching:
         sig_free(self.father)
         sig_free(self.act_perm)
 
-    cpdef add_gen(self, GapElement_Permutation gen):
+    cpdef add_gen(self, GapElement_Permutation gen) noexcept:
         r"""
         Add a further generator to the group and
         update the complete labeled branching.
@@ -389,7 +390,7 @@ cdef class LabelledBranching:
             if libgap.IsTrivial(h).sage():
                 break
 
-    cdef bint has_empty_intersection(self, PartitionStack * part):
+    cdef bint has_empty_intersection(self, PartitionStack * part) noexcept:
         r"""
         Pruning by automorphisms.
 
@@ -426,14 +427,13 @@ cdef class LabelledBranching:
             sage: from sage.groups.perm_gps.partn_ref2.refinement_generic import LabelledBranching
             sage: L = LabelledBranching(3)
             sage: L.small_generating_set()
-            []
+            [()]
             sage: L.add_gen(libgap.eval('(1,2,3)'))
             sage: L.small_generating_set()
             [(1,2,3)]
         """
         from sage.libs.gap.libgap import libgap
-
-        return libgap.SmallGeneratingSet(self.group).sage()
+        return libgap.SmallGeneratingSet(self.group).sage(parent=self.sym_gp)
 
     def get_order(self):
         r"""
@@ -493,7 +493,7 @@ cdef class PartitionRefinement_generic:
     #####################################################################
     # The following functions have to be implemented by derived classes
     #####################################################################
-    cdef bint _inner_min_(self, int pos, bint * inner_group_changed):
+    cdef bint _inner_min_(self, int pos, bint * inner_group_changed) noexcept:
         """
         Minimize the node by the action of the inner group on the i-th position.
 
@@ -509,7 +509,7 @@ cdef class PartitionRefinement_generic:
         """
         raise NotImplementedError
 
-    cdef bint _refine(self, bint *part_changed, bint inner_group_changed, bint first_step):
+    cdef bint _refine(self, bint *part_changed, bint inner_group_changed, bint first_step) noexcept:
         r"""
         Refine the partition ``self._part``.
 
@@ -524,26 +524,26 @@ cdef class PartitionRefinement_generic:
         """
         raise NotImplementedError
 
-    cdef tuple _store_state_(self):
+    cdef tuple _store_state_(self) noexcept:
         r"""
         Store the current state of the node to a tuple, such that it can be
         restored by :meth:`_restore_state_`.
         """
         raise NotImplementedError
 
-    cdef void _restore_state_(self, tuple act_state):
+    cdef void _restore_state_(self, tuple act_state) noexcept:
         r"""
         The inverse of :meth:`_store_state_`.
         """
         raise NotImplementedError
 
-    cdef void _store_best_(self):
+    cdef void _store_best_(self) noexcept:
         r"""
         Store this leaf node as the actual best candidate for the canonical form.
         """
         raise NotImplementedError
 
-    cdef bint _minimization_allowed_on_col(self, int pos):
+    cdef bint _minimization_allowed_on_col(self, int pos) noexcept:
         r"""
         Decide if we are allowed to perform the inner minimization on position
         ``pos`` which is supposed to be a singleton.
@@ -611,7 +611,7 @@ cdef class PartitionRefinement_generic:
     ###############################################
     # THE BACKTRACK ALGORITHM:
     ###############################################
-    cdef void _init_partition_stack(self, list partition):
+    cdef void _init_partition_stack(self, list partition) noexcept:
         r"""
         Initialize the partition stack.
 
@@ -631,7 +631,7 @@ cdef class PartitionRefinement_generic:
             sig_free(self._refine_vals_scratch)
             raise MemoryError('initializing the partition stack')
 
-    cdef void _start_Sn_backtrack(self):
+    cdef void _start_Sn_backtrack(self) noexcept:
         r"""
         Start the partition refinement algorithm.
         """
@@ -639,7 +639,7 @@ cdef class PartitionRefinement_generic:
         self._backtrack(True)
         self._finish_latex()
 
-    cdef void _backtrack(self, bint first_step = False):
+    cdef void _backtrack(self, bint first_step=False) noexcept:
         r"""
         Backtracking with pruning.
 
@@ -684,8 +684,7 @@ cdef class PartitionRefinement_generic:
         bitset_init(b, self._n)
         PS_move_all_mins_to_front(self._part)
         cdef int second_pos
-        cdef int smallest = PS_first_smallest(self._part, b, &second_pos,
-                                              self)
+        cdef int smallest = PS_first_smallest_PR(self._part, b, &second_pos, self)
         if second_pos != -1:
             self._fixed_not_minimized.append(second_pos)
         cdef int pos = smallest
@@ -719,7 +718,7 @@ cdef class PartitionRefinement_generic:
         bitset_free(b)
         self._latex_finish_lvl()
 
-    cdef bint _inner_min_unminimized(self, bint *inner_group_changed):
+    cdef bint _inner_min_unminimized(self, bint *inner_group_changed) noexcept:
         r"""
         Compute a subsequence `J = (j_0, \ldots, j_{l-1})`
         of fixed coordinates, which were not yet used in
@@ -786,7 +785,7 @@ cdef class PartitionRefinement_generic:
         return True
 
     cdef bint _one_refinement(self, long * best, int begin, int end, bint *inner_group_changed,
-                             bint *changed_partition, str refine_name):
+                             bint *changed_partition, str refine_name) noexcept:
         r"""
         Let ``self._refine_vals_scratch`` contain the result of the `(S_n)_C`-homomorphism
         `\omega` and ``best`` be the result of `\omega` applied to the candidate.
@@ -797,7 +796,7 @@ cdef class PartitionRefinement_generic:
          - if the inner group has changed -> sets ``inner_group_changed`` to True
          - if the partition has changed -> sets ``changed_partition`` to True
 
-         The string ``refine_name`` is only neccessary for printing within the
+         The string ``refine_name`` is only necessary for printing within the
          latex output (if activated).
         """
         cdef tuple res = PS_refinement(self._part, self._refine_vals_scratch, best, begin, end,
@@ -808,7 +807,7 @@ cdef class PartitionRefinement_generic:
                 self._latex_act_node("autcut in " + refine_name)
                 return False
 
-            if len( res[1] ) > 0:
+            if res[1]:
                 self._fixed_not_minimized += res[1]
                 if self._inner_min_unminimized(inner_group_changed):
                     return True
@@ -819,15 +818,15 @@ cdef class PartitionRefinement_generic:
         self._latex_act_node(refine_name)
         return False
 
-    cdef int len(self):
+    cdef int len(self) noexcept:
         r"""
         Return the degree of the acting symmetric group.
         """
         return self._n
 
-    cdef void _leaf_computations(self):
+    cdef void _leaf_computations(self) noexcept:
         r"""
-        All neccessary computations which have to be performed in a leaf.
+        All necessary computations which have to be performed in a leaf.
 
         There are to possibilities depending on the flag
         ``self._is_candidate_initialized``:
@@ -856,7 +855,7 @@ cdef class PartitionRefinement_generic:
             self._store_best_()
             self._latex_act_node("NEW")
 
-    cdef bint _cut_by_known_automs(self):
+    cdef bint _cut_by_known_automs(self) noexcept:
         r"""
         Return ``True`` if the subtree below this node does not contain
         any *interesting* information.
@@ -872,7 +871,7 @@ cdef class PartitionRefinement_generic:
     # BACKTRACK_WITHLATEX_DEBUG = 1 in the setup.py script when
     # building this module!
     ###########################################################################
-    cdef void _latex_act_node(self, str comment="", int printlvl=0):
+    cdef void _latex_act_node(self, str comment="", int printlvl=0) noexcept:
         r"""
         Append the actual node as a string of latex-commands to
         ``self._latex_debug_string``
@@ -901,7 +900,7 @@ cdef class PartitionRefinement_generic:
             print("sorry, no debug output was written. " +
                   "Set BACKTRACK_WITHLATEX_DEBUG to True if interested in this information")
 
-    cdef void _init_latex(self):
+    cdef void _init_latex(self) noexcept:
         r"""
         Add some initial commands to the string
         ``self._latex_debug_string``.
@@ -913,11 +912,11 @@ cdef class PartitionRefinement_generic:
                 "\\begin{tikzpicture}\n" +
                 "\\tikzset{level distance=3cm, edge from parent/.style=" +
                 "{draw, edge from parent path={(\\tikzparentnode.south) -- (\\tikzchildnode.north)}}}\n" +
-                "\Tree")
+                "\\Tree")
             self._latex_debug_string += "[."
             self._latex_act_node()
 
-    cdef void _finish_latex(self):
+    cdef void _finish_latex(self) noexcept:
         r"""
         Add some final commands to the string
         ``self._latex_debug_string``.
@@ -926,7 +925,7 @@ cdef class PartitionRefinement_generic:
             self._latex_debug_string += "]\n"
             self._latex_debug_string += "\\end{tikzpicture} }\n"
 
-    cdef void _latex_new_lvl(self):
+    cdef void _latex_new_lvl(self) noexcept:
         r"""
         Add some commands to the string ``self._latex_debug_string``,
         in the case that the depth was increased during the backtracking.
@@ -934,10 +933,49 @@ cdef class PartitionRefinement_generic:
         if BACKTRACK_WITHLATEX_DEBUG:
             self._latex_debug_string += "[."
 
-    cdef void _latex_finish_lvl(self):
+    cdef void _latex_finish_lvl(self) noexcept:
         r"""
         Add some commands to the string ``self._latex_debug_string``,
         in the case that we return to a node in the backtracking.
         """
         if BACKTRACK_WITHLATEX_DEBUG:
             self._latex_debug_string += "]\n"
+
+
+cdef int PS_first_smallest_PR(PartitionStack *PS, bitset_t b, int *second_pos=NULL,
+                              PartitionRefinement_generic partn_ref_alg=None) noexcept:
+    """
+    Find the first occurrence of the smallest cell of size greater than one,
+    which is admissible (checked by the function ``test_allowance``).
+    Its entries are stored to b and its minimum element is returned.
+
+    This generalizes :func:`sage.groups.perm_gps.partn_ref.data_structures.PS_first_smallest`.
+    """
+    cdef int i = 0, j = 0, location = 0, n = PS.degree
+    bitset_zero(b)
+    while True:
+        if PS.levels[i] <= PS.depth:
+            if i != j and n > i - j + 1 and (partn_ref_alg is None or
+                                partn_ref_alg._minimization_allowed_on_col(PS.entries[j])):
+                n = i - j + 1
+                location = j
+            j = i + 1
+        if PS.levels[i] == -1:
+            break
+        i += 1
+    # location now points to the beginning of the first, smallest,
+    # nontrivial cell
+    i = location
+    while True:
+        bitset_flip(b, PS.entries[i])
+        if PS.levels[i] <= PS.depth:
+            break
+        i += 1
+
+    if second_pos != NULL:
+        if n == 2:
+            second_pos[0] = PS.entries[location + 1]
+        else:
+            second_pos[0] = -1
+
+    return PS.entries[location]

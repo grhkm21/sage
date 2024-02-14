@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.graphs
 r"""
 Subspaces of modular forms for Hecke triangle groups
 
@@ -7,26 +8,21 @@ AUTHORS:
 
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013-2014 Jonas Jermann <jjermann2@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-
-from sage.rings.all import ZZ, QQ, infinity
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.modules.module import Module
-from sage.categories.all import Modules
-from sage.modules.free_module_element import vector
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.misc.cachefunc import cached_method
 from sage.matrix.constructor import matrix
 
-from hecke_triangle_groups import HeckeTriangleGroup
-from abstract_space import FormsSpace_abstract
+from .abstract_space import FormsSpace_abstract
 
 
 def canonical_parameters(ambient_space, basis, check=True):
@@ -48,7 +44,6 @@ def canonical_parameters(ambient_space, basis, check=True):
          (q + 30*q^2 + 333*q^3 + 1444*q^4 + O(q^5),
           1 + 26208*q^3 + 530712*q^4 + O(q^5)))
     """
-
     if check:
         coord_matrix = matrix([ambient_space(v).ambient_coordinate_vector() for v in basis])
         pivots = coord_matrix.transpose().pivots()
@@ -59,6 +54,7 @@ def canonical_parameters(ambient_space, basis, check=True):
         basis = tuple(basis)
 
     return (ambient_space, basis)
+
 
 def ModularFormsSubSpace(*args, **kwargs):
     r"""
@@ -87,7 +83,7 @@ def ModularFormsSubSpace(*args, **kwargs):
 
     generators = []
     for arg in args:
-        if isinstance(arg, list) or isinstance(arg, tuple):
+        if isinstance(arg, (list, tuple)):
             generators += arg
         else:
             generators.append(arg)
@@ -135,11 +131,10 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: SubSpaceForms(MF, [MF.Delta().as_ring_element(), MF.gen(0)]) == SubSpaceForms(ambient_space, basis)
             True
         """
-
         (ambient_space, basis) = canonical_parameters(ambient_space, basis, check)
 
         # we return check=True to ensure only one cached instance
-        return super(SubSpaceForms,cls).__classcall__(cls, ambient_space=ambient_space, basis=basis, check=True)
+        return super().__classcall__(cls, ambient_space=ambient_space, basis=basis, check=True)
 
     def __init__(self, ambient_space, basis, check):
         r"""
@@ -174,7 +169,9 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: subspace.analytic_type()
             modular
             sage: subspace.category()
-            Category of vector spaces over Fraction Field of Univariate Polynomial Ring in d over Integer Ring
+            Category of modules over Integer Ring
+            sage: subspace in subspace.category()
+            True
             sage: subspace.module()
             Vector space of degree 4 and dimension 2 over Fraction Field of Univariate Polynomial Ring in d over Integer Ring
             Basis matrix:
@@ -207,17 +204,16 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: subspace.gens()
             [q + 24*q^2 + O(q^3), q - 24*q^2 + O(q^3), q - 8*q^2 + O(q^3)]
         """
-
         FormsSpace_abstract.__init__(self, group=ambient_space.group(), base_ring=ambient_space.base_ring(), k=ambient_space.weight(), ep=ambient_space.ep(), n=ambient_space.hecke_n())
-        Module.__init__(self, base=self.coeff_ring())
+        Module.__init__(self, base=ambient_space.base_ring())
 
         self._ambient_space = ambient_space
-        self._basis = [v for v in basis]
+        self._basis = list(basis)
         # self(v) instead would somehow mess up the coercion model
         self._gens = [self._element_constructor_(v) for v in basis]
         self._module = ambient_space._module.submodule([ambient_space.coordinate_vector(v) for v in basis])
         # TODO: get the analytic type from the basis
-        #self._analytic_type=self.AT(["quasi", "mero"])
+        # self._analytic_type=self.AT(["quasi", "mero"])
         self._analytic_type = ambient_space._analytic_type
 
     def _repr_(self):
@@ -246,8 +242,12 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: from sage.modular.modform_hecketriangle.space import ModularForms
             sage: MF = ModularForms(n=6, k=20, ep=1)
             sage: subspace = MF.subspace([MF.Delta()*MF.E4()^2, MF.gen(0)])
+            sage: subspace.change_ring(QQ)
+            Subspace of dimension 2 of ModularForms(n=6, k=20, ep=1) over Rational Field
             sage: subspace.change_ring(CC)
-            Subspace of dimension 2 of ModularForms(n=6, k=20, ep=1) over Complex Field with 53 bits of precision
+            Traceback (most recent call last):
+            ...
+            NotImplementedError
         """
 
         return self.__class__.__base__(self._ambient_space.change_ring(new_base_ring), self._basis, check=False)
@@ -288,8 +288,7 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: subspace.contains_coeff_ring()
             False
         """
-
-        return (super(SubSpaceForms, self).contains_coeff_ring() and self.dimension()==ZZ(1))
+        return (super().contains_coeff_ring() and self.dimension() == 1)
 
     @cached_method
     def basis(self):
@@ -306,7 +305,6 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
             sage: subspace.basis()[0].parent() == MF
             True
         """
-
         return self._basis
 
     @cached_method
@@ -422,4 +420,3 @@ class SubSpaceForms(FormsSpace_abstract, Module, UniqueRepresentation):
         """
 
         return self._module.coordinate_vector(self.ambient_coordinate_vector(v))
-

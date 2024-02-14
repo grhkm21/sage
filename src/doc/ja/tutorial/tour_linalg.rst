@@ -45,18 +45,6 @@ Sageでは，行列 :math:`A` の核空間は「左」核空間，すなわち :
     (0, -4, -1)
 
 
-``solve_right`` の代わりにバックスラッシュ ``\`` を使うこともできる．
-つまり ``A.solve_right(Y)``  ではなく ``A \ Y`` と書くわけである．
-
-.. link
-
-::
-
-    sage: A \ Y
-    (-2, 1, 0)
-
-
-
 解がない場合は，Sageはエラーを返してくる:
 
 .. skip
@@ -147,7 +135,7 @@ Sageは固有値と固有ベクトルの計算もしてくれる:
 
 (3行4列の行列空間を生成したければ ``MatrixSpace(QQ,3,4)`` とする．
 列数を省略するとデフォルトで行数に合わせられるから， ``MatrixSpace(QQ,3)`` は ``MatrixSpace(QQ,3,3)`` と同じ意味になる．)
-行列の空間は基底系を備えており，Sageはこれをリストとして保存している:
+行列の空間は標準基底を備えており:
 
 .. link
 
@@ -156,7 +144,7 @@ Sageは固有値と固有ベクトルの計算もしてくれる:
     sage: B = M.basis()
     sage: len(B)
     9
-    sage: B[1]
+    sage: B[0,1]
     [0 1 0]
     [0 0 0]
     [0 0 0]
@@ -266,4 +254,4 @@ Pythonでは，大文字小文字が区別されることに注意:
     sage: M = MatrixSpace(QQ, 10,10, Sparse=True)
     Traceback (most recent call last):
     ...
-    TypeError: __classcall__() got an unexpected keyword argument 'Sparse'
+    TypeError: ...__init__() got an unexpected keyword argument 'Sparse'

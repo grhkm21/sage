@@ -15,11 +15,11 @@ Miscellaneous
 #
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
-from sage.misc.all import prod
+from sage.misc.misc_c import prod
 
-class DoublyLinkedList():
+
+class DoublyLinkedList:
     """
     A doubly linked list class that provides constant time hiding and
     unhiding of entries.
@@ -39,6 +39,7 @@ class DoublyLinkedList():
         sage: dll.unhide(2); dll
         Doubly linked list of [1, 2, 3]: [1, 2, 3]
     """
+
     def __init__(self, l):
         """
         TESTS::
@@ -52,16 +53,16 @@ class DoublyLinkedList():
         self.next_value = {}
         self.next_value['begin'] = l[0]
         self.next_value[l[n-1]] = 'end'
-        for i in xrange(n-1):
+        for i in range(n-1):
             self.next_value[l[i]] = l[i+1]
 
         self.prev_value = {}
         self.prev_value['end'] = l[-1]
         self.prev_value[l[0]] = 'begin'
-        for i in xrange(1,n):
+        for i in range(1,n):
             self.prev_value[l[i]] = l[i-1]
 
-    def __cmp__(self, x):
+    def __eq__(self, other):
         """
         TESTS::
 
@@ -73,15 +74,24 @@ class DoublyLinkedList():
             sage: dll == dll2
             False
         """
-        if not isinstance(x, DoublyLinkedList):
-            return -1
-        if self.l != x.l:
-            return -1
-        if self.next_value != x.next_value:
-            return -1
-        if self.prev_value != x.prev_value:
-            return -1
-        return 0
+        return (isinstance(other, DoublyLinkedList) and
+            self.l == other.l and
+            self.next_value == other.next_value and
+            self.prev_value == other.prev_value)
+
+    def __ne__(self, other):
+        """
+        TESTS::
+
+            sage: dll = sage.combinat.misc.DoublyLinkedList([1,2,3])
+            sage: dll2 = sage.combinat.misc.DoublyLinkedList([1,2,3])
+            sage: dll != dll2
+            False
+            sage: dll.hide(1)
+            sage: dll != dll2
+            True
+        """
+        return not (self == other)
 
     def __repr__(self):
         """
@@ -90,7 +100,7 @@ class DoublyLinkedList():
             sage: repr(sage.combinat.misc.DoublyLinkedList([1,2,3]))
             'Doubly linked list of [1, 2, 3]: [1, 2, 3]'
         """
-        return "Doubly linked list of %s: %s"%(self.l, list(self))
+        return "Doubly linked list of %s: %s" % (self.l, list(self))
 
     def __iter__(self):
         """
@@ -169,7 +179,6 @@ class DoublyLinkedList():
         return self.prev_value[j]
 
 
-
 def _monomial_exponent_to_lower_factorial(me, x):
     r"""
     Converts a tuple of exponents to the monomial obtained by replacing
@@ -198,6 +207,7 @@ def _monomial_exponent_to_lower_factorial(me, x):
         for j in range(me[i]):
             terms.append( x[i]-j )
     return prod(terms)
+
 
 def umbral_operation(poly):
     r"""
@@ -264,6 +274,7 @@ class IterableFunctionCall:
         bbb
         foo
     """
+
     def __init__(self, f, *args, **kwargs):
         """
         EXAMPLES::
@@ -294,7 +305,8 @@ class IterableFunctionCall:
             sage: repr(IterableFunctionCall(iter, [1,2,3]))
             'Iterable function call <built-in function iter> with args=([1, 2, 3],) and kwargs={}'
         """
-        return "Iterable function call %s with args=%s and kwargs=%s"%(self.f, self.args, self.kwargs)
+        return "Iterable function call %s with args=%s and kwargs=%s" % (self.f, self.args, self.kwargs)
+
 
 def check_integer_list_constraints(l, **kwargs):
     """
@@ -331,12 +343,12 @@ def check_integer_list_constraints(l, **kwargs):
     """
     if 'singleton' in kwargs and kwargs['singleton']:
         singleton = True
-        result = [ l ]
+        result = [l]
         n = sum(l)
         del kwargs['singleton']
     else:
         singleton = False
-        if len(l) > 0:
+        if l:
             n = sum(l[0])
             result = l
         else:
@@ -375,10 +387,10 @@ def check_integer_list_constraints(l, **kwargs):
     filters['max_part'] = lambda x: max(x) <= max_part
     filters['min_length'] = lambda x: len(x) >= min_length
     filters['max_length'] = lambda x: len(x) <= max_length
-    filters['min_slope'] = lambda x: min([x[i+1]-x[i] for i in range(len(x)-1)]+[min_slope+1]) >= min_slope
-    filters['max_slope'] = lambda x: max([x[i+1]-x[i] for i in range(len(x)-1)]+[max_slope-1]) <= max_slope
-    filters['outer'] = lambda x: len(outer) >= len(x) and min([outer[i]-x[i] for i in range(len(x))]) >= 0
-    filters['inner'] = lambda x: len(x) >= len(inner) and max([inner[i]-x[i] for i in range(len(inner))]) <= 0
+    filters['min_slope'] = lambda x: min((x[i + 1] - x[i] for i in range(len(x) - 1)), default=min_slope + 1) >= min_slope
+    filters['max_slope'] = lambda x: max((x[i + 1] - x[i] for i in range(len(x) - 1)), default=max_slope - 1) <= max_slope
+    filters['outer'] = lambda x: len(outer) >= len(x) and min(outer[i] - x[i] for i in range(len(x))) >= 0
+    filters['inner'] = lambda x: len(x) >= len(inner) and max(inner[i] - x[i] for i in range(len(inner))) <= 0
 
     for key in kwargs:
         result = [x for x in result if filters[key](x)]
@@ -390,4 +402,3 @@ def check_integer_list_constraints(l, **kwargs):
             return None
     else:
         return result
-

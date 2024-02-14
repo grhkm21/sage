@@ -1,25 +1,26 @@
+# sage.doctest: needs sage.rings.finite_rings
 r"""
-Elements of a semimonomial transformation group.
+Elements of a semimonomial transformation group
 
 The semimonomial transformation group of degree `n` over a ring `R` is
 the semidirect product of the monomial transformation group of degree `n`
-(also known as the complete monomial group over the group of units 
+(also known as the complete monomial group over the group of units
 `R^{\times}` of `R`) and the group of ring automorphisms.
 
 The multiplication of two elements `(\phi, \pi, \alpha)(\psi, \sigma, \beta)`
 with
 
-    - `\phi, \psi \in  {R^{\times}}^n`
+- `\phi, \psi \in  {R^{\times}}^n`
 
-    - `\pi, \sigma \in S_n` (with the multiplication `\pi\sigma`
-      done from left to right (like in GAP) -- 
-      that is, `(\pi\sigma)(i) = \sigma(\pi(i))` for all `i`.)
+- `\pi, \sigma \in S_n` (with the multiplication `\pi\sigma`
+  done from left to right (like in GAP) --
+  that is, `(\pi\sigma)(i) = \sigma(\pi(i))` for all `i`.)
 
-    - `\alpha, \beta \in Aut(R)`
+- `\alpha, \beta \in Aut(R)`
 
 is defined by
 
-.. math::
+.. MATH::
 
     (\phi, \pi, \alpha)(\psi, \sigma, \beta) =
     (\phi \cdot \psi^{\pi, \alpha}, \pi\sigma, \alpha \circ \beta)
@@ -37,8 +38,8 @@ The parent is
 AUTHORS:
 
 - Thomas Feulner (2012-11-15): initial version
-- Thomas Feulner (2013-12-27): :trac:`15576` dissolve dependency on 
-    Permutations().global_options()['mul']
+- Thomas Feulner (2013-12-27): :trac:`15576` dissolve dependency on
+    Permutations.options.mul
 
 EXAMPLES::
 
@@ -52,6 +53,7 @@ TESTS::
 
     sage: TestSuite(G[0]).run()
 """
+from cpython.object cimport PyObject_RichCompare
 
 
 def _is_id(f, R):
@@ -113,7 +115,7 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
         ((2*a + 1, 1, 2, 2); (1,2,3,4), Ring endomorphism of Finite Field in a of size 3^2 Defn: a |--> 2*a + 1)
         sage: S(g)
         ((2, a, 1, 2); (), Ring endomorphism of Finite Field in a of size 3^2 Defn: a |--> a)
-        sage: S(1) # the one element in the group
+        sage: S(1)  # the one element in the group
         ((1, 1, 1, 1); (), Ring endomorphism of Finite Field in a of size 3^2 Defn: a |--> a)
     """
     def __init__(self, parent, v, perm, alpha):
@@ -126,14 +128,14 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
 
             sage: F.<a> = GF(9)
             sage: S = SemimonomialTransformationGroup(F, 4)
-            sage: g = S(v = [2, a, 1, 2]) #indirect doctest
+            sage: g = S(v = [2, a, 1, 2])  #indirect doctest
         """
         MultiplicativeGroupElement.__init__(self, parent)
         self.v = tuple(v)
         self.perm = perm
         self.alpha = alpha
 
-    cdef _new_c(self):
+    cdef _new_c(self) noexcept:
         # Create a copy of self.
         cdef SemimonomialTransformation x
         x = SemimonomialTransformation.__new__(SemimonomialTransformation)
@@ -151,7 +153,7 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
 
             sage: F.<a> = GF(9)
             sage: s = SemimonomialTransformationGroup(F, 4).an_element()
-            sage: t = copy(s) #indirect doctest
+            sage: t = copy(s)  # indirect doctest
             sage: t is s
             False
             sage: t == s
@@ -171,22 +173,22 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
         """
         return hash(self.v) + hash(self.perm) + hash(self.get_autom())
 
-    cpdef _mul_(left, _right):
+    cpdef _mul_(left, _right) noexcept:
         r"""
         Multiplication of elements.
-        
-        The multiplication of two elements `(\phi, \pi, \alpha)` and 
+
+        The multiplication of two elements `(\phi, \pi, \alpha)` and
         `(\psi, \sigma, \beta)` with
-        
+
             - `\phi, \psi \in  {R^{\times}}^n`
-        
+
             - `\pi, \sigma \in S_n`
-        
+
             - `\alpha, \beta \in Aut(R)`
-        
+
         is defined by:
-        
-        .. math::
+
+        .. MATH::
 
             (\phi, \pi, \alpha)(\psi, \sigma, \beta) =
             (\phi \cdot \psi^{\pi, \alpha}, \pi\sigma, \alpha \circ \beta)
@@ -197,12 +199,12 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
         of vectors is `0`-based here, so `\psi = (\psi_0, \psi_1, \ldots, \psi_{n-1})`.)
         Furthermore, the multiplication `\pi\sigma` is done from left to right
         (like in GAP) -- that is, `(\pi\sigma)(i) = \sigma(\pi(i))` for all `i`.
-        
+
         EXAMPLES::
 
             sage: F.<a> = GF(9)
             sage: s = SemimonomialTransformationGroup(F, 4).an_element()
-            sage: s*s #indirect doctest
+            sage: s*s  # indirect doctest
             ((a, 2*a + 1, 1, 1); (1,3)(2,4), Ring endomorphism of Finite Field in a of size 3^2 Defn: a |--> a)
         """
         cdef SemimonomialTransformation right = <SemimonomialTransformation> _right
@@ -222,7 +224,7 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
             sage: F.<a> = GF(9)
             sage: S = SemimonomialTransformationGroup(F, 4)
             sage: s = S.an_element()
-            sage: s*s**(-1) == S(1) # indirect doctest
+            sage: s*s**(-1) == S(1)  # indirect doctest
             True
         """
         cdef i
@@ -239,13 +241,13 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
         EXAMPLES::
 
             sage: F.<a> = GF(9)
-            sage: SemimonomialTransformationGroup(F, 4).an_element() # indirect doctest
+            sage: SemimonomialTransformationGroup(F, 4).an_element()  # indirect doctest
             ((a, 1, 1, 1); (1,4,3,2), Ring endomorphism of Finite Field in a of size 3^2 Defn: a |--> 2*a + 1)
         """
         return "(%s; %s, %s)"%(self.v, self.perm.cycle_string(),
                                self.get_autom())
 
-    cpdef int _cmp_(left, _right) except -2:
+    cpdef _richcmp_(left, _right, int op) noexcept:
         """
         Compare group elements ``self`` and ``right``.
 
@@ -253,14 +255,15 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
 
             sage: F.<a> = GF(9)
             sage: g = SemimonomialTransformationGroup(F, 4).gens()
-            sage: g[0] > g[1] # indirect doctest
+            sage: g[0] > g[1]  # indirect doctest
             True
-            sage: g[1] != g[2] # indirect doctest
+            sage: g[1] != g[2]  # indirect doctest
             True
         """
         cdef SemimonomialTransformation right = <SemimonomialTransformation> _right
-        return cmp([left.v, left.perm, left.get_autom()],
-                   [right.v, right.perm, right.get_autom()])
+        return PyObject_RichCompare([left.v, left.perm, left.get_autom()],
+                                    [right.v, right.perm, right.get_autom()],
+                                    op)
 
     def __reduce__(self):
         """
@@ -327,7 +330,7 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
 
     def invert_v(self):
         """
-        Elementwisely inverts all entries of ``self`` which
+        Elementwisely invert all entries of ``self`` which
         correspond to the component `{R^{\times}}^n`.
 
         The other components of ``self`` keep unchanged.
@@ -336,7 +339,7 @@ cdef class SemimonomialTransformation(MultiplicativeGroupElement):
 
             sage: F.<a> = GF(9)
             sage: x = copy(SemimonomialTransformationGroup(F, 4).an_element())
-            sage: x.invert_v();
+            sage: x.invert_v()
             sage: x.get_v() == SemimonomialTransformationGroup(F, 4).an_element().get_v_inverse()
             True
         """

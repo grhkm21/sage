@@ -5,7 +5,7 @@ AUTHORS:
 
 - Stepan Starosta (2012): Initial version
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2012 Stepan Starosta <stepan.starosta@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -17,15 +17,16 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#******************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# *****************************************************************************
 
 from sage.structure.element import Element
 from sage.structure.parent import Parent
+from sage.structure.richcmp import richcmp, rich_to_bool
 from sage.sets.finite_enumerated_set import FiniteEnumeratedSet
 from sage.categories.posets import Posets
 from sage.categories.finite_enumerated_sets import FiniteEnumeratedSets
+
 
 class TotallyOrderedFiniteSetElement(Element):
     """
@@ -85,13 +86,12 @@ class TotallyOrderedFiniteSetElement(Element):
         """
         return not (self == other)
 
-    def __cmp__(self, other):
+    def _richcmp_(self, other, op):
         r"""
         Comparison.
 
         For ``self`` and ``other`` that have the same parent the method compares
-        their rank. Otherwise, it compares their types as it is for the generic
-        comparison in :class:`sage.structure.element.Element`.
+        their rank.
 
         TESTS::
 
@@ -105,16 +105,9 @@ class TotallyOrderedFiniteSetElement(Element):
             sage: A(7) < A(2) or A(2) <= A(3) or A(2) < A(2)
             False
         """
-        try:
-            test = self.parent() == other.parent()
-        except AttributeError:
-            test = False
-        if not test:
-            return cmp(type(self),type(other))
-
         if self.value == other.value:
-            return 0
-        return cmp(self.rank(),other.rank())
+            return rich_to_bool(op, 0)
+        return richcmp(self.rank(), other.rank(), op)
 
     def _repr_(self):
         r"""
@@ -140,6 +133,7 @@ class TotallyOrderedFiniteSetElement(Element):
             'gaga'
         """
         return str(self.value)
+
 
 class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
     """
@@ -179,8 +173,8 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
         sage: T1 = TotallyOrderedFiniteSet([3,2,5,1])
         sage: T1(3) < T1(1)
         False
-        sage: T2 = TotallyOrderedFiniteSet([3,var('x')])
-        sage: T2(3) < T2(var('x'))
+        sage: T2 = TotallyOrderedFiniteSet([3, x])                                      # needs sage.symbolic
+        sage: T2(3) < T2(x)                                                             # needs sage.symbolic
         3 < x
 
     To make the above example work, you should set the argument facade to
@@ -218,21 +212,6 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
         sage: A('a') == 'a'
         False
 
-    and comparisons are comparisons of types::
-
-        sage: for e in [1,'a',(0, 0)]:
-        ....:     f = A(e)
-        ....:     l = (e == f,
-        ....:          cmp(e,f) == cmp(type(e),type(f)),
-        ....:          cmp(f,e) == cmp(type(f),type(e)))
-        ....:     print(l)
-        (False, True, True)
-        (False, True, True)
-        (False, True, True)
-
-    This behavior of comparison is the same as the one of
-    :class:`~sage.structure.element.Element`.
-
     Since :trac:`16280`, totally ordered sets support elements that do
     not inherit from :class:`sage.structure.element.Element`, whether
     they are facade or not::
@@ -262,7 +241,7 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
 
             sage: S1 = TotallyOrderedFiniteSet([1, 2, 3])
             sage: S2 = TotallyOrderedFiniteSet((1, 2, 3))
-            sage: S3 = TotallyOrderedFiniteSet((x for x in range(1,4)))
+            sage: S3 = TotallyOrderedFiniteSet(range(1,4))
             sage: S1 is S2
             True
             sage: S2 is S3
@@ -275,9 +254,9 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
                 elements.append(x)
                 seen.add(x)
         return super(FiniteEnumeratedSet, cls).__classcall__(
-                cls,
-                tuple(elements),
-                facade)
+            cls,
+            tuple(elements),
+            facade)
 
     def __init__(self, elements, facade=True):
         """
@@ -290,13 +269,13 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
             sage: TestSuite(TotallyOrderedFiniteSet([1,3,2],facade=False)).run()
             sage: TestSuite(TotallyOrderedFiniteSet([])).run()
         """
-        Parent.__init__(self, facade = facade, category = (Posets(),FiniteEnumeratedSets()))
+        Parent.__init__(self, facade=facade, category=(Posets(), FiniteEnumeratedSets()))
         self._elements = elements
         if facade:
             self._facade_elements = None
         else:
             self._facade_elements = self._elements
-            self._elements = [self.element_class(self,x) for x in elements]
+            self._elements = [self.element_class(self, x) for x in elements]
 
     def _element_constructor_(self, data):
         r"""
@@ -327,7 +306,7 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
         try:
             i = self._facade_elements.index(data)
         except ValueError:
-            raise ValueError("%s not in %s"%(data, self))
+            raise ValueError("%s not in %s" % (data, self))
 
         return self._elements[i]
 
@@ -348,4 +327,3 @@ class TotallyOrderedFiniteSet(FiniteEnumeratedSet):
             return self._elements.index(x) <= self._elements.index(y)
         except Exception:
             raise ValueError("arguments must be elements of the set")
-

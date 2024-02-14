@@ -5,15 +5,23 @@ Implements mpf and mpc types, with binary operations and support
 for interaction with other types. Also implements the main
 context class, and related utilities.
 """
-from __future__ import print_function
 
-include "cysignals/signals.pxi"
-include "sage/ext/stdsage.pxi"
-from cpython.int cimport *
+#*****************************************************************************
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  http://www.gnu.org/licenses/
+#*****************************************************************************
+
 from cpython.long cimport *
 from cpython.float cimport *
 from cpython.complex cimport *
 from cpython.number cimport *
+
+from cysignals.signals cimport sig_check
+
+from sage.ext.stdsage cimport PY_NEW
 
 from sage.libs.gmp.all cimport *
 from sage.rings.integer cimport Integer
@@ -30,7 +38,7 @@ DEF S_INF = 3
 DEF S_NINF = 4
 DEF S_NAN = 5
 
-from ext_impl cimport *
+from sage.libs.mpmath.ext_impl cimport *
 
 import mpmath.rational as rationallib
 import mpmath.libmp as libmp
@@ -67,9 +75,12 @@ cdef MPF MPF_C_0
 cdef MPF MPF_C_1
 cdef MPF MPF_C_2
 
-MPF_init(&MPF_C_0); MPF_set_zero(&MPF_C_0);
-MPF_init(&MPF_C_1); MPF_set_si(&MPF_C_1, 1);
-MPF_init(&MPF_C_2); MPF_set_si(&MPF_C_2, 2);
+MPF_init(&MPF_C_0)
+MPF_set_zero(&MPF_C_0)
+MPF_init(&MPF_C_1)
+MPF_set_si(&MPF_C_1, 1)
+MPF_init(&MPF_C_2)
+MPF_set_si(&MPF_C_2, 2)
 
 # Temporaries used for operands in binary operations
 cdef mpz_t tmp_mpz
@@ -98,7 +109,7 @@ cdef class constant
 cdef class wrapped_libmp_function
 cdef class wrapped_specfun
 
-cdef __isint(MPF *v):
+cdef __isint(MPF *v) noexcept:
     return v.special == S_ZERO or (v.special == S_NORMAL and mpz_sgn(v.exp) >= 0)
 
 cdef int MPF_set_any(MPF *re, MPF *im, x, MPopts opts, bint str_tuple_ok) except -1:
@@ -118,7 +129,7 @@ cdef int MPF_set_any(MPF *re, MPF *im, x, MPopts opts, bint str_tuple_ok) except
         MPF_set(re, &(<mpc>x).re)
         MPF_set(im, &(<mpc>x).im)
         return 2
-    if isinstance(x, int) or isinstance(x, long) or isinstance(x, Integer):
+    if isinstance(x, (int, Integer)):
         MPF_set_int(re, x)
         return 1
     if isinstance(x, float):
@@ -164,7 +175,7 @@ cdef int MPF_set_any(MPF *re, MPF *im, x, MPopts opts, bint str_tuple_ok) except
             elif len(x) == 4:
                 MPF_set_tuple(re, x)
                 return 1
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             try:
                 st = libmp.from_str(x, opts.prec,
                     rndmode_to_python(opts.rounding))
@@ -174,7 +185,7 @@ cdef int MPF_set_any(MPF *re, MPF *im, x, MPopts opts, bint str_tuple_ok) except
             return 1
     return 0
 
-cdef binop(int op, x, y, MPopts opts):
+cdef binop(int op, x, y, MPopts opts) noexcept:
     cdef int typx
     cdef int typy
     cdef MPF xre, xim, yre, yim
@@ -468,7 +479,7 @@ cdef class Context:
             100
             sage: mp.prec = 53
         """
-        return libmp.prec_to_dps(global_opts.prec)
+        return prec_to_dps(global_opts.prec)
 
     dps = property(_get_dps, _set_dps, doc=_get_dps.__doc__)
     prec = property(_get_prec, _set_prec, doc=_get_dps.__doc__)
@@ -487,7 +498,7 @@ cdef class Context:
 
     _prec_rounding = property(_get_prec_rounding)
 
-    cpdef mpf make_mpf(ctx, tuple v):
+    cpdef mpf make_mpf(ctx, tuple v) noexcept:
         """
         Creates an mpf from tuple data ::
 
@@ -500,7 +511,7 @@ cdef class Context:
         MPF_set_tuple(&x.value, v)
         return x
 
-    cpdef mpc make_mpc(ctx, tuple v):
+    cpdef mpc make_mpc(ctx, tuple v) noexcept:
         """
         Creates an mpc from tuple data ::
 
@@ -696,7 +707,6 @@ cdef class Context:
             False
             sage: isint(3+2j, gaussian=True)
             True
-
         """
         cdef MPF v
         cdef MPF w
@@ -734,6 +744,9 @@ cdef class Context:
         faster and produces more accurate results than the builtin
         Python function :func:`sum`.
 
+        With ``squared=True`` each term is squared, and with ``absolute=True``
+        the absolute value of each term is used.
+
         TESTS ::
 
             sage: from mpmath import mp, fsum
@@ -741,8 +754,13 @@ cdef class Context:
             sage: fsum([1, 2, 0.5, 7])
             mpf('10.5')
 
-        With squared=True each term is squared, and with absolute=True
-        the absolute value of each term is used.
+        Check that the regression from `mpmath/issues/723 <https://github.com/mpmath/mpmath/issues/723>`__
+        has been fixed::
+
+            sage: from mpmath import *
+            sage: mp.dps=16
+            sage: zeta(-0.01 + 1000j)
+            mpc(real='-8.9714595...', imag='8.7321793...')
         """
         cdef MPF sre, sim, tre, tim, tmp
         cdef mpf rr
@@ -753,8 +771,8 @@ cdef class Context:
         workopts.prec = workopts.prec * 2 + 50
         workopts.rounding = ROUND_D
         unknown = global_context.zero
-        sig_on()
-        try:  # Way down, there is a ``finally`` with sig_off()
+        try:
+            sig_check()
             MPF_init(&sre)
             MPF_init(&sim)
             MPF_init(&tre)
@@ -837,14 +855,14 @@ cdef class Context:
                 MPF_clear(&sre)
                 MPF_clear(&sim)
                 return +unknown
-        finally:
-            sig_off()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt('Ctrl-C pressed while running fsum')
 
     def fdot(ctx, A, B=None, bint conjugate=False):
         r"""
-        Computes the dot product of the iterables `A` and `B`,
+        Compute the dot product of the iterables `A` and `B`,
 
-        .. math ::
+        .. MATH::
 
             \sum_{k=0} A_k B_k.
 
@@ -853,7 +871,7 @@ cdef class Context:
 
         The elements are automatically converted to mpmath numbers.
 
-        TESTS ::
+        TESTS::
 
             sage: from mpmath import mp, fdot
             sage: mp.dps = 15; mp.pretty = False
@@ -861,7 +879,7 @@ cdef class Context:
             sage: B = [1, -1, 2]
             sage: fdot(A, B)
             mpf('6.5')
-            sage: zip(A, B)
+            sage: list(zip(A, B))
             [(2, 1), (1.5, -1), (3, 2)]
             sage: fdot(_)
             mpf('6.5')
@@ -889,7 +907,7 @@ cdef class Context:
             ttyp = MPF_set_any(&tre, &tim, a, workopts, 0)
             utyp = MPF_set_any(&ure, &uim, b, workopts, 0)
             if utyp == 2 and conjugate:
-                MPF_neg(&uim, &uim);
+                MPF_neg(&uim, &uim)
             if ttyp == 0 or utyp == 0:
                 if conjugate:
                     b = b.conj()
@@ -955,7 +973,7 @@ cdef class Context:
 
     # Doing a+b directly doesn't work with mpi, presumably due to
     # Cython trying to be clever with the operation resolution
-    cdef _stupid_add(ctx, a, b):
+    cdef _stupid_add(ctx, a, b) noexcept:
         return a + b
 
     def _convert_param(ctx, x):
@@ -986,7 +1004,7 @@ cdef class Context:
         """
         cdef MPF v
         cdef bint ismpf, ismpc
-        if isinstance(x, int) or isinstance(x, long) or isinstance(x, Integer):
+        if isinstance(x, (int, Integer)):
             return int(x), 'Z'
         if isinstance(x, tuple):
             p, q = x
@@ -995,7 +1013,7 @@ cdef class Context:
             if not p % q:
                 return p // q, 'Z'
             return rationallib.mpq((p,q)), 'Q'
-        if isinstance(x, basestring) and '/' in x:
+        if isinstance(x, str) and '/' in x:
             p, q = x.split('/')
             p = int(p)
             q = int(q)
@@ -1055,17 +1073,15 @@ cdef class Context:
         ::
 
             sage: class MyInt(int):
-            ...       pass
-            sage: class MyLong(long):
-            ...       pass
+            ....:     pass
             sage: class MyFloat(float):
-            ...       pass
-            sage: mag(MyInt(10)), mag(MyLong(10))
-            (4, 4)
+            ....:     pass
+            sage: mag(MyInt(10))
+            4
 
         """
         cdef int typ
-        if isinstance(x, int) or isinstance(x, long) or isinstance(x, Integer):
+        if isinstance(x, (int, Integer)):
             mpz_set_integer(tmp_opx_re.man, x)
             if mpz_sgn(tmp_opx_re.man) == 0:
                 return global_context.ninf
@@ -1162,7 +1178,7 @@ cdef class Context:
         f_wrapped.__doc__ = doc
         setattr(cls, name, f_wrapped)
 
-    cdef MPopts _fun_get_opts(ctx, kwargs):
+    cdef MPopts _fun_get_opts(ctx, kwargs) noexcept:
         """
         Helper function that extracts precision and rounding information
         from kwargs, or returns the global working precision and rounding
@@ -1579,19 +1595,6 @@ cdef class mpnumber:
         """
         return binop(OP_MUL, self, other, global_opts)
 
-    def __div__(self, other):
-        """
-        Division of mpmath numbers. Compatible numerical types
-        are automatically converted to mpmath numbers ::
-
-            sage: from mpmath import mpf, mpc
-            sage: mpf(10) / mpc(5)
-            mpc(real='2.0', imag='0.0')
-            sage: float(9) / mpf(3)
-            mpf('3.0')
-        """
-        return binop(OP_DIV, self, other, global_opts)
-
     def __truediv__(self, other):
         """
         Division of mpmath numbers. Compatible numerical types
@@ -1644,10 +1647,11 @@ cdef class mpnumber:
         """
         return global_context.almosteq(s, t, rel_eps, abs_eps)
 
+
 cdef class mpf_base(mpnumber):
 
     # Shared methods for mpf, constant. However, somehow some methods
-    # (hash?, __richcmp__?) aren't inerited, so they have to
+    # (hash?, __richcmp__?) are not inherited, so they have to
     # be defined multiple times. TODO: fix this.
 
     def __hash__(self):
@@ -1779,18 +1783,6 @@ cdef class mpf_base(mpnumber):
         """
         return int(libmp.to_int(self._mpf_))
 
-    def __long__(self):
-        """
-        Support long conversion for derived classes ::
-
-            sage: from mpmath import mpf
-            sage: from sage.libs.mpmath.ext_main import mpf_base
-            sage: class X(mpf_base): _mpf_ = mpf(3.25)._mpf_
-            sage: long(X())
-            3L
-        """
-        return long(self.__int__())
-
     def __float__(self):
         """
         Support float conversion for derived classes ::
@@ -1915,7 +1907,7 @@ cdef class mpf(mpf_base):
 
     _mpf_ = property(_get_mpf, _set_mpf, doc=_get_mpf.__doc__)
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Returns whether the number is nonzero ::
 
@@ -1982,7 +1974,7 @@ cdef class mpf(mpf_base):
             sage: mpf(-500.5).man
             1001
             sage: type(_)
-            <type 'sage.rings.integer.Integer'>
+            <class 'sage.rings.integer.Integer'>
         """
         return self._mpf_[1]
 
@@ -2035,30 +2027,10 @@ cdef class mpf(mpf_base):
             sage: int(mpf(2.5))
             2
             sage: type(_)
-            <type 'int'>
+            <... 'int'>
         """
         MPF_to_fixed(tmp_mpz, &self.value, 0, True)
         return mpzi(tmp_mpz)
-
-    def __long__(self):
-        r"""
-        Convert this mpf value to a long.
-
-        (Due to http://bugs.python.org/issue9869, to allow NZMATH to use
-        this Sage-modified version of mpmath, it is vital that we
-        return a long, not an int.)
-
-        TESTS::
-
-            sage: import mpmath
-            sage: v = mpmath.mpf(2)
-            sage: class MyLong(long):
-            ...       pass
-            sage: MyLong(v)
-            2L
-        """
-        MPF_to_fixed(tmp_mpz, &self.value, 0, True)
-        return mpzl(tmp_mpz)
 
     def __float__(self):
         """
@@ -2068,7 +2040,7 @@ cdef class mpf(mpf_base):
             sage: float(mpf(2.5))
             2.5
             sage: type(_)
-            <type 'float'>
+            <... 'float'>
         """
         return MPF_to_double(&self.value, False)
 
@@ -2102,7 +2074,7 @@ cdef class mpf(mpf_base):
         """
         MPF_init(&self.value)
 
-    def  __dealloc__(self):
+    def __dealloc__(self):
         MPF_clear(&self.value)
 
     def __neg__(s):
@@ -2261,7 +2233,7 @@ cdef class constant(mpf_base):
             return str(self)
         return "<%s: %s~>" % (self.name, global_context.nstr(self))
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Returns whether the constant is nonzero ::
 
@@ -2393,7 +2365,7 @@ cdef class mpc(mpnumber):
         MPF_init(&self.re)
         MPF_init(&self.im)
 
-    def  __dealloc__(self):
+    def __dealloc__(self):
         MPF_clear(&self.re)
         MPF_clear(&self.im)
 
@@ -2445,7 +2417,7 @@ cdef class mpc(mpnumber):
         """
         return "(%s)" % libmp.mpc_to_str(s._mpc_, global_context._str_digits)
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         TESTS ::
 
@@ -2528,11 +2500,21 @@ cdef class mpc(mpnumber):
         """
         Returns the hash value of self ::
 
+        EXAMPLES::
+
             sage: from mpmath import mp
             sage: hash(mp.mpc(2,3)) == hash(complex(2,3))
             True
+
+        TESTS:
+
+        Check that :trac:`31676` is fixed::
+
+            sage: from mpmath import mpc
+            sage: hash(mpc(1, -1)) == hash(mpc(-1, -1))  # should not return OverflowError: Python int too large to convert to C ssize_t
+            False
         """
-        return libmp.mpc_hash(self._mpc_)
+        return hash(libmp.mpc_hash(self._mpc_))
 
     def __neg__(s):
         """
@@ -2626,13 +2608,15 @@ def hypsum_internal(int p, int q, param_types, str ztype, coeffs, z,
         sage: print(mp.hyp1f1(1,2,3))
         6.36184564106256
 
-    TODO: convert mpf/mpc parameters to fixed-point numbers here
-    instead of converting to tuples within MPF_hypsum.
+    .. TODO::
+
+        convert mpf/mpc parameters to fixed-point numbers here
+        instead of converting to tuples within MPF_hypsum.
     """
     cdef mpf f
     cdef mpc c
     c = mpc.__new__(mpc)
-    have_complex, magn = MPF_hypsum(&c.re, &c.im, p, q, param_types, \
+    have_complex, magn = MPF_hypsum(&c.re, &c.im, p, q, param_types,
         ztype, coeffs, z, prec, wp, epsshift, magnitude_check, kwargs)
     if have_complex:
         v = c

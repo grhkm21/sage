@@ -4,26 +4,20 @@ The set of prime numbers
 AUTHORS:
 
  - William Stein (2005): original version
- - Florent Hivert (2009-11): adapted to the category framework. The following
-   methods were removed:
-
-    - cardinality, __len__, __iter__: provided by EnumeratedSets
-    - __cmp__(self, other): __eq__ is provided by UniqueRepresentation
-      and seems to do as good a job (all test pass)
+ - Florent Hivert (2009-11): adapted to the category framework.
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2005 William Stein <wstein@gmail.com>
 #                     2009 Florent Hivert <Florent.Hivert@univ-rouen.fr>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-
-from sage.rings.all import ZZ
-from set import Set_generic
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+from sage.rings.integer_ring import ZZ
+from .set import Set_generic
 from sage.categories.infinite_enumerated_sets import InfiniteEnumeratedSets
-from sage.arith.all import nth_prime
+from sage.arith.misc import nth_prime
 from sage.structure.unique_representation import UniqueRepresentation
 
 
@@ -48,12 +42,11 @@ class Primes(Set_generic, UniqueRepresentation):
         sage: 100 in P
         False
 
-        sage: len(P)          # note: this used to be a TypeError
+        sage: len(P)
         Traceback (most recent call last):
         ...
-        NotImplementedError: infinite list
+        NotImplementedError: infinite set
     """
-
     @staticmethod
     def __classcall__(cls, proof=True):
         """
@@ -64,7 +57,7 @@ class Primes(Set_generic, UniqueRepresentation):
             sage: Primes(proof=False) is Primes()
             False
         """
-        return super(Primes, cls).__classcall__(cls, proof)
+        return super().__classcall__(cls, proof)
 
     def __init__(self, proof):
         """
@@ -73,44 +66,37 @@ class Primes(Set_generic, UniqueRepresentation):
             sage: P = Primes(); P
             Set of all prime numbers: 2, 3, 5, 7, ...
 
-            sage: Q = Primes(proof = False); Q
+            sage: Q = Primes(proof=False); Q
             Set of all prime numbers: 2, 3, 5, 7, ...
 
         TESTS::
 
             sage: P.category()
             Category of facade infinite enumerated sets
-            sage: TestSuite(P).run()
+            sage: TestSuite(P).run()                                                    # needs sage.libs.pari
 
             sage: Q.category()
             Category of facade infinite enumerated sets
-            sage: TestSuite(Q).run()
+            sage: TestSuite(Q).run()                                                    # needs sage.libs.pari
 
         The set of primes can be compared to various things,
         but is only equal to itself::
 
             sage: P = Primes()
             sage: R = Primes()
-            sage: cmp(P,R)
-            0
             sage: P == R
             True
             sage: P != R
             False
-            sage: Q=[1,2,3]
+            sage: Q = [1,2,3]
             sage: Q != P        # indirect doctest
             True
-            sage: R.<x>=ZZ[]
-            sage: P!=x^2+x
-            True
-
-        Make sure changing order changes the comparison with something
-        of a different type::
-
-            sage: cmp('foo', Primes()) != cmp(Primes(), 'foo')
+            sage: R.<x> = ZZ[]
+            sage: P != x^2+x
             True
         """
-        super(Primes, self).__init__(facade = ZZ, category = InfiniteEnumeratedSets())
+        super().__init__(facade=ZZ,
+                         category=InfiniteEnumeratedSets())
         self.__proof = proof
 
     def _repr_(self):
@@ -137,11 +123,11 @@ class Primes(Set_generic, UniqueRepresentation):
             False
             sage: 1.5 in P
             False
-            sage: e in P
+            sage: e in P                                                                # needs sage.symbolic
             False
         """
         try:
-            if not x in ZZ:
+            if x not in ZZ:
                 return False
             return ZZ(x).is_prime()
         except TypeError:
@@ -178,7 +164,7 @@ class Primes(Set_generic, UniqueRepresentation):
         EXAMPLES::
 
             sage: P = Primes()
-            sage: P.next(5)
+            sage: P.next(5)                                                             # needs sage.libs.pari
             7
         """
         pr = pr.next_prime(self.__proof)
@@ -191,11 +177,11 @@ class Primes(Set_generic, UniqueRepresentation):
         EXAMPLES::
 
             sage: P = Primes()
-            sage: P.unrank(0)
+            sage: P.unrank(0)                                                           # needs sage.libs.pari
             2
-            sage: P.unrank(5)
+            sage: P.unrank(5)                                                           # needs sage.libs.pari
             13
-            sage: P.unrank(42)
+            sage: P.unrank(42)                                                          # needs sage.libs.pari
             191
         """
-        return nth_prime(n+1)
+        return nth_prime(n + 1)

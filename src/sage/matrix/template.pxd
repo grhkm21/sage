@@ -1,7 +1,5 @@
-# choose: dense or sparse
+from sage.matrix.matrix_dense cimport Matrix_dense
 
-cimport matrix_dense
 
-cdef class Matrix_generic_dense(matrix_dense.Matrix_dense):
+cdef class Matrix_generic_dense(Matrix_dense):
     pass
-

@@ -17,32 +17,32 @@ familiar and most standard ones, and all of the others are defined
 in terms of one of these. The bases are described in the
 documentation for the function
 :func:`steenrod_algebra_basis`; also see the papers by
-Monks [M1998]_ and Wood [W1998]_ for more information about them. For
+Monks [Mon1998]_ and Wood [Woo1998]_ for more information about them. For
 commutator bases, see the preprint by Palmieri and Zhang [PZ2008]_.
 
-- 'milnor': Milnor basis.
+- ``'milnor'``: Milnor basis.
 
-- 'serre-cartan' or 'adem' or 'admissible': Serre-Cartan basis.
+- ``'serre-cartan'`` or ``'adem'`` or ``'admissible'``: Serre-Cartan basis.
 
 Most of the rest of the bases are only defined when `p=2`.  The only
 exceptions are the `P^s_t`-bases and the commutator bases, which are
 defined at all primes.
 
--  'wood_y': Wood's Y basis.
+-  ``'wood_y'``: Wood's Y basis.
 
--  'wood_z': Wood's Z basis.
+-  ``'wood_z'``: Wood's Z basis.
 
--  'wall', 'wall_long': Wall's basis.
+-  ``'wall'``, ``'wall_long'``: Wall's basis.
 
--  'arnon_a', 'arnon_a_long': Arnon's A basis.
+-  ``'arnon_a'``, ``'arnon_a_long'``: Arnon's A basis.
 
--  'arnon_c': Arnon's C basis.
+-  ``'arnon_c'``: Arnon's C basis.
 
--  'pst', 'pst_rlex', 'pst_llex', 'pst_deg', 'pst_revz':
+-  ``'pst'``, ``'pst_rlex'``, ``'pst_llex'``, ``'pst_deg'``, ``'pst_revz'``:
    various `P^s_t`-bases.
 
--  'comm', 'comm_rlex', 'comm_llex', 'comm_deg', 'comm_revz',
-   or these with '_long' appended: various commutator bases.
+-  ``'comm'``, ``'comm_rlex'``, ``'comm_llex'``, ``'comm_deg'``, ``'comm_revz'``,
+   or these with ``'_long'`` appended: various commutator bases.
 
 The main functions provided here are
 
@@ -104,18 +104,6 @@ in the file :file:`steenrod_algebra_mult.py` and also in the
 method for :class:`SteenrodAlgebra_generic
 <sage.algebras.steenrod.steenrod_algebra.SteenrodAlgebra_generic>` in
 :file:`steenrod_algebra.py`.
-
-REFERENCES:
-
-.. [M1998] \K. G. Monks, "Change of basis, monomial relations, and
-   `P^s_t` bases for the Steenrod algebra," J. Pure Appl.
-   Algebra 125 (1998), no. 1-3, 235-260.
-
-.. [PZ2008] \J. H. Palmieri and J. J. Zhang, "Commutators in the Steenrod
-   algebra," preprint (2008)
-
-.. [W1998] \R. M. W. Wood, "Problems in the Steenrod algebra," Bull. London
-   Math. Soc. 30 (1998), no. 5, 449-517.
 """
 
 #*****************************************************************************
@@ -133,23 +121,24 @@ def convert_to_milnor_matrix(n, basis, p=2, generic='auto'):
 
     INPUT:
 
-    - ``n`` - non-negative integer, the dimension
-    - ``basis`` - string, the basis from which to convert
-    - ``p`` - positive prime number (optional, default 2)
+    - ``n`` -- non-negative integer, the dimension
+    - ``basis`` -- string, the basis from which to convert
+    - ``p`` -- positive prime number (optional, default 2)
 
     OUTPUT:
 
-    ``matrix`` - change-of-basis matrix, a square matrix over ``GF(p)``
+    ``matrix`` -- change-of-basis matrix, a square matrix over `\GF{p}`
 
     EXAMPLES::
 
+        sage: # needs sage.modules
         sage: from sage.algebras.steenrod.steenrod_algebra_bases import convert_to_milnor_matrix
-        sage: convert_to_milnor_matrix(5, 'adem') # indirect doctest
+        sage: convert_to_milnor_matrix(5, 'adem')  # indirect doctest
         [0 1]
         [1 1]
         sage: convert_to_milnor_matrix(45, 'milnor')
         111 x 111 dense matrix over Finite Field of size 2 (use the '.str()' method to see the entries)
-        sage: convert_to_milnor_matrix(12,'wall')
+        sage: convert_to_milnor_matrix(12, 'wall')
         [1 0 0 1 0 0 0]
         [1 1 0 0 0 1 0]
         [0 1 0 1 0 0 0]
@@ -161,24 +150,25 @@ def convert_to_milnor_matrix(n, basis, p=2, generic='auto'):
     The function takes an optional argument, the prime `p` over
     which to work::
 
-        sage: convert_to_milnor_matrix(17,'adem',3)
+        sage: # needs sage.modules
+        sage: convert_to_milnor_matrix(17, 'adem', 3)
         [0 0 1 1]
         [0 0 0 1]
         [1 1 1 1]
         [0 1 0 1]
-        sage: convert_to_milnor_matrix(48,'adem',5)
+        sage: convert_to_milnor_matrix(48, 'adem', 5)
         [0 1]
         [1 1]
-        sage: convert_to_milnor_matrix(36,'adem',3)
+        sage: convert_to_milnor_matrix(36, 'adem', 3)
         [0 0 1]
         [0 1 0]
         [1 2 0]
     """
     from sage.matrix.constructor import matrix
-    from sage.rings.all import GF
-    from steenrod_algebra import SteenrodAlgebra
+    from sage.rings.finite_rings.finite_field_constructor import GF
+    from .steenrod_algebra import SteenrodAlgebra
     if generic == 'auto':
-        generic = False if p==2 else True
+        generic = p != 2
     if n == 0:
         return matrix(GF(p), 1, 1, [[1]])
     milnor_base = steenrod_algebra_basis(n,'milnor',p, generic=generic)
@@ -194,19 +184,19 @@ def convert_to_milnor_matrix(n, basis, p=2, generic='auto'):
 
 def convert_from_milnor_matrix(n, basis, p=2, generic='auto'):
     r"""
-    Change-of-basis matrix, Milnor to 'basis', in dimension
-    `n`.
+    Change-of-basis matrix, Milnor to ``basis``, in dimension `n`.
 
     INPUT:
 
-    - ``n`` - non-negative integer, the dimension
+    - ``n`` -- non-negative integer, the dimension
 
-    - ``basis`` - string, the basis to which to convert
+    - ``basis`` -- string, the basis to which to convert
 
-    - ``p`` - positive prime number (optional, default 2)
+    - ``p`` -- positive prime number (optional, default 2)
 
-    OUTPUT: ``matrix`` - change-of-basis matrix, a square matrix over
-    GF(p)
+    OUTPUT:
+
+    ``matrix`` -- change-of-basis matrix, a square matrix over `\GF{p}`
 
     .. note::
 
@@ -216,8 +206,9 @@ def convert_from_milnor_matrix(n, basis, p=2, generic='auto'):
 
     EXAMPLES::
 
+        sage: # needs sage.modules
         sage: from sage.algebras.steenrod.steenrod_algebra_bases import convert_from_milnor_matrix, convert_to_milnor_matrix
-        sage: convert_from_milnor_matrix(12,'wall')
+        sage: convert_from_milnor_matrix(12, 'wall')
         [1 0 0 1 0 0 0]
         [0 0 1 1 0 0 0]
         [0 0 0 1 0 1 1]
@@ -225,10 +216,10 @@ def convert_from_milnor_matrix(n, basis, p=2, generic='auto'):
         [1 0 1 0 1 0 0]
         [1 1 1 0 0 0 0]
         [1 0 1 0 1 0 1]
-        sage: convert_from_milnor_matrix(38,'serre_cartan')
+        sage: convert_from_milnor_matrix(38, 'serre_cartan')
         72 x 72 dense matrix over Finite Field of size 2 (use the '.str()' method to see the entries)
-        sage: x = convert_to_milnor_matrix(20,'wood_y')
-        sage: y = convert_from_milnor_matrix(20,'wood_y')
+        sage: x = convert_to_milnor_matrix(20, 'wood_y')
+        sage: y = convert_from_milnor_matrix(20, 'wood_y')
         sage: x*y
         [1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
         [0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
@@ -251,7 +242,7 @@ def convert_from_milnor_matrix(n, basis, p=2, generic='auto'):
     The function takes an optional argument, the prime `p` over
     which to work::
 
-        sage: convert_from_milnor_matrix(17,'adem',3)
+        sage: convert_from_milnor_matrix(17, 'adem', 3)                                 # needs sage.modules
         [2 1 1 2]
         [0 2 0 1]
         [1 2 0 0]
@@ -270,17 +261,17 @@ def steenrod_algebra_basis(n, basis='milnor', p=2, **kwds):
 
     INPUT:
 
-    - ``n`` - non-negative integer
-    - ``basis`` - string, which basis to use (optional, default = 'milnor')
-    - ``p`` - positive prime number (optional, default = 2)
-    - ``profile`` - profile function (optional, default None).  This
+    - ``n`` -- non-negative integer
+    - ``basis`` -- string, which basis to use (optional, default: ``'milnor'``)
+    - ``p`` -- positive prime number (optional, default: 2)
+    - ``profile`` -- profile function (optional, default: ``None``).  This
       is just passed on to the functions :func:`milnor_basis` and
       :func:`pst_basis`.
-    - ``truncation_type`` - truncation type, either 0 or Infinity
+    - ``truncation_type`` -- truncation type, either 0 or Infinity
       (optional, default Infinity if no profile function is specified,
       0 otherwise).  This is just passed on to the function
       :func:`milnor_basis`.
-    - ``generic`` - boolean (optional, default = None)
+    - ``generic`` -- boolean (optional, default: ``None``)
 
     OUTPUT:
 
@@ -291,25 +282,25 @@ def steenrod_algebra_basis(n, basis='milnor', p=2, **kwds):
     documentation for :mod:`sage.algebras.steenrod.steenrod_algebra`
     for details on each basis:
 
-    - 'milnor': Milnor basis.
-    - 'serre-cartan' or 'adem' or 'admissible': Serre-Cartan basis.
-    - 'pst', 'pst_rlex', 'pst_llex', 'pst_deg', 'pst_revz':
+    - ``'milnor'``: Milnor basis.
+    - ``'serre-cartan'`` or ``'adem'`` or ``'admissible'``: Serre-Cartan basis.
+    - ``'pst'``, ``'pst_rlex'``, ``'pst_llex'``, ``'pst_deg'``, ``'pst_revz'``:
       various `P^s_t`-bases.
-    - 'comm', 'comm_rlex', 'comm_llex', 'comm_deg', 'comm_revz', or
-      any of these with '_long' appended: various commutator bases.
+    - ``'comm'``, ``'comm_rlex'``, ``'comm_llex'``, ``'comm_deg'``, ``'comm_revz'``, or
+      any of these with ``'_long'`` appended: various commutator bases.
 
     The rest of these bases are only defined when `p=2`.
 
-    - 'wood_y': Wood's Y basis.
-    - 'wood_z': Wood's Z basis.
-    - 'wall' or 'wall_long': Wall's basis.
-    -  'arnon_a' or 'arnon_a_long': Arnon's A basis.
-    -  'arnon_c': Arnon's C basis.
+    - ``'wood_y'``: Wood's Y basis.
+    - ``'wood_z'``: Wood's Z basis.
+    - ``'wall'`` or ``'wall_long'``: Wall's basis.
+    - ``'arnon_a'`` or ``'arnon_a_long'``: Arnon's A basis.
+    - ``'arnon_c'``: Arnon's C basis.
 
     EXAMPLES::
 
         sage: from sage.algebras.steenrod.steenrod_algebra_bases import steenrod_algebra_basis
-        sage: steenrod_algebra_basis(7,'milnor') # indirect doctest
+        sage: steenrod_algebra_basis(7, 'milnor') # indirect doctest
         ((0, 0, 1), (1, 2), (4, 1), (7,))
         sage: steenrod_algebra_basis(5)   # milnor basis is the default
         ((2, 1), (5,))
@@ -331,32 +322,29 @@ def steenrod_algebra_basis(n, basis='milnor', p=2, **kwds):
 
     Other bases::
 
-        sage: steenrod_algebra_basis(7,'admissible')
+        sage: steenrod_algebra_basis(7, 'admissible')
         ((7,), (6, 1), (4, 2, 1), (5, 2))
-        sage: steenrod_algebra_basis(13,'admissible',p=3)
+        sage: steenrod_algebra_basis(13, 'admissible', p=3)
         ((1, 3, 0), (0, 3, 1))
-        sage: steenrod_algebra_basis(5,'wall')
+        sage: steenrod_algebra_basis(5, 'wall')
         (((2, 2), (0, 0)), ((1, 1), (1, 0)))
-        sage: steenrod_algebra_basis(5,'wall_long')
+        sage: steenrod_algebra_basis(5, 'wall_long')
         (((2, 2), (0, 0)), ((1, 1), (1, 0)))
-        sage: steenrod_algebra_basis(5,'pst-rlex')
+        sage: steenrod_algebra_basis(5, 'pst-rlex')
         (((0, 1), (2, 1)), ((1, 1), (0, 2)))
     """
-    from steenrod_algebra_misc import get_basis_name
+    from .steenrod_algebra_misc import get_basis_name
     try:
         if n < 0 or int(n) != n:
             return ()
     except TypeError:
         return ()
 
-    generic = kwds.get("generic", False if p==2 else True)
+    generic = kwds.get("generic", p != 2)
 
     basis_name = get_basis_name(basis, p, generic=generic)
     if basis_name.find('long') >= 0:
-        long = True
         basis_name = basis_name.rsplit('_', 1)[0]
-    else:
-        long = False
 
     profile = kwds.get("profile", None)
     if (profile is not None and profile != () and profile != ((), ())
@@ -389,14 +377,14 @@ def steenrod_algebra_basis(n, basis='milnor', p=2, **kwds):
 
 def restricted_partitions(n, l, no_repeats=False):
     """
-    List of 'restricted' partitions of n: partitions with parts taken
-    from list.
+    List of 'restricted' partitions of `n`: partitions with parts taken
+    from list `l`.
 
     INPUT:
 
-    - ``n`` - non-negative integer
-    - ``l`` - list of positive integers
-    - ``no_repeats`` - boolean (optional, default = False), if True,
+    - ``n`` -- non-negative integer
+    - ``l`` -- list of positive integers
+    - ``no_repeats`` -- boolean (optional, default: ``False``), if ``True``,
       only return partitions with no repeated parts
 
     OUTPUT: list of lists
@@ -420,10 +408,10 @@ def restricted_partitions(n, l, no_repeats=False):
         sage: restricted_partitions(10, [6,4,2], no_repeats=True)
         [[6, 4]]
 
-    'l' may have repeated elements. If 'no_repeats' is False, this
-    has no effect. If 'no_repeats' is True, and if the repeated
-    elements appear consecutively in 'l', then each element may be
-    used only as many times as it appears in 'l'::
+    ``l`` may have repeated elements. If ``no_repeats`` is ``False``, this
+    has no effect. If ``no_repeats`` is ``True``, and if the repeated
+    elements appear consecutively in ``l``, then each element may be
+    used only as many times as it appears in ``l``::
 
         sage: restricted_partitions(10, [6,4,2,2], no_repeats=True)
         [[6, 4], [6, 2, 2]]
@@ -434,7 +422,7 @@ def restricted_partitions(n, l, no_repeats=False):
     are likely meaningless, containing several partitions more than
     once, for example.)
 
-    In the following examples, 'no_repeats' is False::
+    In the following examples, ``no_repeats`` is ``False``::
 
         sage: restricted_partitions(10, [6,4,2])
         [[6, 4], [6, 2, 2], [4, 4, 2], [4, 2, 2, 2], [2, 2, 2, 2, 2]]
@@ -462,25 +450,25 @@ def restricted_partitions(n, l, no_repeats=False):
             old_i = i
         return results
 
-def xi_degrees(n,p=2, reverse=True):
+def xi_degrees(n, p=2, reverse=True):
     r"""
-    Decreasing list of degrees of the xi_i's, starting in degree n.
+    Decreasing list of degrees of the `\xi_i`'s, starting in degree `n`.
 
     INPUT:
 
-    - `n` - integer
-    - `p` - prime number, optional (default 2)
-    - ``reverse`` - bool, optional (default True)
+    - ``n`` -- integer
+    - ``p`` -- prime number, optional (default: 2)
+    - ``reverse`` -- bool, optional (default: ``True``)
 
-    OUTPUT: ``list`` - list of integers
+    OUTPUT: ``list`` -- list of integers
 
     When `p=2`: decreasing list of the degrees of the `\xi_i`'s with
-    degree at most n.
+    degree at most `n`.
 
     At odd primes: decreasing list of these degrees, each divided by
     `2(p-1)`.
 
-    If ``reverse`` is False, then return an increasing list rather
+    If ``reverse`` is ``False``, then return an increasing list rather
     than a decreasing one.
 
     EXAMPLES::
@@ -489,18 +477,18 @@ def xi_degrees(n,p=2, reverse=True):
         [15, 7, 3, 1]
         sage: sage.algebras.steenrod.steenrod_algebra_bases.xi_degrees(17, reverse=False)
         [1, 3, 7, 15]
-        sage: sage.algebras.steenrod.steenrod_algebra_bases.xi_degrees(17,p=3)
+        sage: sage.algebras.steenrod.steenrod_algebra_bases.xi_degrees(17, p=3)
         [13, 4, 1]
-        sage: sage.algebras.steenrod.steenrod_algebra_bases.xi_degrees(400,p=17)
+        sage: sage.algebras.steenrod.steenrod_algebra_bases.xi_degrees(400, p=17)
         [307, 18, 1]
     """
-    from sage.rings.all import Integer
-    if n <= 0: return []
+    from sage.rings.integer import Integer
+    if n <= 0:
+        return []
     N = Integer(n*(p-1) + 1)
-    l = [int((p**d-1)/(p-1)) for d in range(1,N.exact_log(p)+1)]
-    if not reverse:
-        return l
-    l.reverse()
+    l = [(p**d-1)//(p-1) for d in range(1, N.exact_log(p)+1)]
+    if reverse:
+        l.reverse()
     return l
 
 ########################################################
@@ -519,23 +507,23 @@ def milnor_basis(n, p=2, **kwds):
 
     INPUT:
 
-    - ``n`` - non-negative integer
+    - ``n`` -- non-negative integer
 
-    - ``p`` - positive prime number (optional, default 2)
+    - ``p`` -- positive prime number (optional, default 2)
 
-    - ``profile`` - profile function (optional, default None).
+    - ``profile`` - profile function (optional, default ``None``).
       Together with ``truncation_type``, specify the profile function
-      to be used; None means the profile function for the entire
+      to be used; ``None`` means the profile function for the entire
       Steenrod algebra.  See
       :mod:`sage.algebras.steenrod.steenrod_algebra` and
       :func:`SteenrodAlgebra <sage.algebras.steenrod.steenrod_algebra.SteenrodAlgebra>`
       for information on profile functions.
 
-    - ``truncation_type`` - truncation type, either 0 or Infinity
+    - ``truncation_type`` -- truncation type, either 0 or Infinity
       (optional, default Infinity if no profile function is specified,
       0 otherwise)
 
-    OUTPUT: tuple of mod p Milnor basis elements in dimension n
+    OUTPUT: tuple of mod `p` Milnor basis elements in dimension `n`
 
     At the prime 2, the Milnor basis consists of symbols of the form
     `\text{Sq}(m_1, m_2, ..., m_t)`, where each
@@ -578,7 +566,7 @@ def milnor_basis(n, p=2, **kwds):
         sage: len(milnor_basis(240,7, profile=((),()), truncation_type=0))
         0
     """
-    generic = kwds.get('generic', False if p==2 else True)
+    generic = kwds.get('generic', p != 2)
 
     if n == 0:
         if not generic:
@@ -600,7 +588,7 @@ def milnor_basis(n, p=2, **kwds):
     if not generic:
         for mono in WeightedIntegerVectors(n, xi_degrees(n, reverse=False)):
             exponents = list(mono)
-            while len(exponents) > 0 and exponents[-1] == 0:
+            while exponents and exponents[-1] == 0:
                 exponents.pop(-1)
             # check profile:
             okay = True
@@ -620,23 +608,23 @@ def milnor_basis(n, p=2, **kwds):
         # first find the P part of each basis element.
         # in this part of the code (the P part), all dimensions are
         # divided by 2(p-1).
-        for dim in range(n/(2*(p-1)) + 1):
+        for dim in range(n//(2*(p-1)) + 1):
             if dim == 0:
                 P_result = [[0]]
             else:
                 P_result = []
             for mono in WeightedIntegerVectors(dim, xi_degrees(dim, p=p, reverse=False)):
                 p_mono = list(mono)
-                while len(p_mono) > 0 and p_mono[-1] == 0:
+                while p_mono and p_mono[-1] == 0:
                     p_mono.pop(-1)
-                if len(p_mono) > 0:
+                if p_mono:
                     P_result.append(p_mono)
             # now find the Q part of the basis element.
             # dimensions here are back to normal.
             for p_mono in P_result:
                 deg = n - 2*dim*(p-1)
                 q_degrees = [1+2*(p-1)*d for d in
-                             xi_degrees(int((deg - 1)/(2*(p-1))), p)] + [1]
+                             xi_degrees(int((deg - 1)//(2*(p-1))), p)] + [1]
                 q_degrees_decrease = q_degrees
                 q_degrees.reverse()
                 if deg % (2*(p-1)) <= len(q_degrees):
@@ -644,7 +632,7 @@ def milnor_basis(n, p=2, **kwds):
                     # with distinct parts.
                     for sigma in restricted_partitions(deg,
                                                        q_degrees_decrease,
-                                                       no_repeats = True):
+                                                       no_repeats=True):
                         index = 0
                         q_mono = []
                         for q in q_degrees:
@@ -683,11 +671,11 @@ def serre_cartan_basis(n, p=2, bound=1, **kwds):
 
     INPUT:
 
-    - ``n`` - non-negative integer
-    - ``bound`` - positive integer (optional)
-    - ``prime`` - positive prime number (optional, default 2)
+    - ``n`` -- non-negative integer
+    - ``bound`` -- positive integer (optional)
+    - ``prime`` -- positive prime number (optional, default 2)
 
-    OUTPUT: tuple of mod p Serre-Cartan basis elements in dimension n
+    OUTPUT: tuple of mod `p` Serre-Cartan basis elements in dimension `n`
 
     The Serre-Cartan basis consists of 'admissible monomials in the
     Steenrod squares'. Thus at the prime 2, it consists of monomials
@@ -708,15 +696,15 @@ def serre_cartan_basis(n, p=2, bound=1, **kwds):
         ((1, 5, 0, 1, 1), (1, 6, 1))
 
     If optional argument ``bound`` is present, include only those monomials
-    whose last term is at least ``bound`` (when p=2), or those for which
-    `s_k - e_k \geq bound` (when p is odd). ::
+    whose last term is at least ``bound`` (when `p=2`), or those for which
+    `s_k - e_k \geq bound` (when `p` is odd). ::
 
         sage: serre_cartan_basis(7, bound=2)
         ((7,), (5, 2))
         sage: serre_cartan_basis(13, 3, bound=3)
         ((1, 3, 0),)
     """
-    generic = kwds.get('generic', False if p==2 else True )
+    generic = kwds.get('generic', p != 2)
 
     if n == 0:
         return ((),)
@@ -728,12 +716,12 @@ def serre_cartan_basis(n, p=2, bound=1, **kwds):
             # This means that 2 last <= n - last, or 3 last <= n.
             result = [(n,)]
             for last in range(bound, 1+n//3):
-                for vec in serre_cartan_basis(n - last, bound = 2*last):
+                for vec in serre_cartan_basis(n - last, bound=2 * last):
                     new = vec + (last,)
                     result.append(new)
         else: # p odd
-            if n % (2 * (p-1)) == 0 and n/(2 * (p-1)) >= bound:
-                result = [(0, int(n/(2 * (p-1))), 0)]
+            if n % (2 * (p-1)) == 0 and n//(2 * (p-1)) >= bound:
+                result = [(0, int(n//(2 * (p-1))), 0)]
             elif n == 1:
                 result = [(1,)]
             else:
@@ -767,27 +755,28 @@ def atomic_basis(n, basis, **kwds):
 
     INPUT:
 
-    - ``n`` - non-negative integer
-    - ``basis`` - string, the name of the basis
+    - ``n`` -- non-negative integer
 
-    - ``profile`` - profile function (optional, default None).
+    - ``basis`` -- string, the name of the basis
+
+    - ``profile`` -- profile function (optional, default: ``None``).
       Together with ``truncation_type``, specify the profile function
-      to be used; None means the profile function for the entire
+      to be used; ``None`` means the profile function for the entire
       Steenrod algebra.  See
       :mod:`sage.algebras.steenrod.steenrod_algebra` and
       :func:`SteenrodAlgebra` for information on profile functions.
 
-    - ``truncation_type`` - truncation type, either 0 or Infinity
+    - ``truncation_type`` -- truncation type, either 0 or Infinity
       (optional, default Infinity if no profile function is specified,
       0 otherwise).
 
-    OUTPUT: tuple of basis elements in dimension n
+    OUTPUT: tuple of basis elements in dimension `n`
 
     The atomic bases include Wood's Y and Z bases, Wall's basis,
     Arnon's A basis, the `P^s_t`-bases, and the commutator
     bases. (All of these bases are constructed similarly, hence their
     constructions have been consolidated into a single function. Also,
-    see the documentation for 'steenrod_algebra_basis' for
+    see the documentation for :func:`steenrod_algebra_basis` for
     descriptions of them.)  For `P^s_t`-bases, you may also specify a
     profile function and truncation type; profile functions are ignored
     for the other bases.
@@ -838,22 +827,22 @@ def atomic_basis(n, basis, **kwds):
     """
     def degree_dictionary(n, basis):
         """
-        Dictionary of atomic degrees for basis up to degree n.
+        Dictionary of atomic degrees for basis up to degree `n`.
 
-        The keys for the dictionary are the atomic degrees - the numbers of
-        the form 2^i (2^j - 1) - which are less than or equal to n. The value
+        The keys for the dictionary are the atomic degrees -- the numbers of
+        the form `2^i (2^j - 1)` -- which are less than or equal to `n`. The value
         associated to such a degree depends on basis; it has the form
-        (s,t), where (s,t) is a pair of integers which indexes the
+        `(s,t)`, where `(s,t)` is a pair of integers which indexes the
         corresponding element.
         """
         dict = {}
         if basis.find('wood') >= 0:
-            k=0
-            m=0
+            k = 0
+            m = 0
             deg = 2**m * (2**(k+1) - 1)
             while deg <= n:
                 dict[deg] = (m,k)
-                if m>0:
+                if m > 0:
                     m = m - 1
                     k = k + 1
                 else:
@@ -861,8 +850,8 @@ def atomic_basis(n, basis, **kwds):
                     k = 0
                 deg = 2**m * (2**(k+1) - 1)
         elif basis.find('wall') >= 0 or basis.find('arnon') >= 0:
-            k=0
-            m=0
+            k = 0
+            m = 0
             deg = 2**k * (2**(m-k+1) - 1)
             while deg <= n:
                 dict[deg] = (m,k)
@@ -873,8 +862,8 @@ def atomic_basis(n, basis, **kwds):
                     k = k - 1
                 deg = 2**k * (2**(m-k+1) - 1)
         elif basis.find('pst') >= 0 or basis.find('comm') >= 0:
-            s=0
-            t=1
+            s = 0
+            t = 1
             deg = 2**s * (2**t - 1)
             while deg <= n:
                 if basis.find('pst') >= 0:
@@ -905,7 +894,6 @@ def atomic_basis(n, basis, **kwds):
         elif basis.find('revz') >= 0:
             return (s+t,s)
 
-    from sage.misc.all import prod
     from sage.rings.infinity import Infinity
     profile = kwds.get("profile", None)
     trunc = kwds.get("truncation_type", None)
@@ -917,7 +905,7 @@ def atomic_basis(n, basis, **kwds):
     else:
         result = []
         degrees_etc = degree_dictionary(n, basis)
-        degrees = degrees_etc.keys()
+        degrees = list(degrees_etc)
         for sigma in restricted_partitions(n, degrees, no_repeats=True):
             big_list = [degrees_etc[part] for part in sigma]
             big_list.sort(key=lambda x: sorting_pair(x[0], x[1], basis))
@@ -946,11 +934,11 @@ def arnonC_basis(n,bound=1):
 
     INPUT:
 
-    - ``n`` - non-negative integer
+    - ``n`` -- non-negative integer
 
-    - ``bound`` - positive integer (optional)
+    - ``bound`` -- positive integer (optional)
 
-    OUTPUT: tuple of basis elements in dimension n
+    OUTPUT: tuple of basis elements in dimension `n`
 
     The elements of Arnon's C basis are monomials of the form
     `\text{Sq}^{t_1} ... \text{Sq}^{t_m}` where for each
@@ -993,22 +981,24 @@ def atomic_basis_odd(n, basis, p, **kwds):
 
     INPUT:
 
-    - ``n`` - non-negative integer
-    - ``basis`` - string, the name of the basis
-    - ``p`` - positive prime number
+    - ``n`` -- non-negative integer
 
-    - ``profile`` - profile function (optional, default None).
+    - ``basis`` -- string, the name of the basis
+
+    - ``p`` -- positive prime number
+
+    - ``profile`` -- profile function (optional, default: ``None``).
       Together with ``truncation_type``, specify the profile function
-      to be used; None means the profile function for the entire
+      to be used; ``None`` means the profile function for the entire
       Steenrod algebra.  See
       :mod:`sage.algebras.steenrod.steenrod_algebra` and
       :func:`SteenrodAlgebra` for information on profile functions.
 
-    - ``truncation_type`` - truncation type, either 0 or Infinity
+    - ``truncation_type`` -- truncation type, either 0 or Infinity
       (optional, default Infinity if no profile function is specified,
       0 otherwise).
 
-    OUTPUT: tuple of basis elements in dimension n
+    OUTPUT: tuple of basis elements in dimension `n`
 
     The only possible difference in the implementations for `P^s_t`
     bases and commutator bases is that the former make sense, and
@@ -1038,21 +1028,21 @@ def atomic_basis_odd(n, basis, p, **kwds):
         elif basis.find('revz') >= 0:
             return (s+t,s)
 
-    generic = kwds.get('generic', False if p==2 else True )
+    generic = kwds.get('generic', p != 2)
     if n == 0:
         if not generic:
             return ((),)
         else:
             return (((), ()),)
-    from sage.misc.all import prod
-    from sage.rings.all import Integer
+
+    from sage.rings.integer import Integer
     from sage.rings.infinity import Infinity
     from sage.combinat.integer_vector_weighted import WeightedIntegerVectors
     profile = kwds.get("profile", None)
     trunc = kwds.get("truncation_type", 0)
 
     result = []
-    for dim in range(n/(2*p-2) + 1):
+    for dim in range(n//(2*p-2) + 1):
         P_result = []
         for v in WeightedIntegerVectors(dim, xi_degrees(dim, p=p, reverse=False)):
             mono = []
@@ -1073,13 +1063,9 @@ def atomic_basis_odd(n, basis, p, **kwds):
                 # with distinct parts.
                 for sigma in restricted_partitions(deg,
                                                    q_degrees_decrease,
-                                                   no_repeats = True):
-                    index = 0
-                    q_mono = []
-                    for q in q_degrees:
-                        if q in sigma:
-                            q_mono.append(index)
-                        index += 1
+                                                   no_repeats=True):
+                    q_mono = [index for index, q in enumerate(q_degrees)
+                              if q in sigma]
                     # check profile:
                     okay = True
                     if profile is not None and profile != ((), ()):
@@ -1090,7 +1076,7 @@ def atomic_basis_odd(n, basis, p, **kwds):
                                 okay = False
                                 break
 
-                        for ((s,t), exp) in p_mono:
+                        for ((s, t), _) in p_mono:
                             if ((len(profile[0]) > t-1 and profile[0][t-1] <= s)
                                 or (len(profile[0]) <= t-1 and trunc < Infinity)):
                                 okay = False
@@ -1102,6 +1088,7 @@ def atomic_basis_odd(n, basis, p, **kwds):
                         result.append((tuple(q_mono), tuple(p_mono)))
     return tuple(result)
 
+
 #############################################################################
 def steenrod_basis_error_check(dim, p, **kwds):
     """
@@ -1109,8 +1096,8 @@ def steenrod_basis_error_check(dim, p, **kwds):
 
     INPUT:
 
-    - ``dim`` - non-negative integer
-    - ``p`` - positive prime number
+    - ``dim`` -- non-negative integer
+    - ``p`` -- positive prime number
 
     OUTPUT: None
 
@@ -1118,7 +1105,7 @@ def steenrod_basis_error_check(dim, p, **kwds):
     if the change-of-basis matrices are invertible. If something goes
     wrong, an error message is printed.
 
-    This function checks at the prime ``p`` as the dimension goes up
+    This function checks at the prime `p` as the dimension goes up
     from 0 to ``dim``.
 
     If you set the Sage verbosity level to a positive integer (using
@@ -1126,18 +1113,16 @@ def steenrod_basis_error_check(dim, p, **kwds):
 
     EXAMPLES::
 
+        sage: # long time
         sage: from sage.algebras.steenrod.steenrod_algebra_bases import steenrod_basis_error_check
-        sage: steenrod_basis_error_check(15,2) # long time
-        sage: steenrod_basis_error_check(15,2,generic=True) # long time
-        sage: steenrod_basis_error_check(40,3) # long time
-        sage: steenrod_basis_error_check(80,5) # long time
+        sage: steenrod_basis_error_check(15, 2)
+        sage: steenrod_basis_error_check(15, 2, generic=True)
+        sage: steenrod_basis_error_check(40, 3)
+        sage: steenrod_basis_error_check(80, 5)
     """
-    import sage.misc.misc as misc
-    generic = kwds.get('generic', False if p==2 else True )
+    from sage.misc.verbose import verbose
+    generic = kwds.get('generic', p != 2)
 
-    # In this test function, we don't want to use caching.
-    # Hence, the uncached versions of steenrod_algebra_basis
-    # and of convert_to_milnor_matrix are used.
     if not generic:
         bases = ('adem','woody', 'woodz', 'wall', 'arnona', 'arnonc',
                  'pst_rlex', 'pst_llex', 'pst_deg', 'pst_revz',
@@ -1149,7 +1134,7 @@ def steenrod_basis_error_check(dim, p, **kwds):
 
     for i in range(dim):
         if i % 5 == 0:
-            misc.verbose("up to dimension %s"%i)
+            verbose("up to dimension %s" % i)
         milnor_dim = len(steenrod_algebra_basis.f(i,'milnor',p=p,generic=generic))
         for B in bases:
             if milnor_dim != len(steenrod_algebra_basis.f(i,B,p,generic=generic)):
@@ -1158,7 +1143,7 @@ def steenrod_basis_error_check(dim, p, **kwds):
             if mat.nrows() != 0 and not mat.is_invertible():
                 print("%s invertibility problem in dim %s at p=%s" % (B, i, p))
 
-    misc.verbose("done checking, no profiles")
+    verbose("done checking, no profiles")
 
     bases = ('pst_rlex', 'pst_llex', 'pst_deg', 'pst_revz')
     if not generic:
@@ -1168,11 +1153,11 @@ def steenrod_basis_error_check(dim, p, **kwds):
 
     for i in range(dim):
         if i % 5 == 0:
-            misc.verbose("up to dimension %s"%i)
+            verbose("up to dimension %s" % i)
         for pro in profiles:
             milnor_dim = len(steenrod_algebra_basis.f(i,'milnor',p=p,profile=pro,generic=generic))
             for B in bases:
                 if milnor_dim != len(steenrod_algebra_basis.f(i,B,p,profile=pro,generic=generic)):
                     print("problem with milnor/%s in dimension %s with profile %s" % (B, i, pro))
 
-    misc.verbose("done checking with profiles")
+    verbose("done checking with profiles")

@@ -1,2 +1,1 @@
-from quartic_constructor import QuarticCurve
-
+from .quartic_constructor import QuarticCurve

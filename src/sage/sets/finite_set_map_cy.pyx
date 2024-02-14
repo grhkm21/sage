@@ -45,21 +45,20 @@ AUTHORS:
 
 - Florent Hivert
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2010 Florent Hivert <Florent.Hivert@univ-rouen.fr>,
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-import sage
 from sage.structure.list_clone cimport ClonableIntArray
 from sage.structure.parent cimport Parent
-from sage.structure.element cimport generic_power_c
+from sage.arith.power cimport generic_power
 from sage.sets.set import Set_object_enumerated
 
 
-cpdef fibers(f, domain):
+cpdef fibers(f, domain) noexcept:
     r"""
     Returns the fibers of the function ``f`` on the finite set ``domain``
 
@@ -85,7 +84,7 @@ cpdef fibers(f, domain):
         sage: fibers(lambda x: 1, [1,1,1])
         {1: {1}}
 
-    .. seealso:: :func:`fibers_args` if one needs to pass extra
+    .. SEEALSO:: :func:`fibers_args` if one needs to pass extra
        arguments to ``f``.
     """
     result = {}
@@ -146,7 +145,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         return self._getitem(i)
 
     # Needed by generic power which refuses to compute 0^0
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Returns whether ``self`` is non zero; this is always ``True``.
 
@@ -158,7 +157,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return True
 
-    cpdef domain(self):
+    cpdef domain(self) noexcept:
         """
         Returns the domain of ``self``
 
@@ -169,7 +168,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return self._parent.domain()
 
-    cpdef codomain(self):
+    cpdef codomain(self) noexcept:
         """
         Returns the codomain of ``self``
 
@@ -180,7 +179,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return self._parent.codomain()
 
-    cpdef _setimage(self, int i, int j):
+    cpdef _setimage(self, int i, int j) noexcept:
         """
         Set the image of ``i`` as ``j`` in ``self``
 
@@ -202,27 +201,27 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
             sage: fs2
             [1, 0, 1, 1]
             sage: with fs.clone() as fs3:
-            ...       fs3._setimage(0, 2)
-            ...       fs3._setimage(1, 2)
+            ....:     fs3._setimage(0, 2)
+            ....:     fs3._setimage(1, 2)
             sage: fs3
             [2, 2, 2, 1]
 
         TESTS::
 
             sage: with fs.clone() as fs3:
-            ...       fs3._setimage(6, 2)
+            ....:     fs3._setimage(6, 2)
             Traceback (most recent call last):
             ...
             IndexError: list index out of range
             sage: with fs.clone() as fs3:
-            ...       fs3._setimage(1, 4)
+            ....:     fs3._setimage(1, 4)
             Traceback (most recent call last):
             ...
             AssertionError: Wrong value self(1) = 4
         """
         self._setitem(i, j)
 
-    cpdef _getimage(self, int i):
+    cpdef _getimage(self, int i) noexcept:
         """
         Returns the image of ``i`` by ``self``
 
@@ -240,7 +239,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return self._getitem(i)
 
-    cpdef setimage(self, i, j):
+    cpdef setimage(self, i, j) noexcept:
         """
         Set the image of ``i`` as ``j`` in ``self``
 
@@ -252,7 +251,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
 
         OUTPUT: ``None``
 
-        .. note:: if you need speed, please use instead :meth:`_setimage`
+        .. NOTE:: if you need speed, please use instead :meth:`_setimage`
 
         EXAMPLES::
 
@@ -262,14 +261,14 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
             sage: fs2
             [1, 0, 1, 1]
             sage: with fs.clone() as fs3:
-            ...       fs3.setimage(0, 2)
-            ...       fs3.setimage(1, 2)
+            ....:     fs3.setimage(0, 2)
+            ....:     fs3.setimage(1, 2)
             sage: fs3
             [2, 2, 2, 1]
         """
         self._setitem(int(i), int(j))
 
-    cpdef getimage(self, i):
+    cpdef getimage(self, i) noexcept:
         """
         Returns the image of ``i`` by ``self``
 
@@ -277,7 +276,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
 
         - ``i`` -- any object.
 
-        .. note:: if you need speed, please use instead :meth:`_getimage`
+        .. NOTE:: if you need speed, please use instead :meth:`_getimage`
 
         EXAMPLES::
 
@@ -287,7 +286,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return self._getitem(int(i))
 
-    cpdef image_set(self):
+    cpdef image_set(self) noexcept:
         """
         Returns the image set of ``self``
 
@@ -300,7 +299,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return Set_object_enumerated(self)
 
-    cpdef fibers(self):
+    cpdef fibers(self) noexcept:
         """
         Returns the fibers of ``self``
 
@@ -314,12 +313,12 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
             sage: FiniteSetMaps(4, 3)([1, 0, 2, 1]).fibers()
             {0: {1}, 1: {0, 3}, 2: {2}}
             sage: F = FiniteSetMaps(["a", "b", "c"])
-            sage: F.from_dict({"a": "b", "b": "a", "c": "b"}).fibers()
-            {'a': {'b'}, 'b': {'a', 'c'}}
+            sage: F.from_dict({"a": "b", "b": "a", "c": "b"}).fibers() == {'a': {'b'}, 'b': {'a', 'c'}}
+            True
         """
         return fibers(self, self.domain())
 
-    cpdef items(self):
+    cpdef items(self) noexcept:
         """
         The items of ``self``
 
@@ -332,7 +331,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         """
         return [(i, self._getimage(i)) for i in self.domain()]
 
-    cpdef check(self):
+    cpdef check(self) noexcept:
         """
         Performs checks on ``self``
 
@@ -363,7 +362,7 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
             self._parent.check_element(self)
 
     cpdef FiniteSetMap_MN _compose_internal_(self, FiniteSetMap_MN other,
-                                             Parent resParent):
+                                             Parent resParent) noexcept:
         """
         TESTS::
 
@@ -384,6 +383,53 @@ cdef class FiniteSetMap_MN(ClonableIntArray):
         return res
 
 
+cpdef FiniteSetMap_Set FiniteSetMap_Set_from_list(t, parent, lst) noexcept:
+    """
+    Creates a ``FiniteSetMap`` from a list
+
+    .. warning:: no check is performed !
+
+    TESTS::
+
+        sage: from sage.sets.finite_set_map_cy import FiniteSetMap_Set_from_list as from_list
+        sage: F = FiniteSetMaps(["a", "b"], [3, 4, 5])
+        sage: f = from_list(F.element_class, F, [0,2]); f.check(); f
+        map: a -> 3, b -> 5
+        sage: f.parent() is F
+        True
+        sage: f.is_immutable()
+        True
+    """
+    cdef FiniteSetMap_MN res
+    cdef type cls = <type>t
+    res = cls.__new__(cls)
+    super(FiniteSetMap_MN, res).__init__(parent, lst)
+    return res
+
+cpdef FiniteSetMap_Set FiniteSetMap_Set_from_dict(t, parent, d) noexcept:
+    """
+    Creates a ``FiniteSetMap`` from a dictionary
+
+    .. warning:: no check is performed !
+
+    TESTS::
+
+        sage: from sage.sets.finite_set_map_cy import FiniteSetMap_Set_from_dict as from_dict
+        sage: F = FiniteSetMaps(["a", "b"], [3, 4, 5])
+        sage: f = from_dict(F.element_class, F, {"a": 3, "b": 5}); f.check(); f
+        map: a -> 3, b -> 5
+        sage: f.parent() is F
+        True
+        sage: f.is_immutable()
+        True
+    """
+    cdef FiniteSetMap_Set res
+    cdef type cls = <type>t
+    res = cls.__new__(cls)
+    res.__init__(parent, d.__getitem__)
+    return res
+
+
 cdef class FiniteSetMap_Set(FiniteSetMap_MN):
     """
     Data structure for maps
@@ -395,10 +441,10 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
     - ``parent._m`` contains the cardinality of the domain
     - ``parent._n`` contains the cardinality of the codomain
     - ``parent._unrank_domain`` and ``parent._rank_domain`` is a pair of
-      reciprocal rank and unrank functions beween the domain and
+      reciprocal rank and unrank functions between the domain and
       ``range(parent._m)``.
     - ``parent._unrank_codomain`` and ``parent._rank_codomain`` is a pair of
-      reciprocal rank and unrank functions beween the codomain and
+      reciprocal rank and unrank functions between the codomain and
       ``range(parent._n)``.
     """
 
@@ -417,7 +463,8 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
         for i, el in enumerate(parent.domain().list()):
             self._setitem(i, parent._rank_codomain(fun(el)))
         self.set_immutable()
-        if check: self.check()
+        if check:
+            self.check()
 
     from_list = classmethod(FiniteSetMap_Set_from_list)
     from_dict = classmethod(FiniteSetMap_Set_from_dict)
@@ -444,15 +491,15 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
         parent = self._parent
         return parent._unrank_codomain(self._getitem(parent._rank_domain(i)))
 
-    cpdef image_set(self):
+    cpdef image_set(self) noexcept:
         """
         Returns the image set of ``self``
 
         EXAMPLES::
 
             sage: F = FiniteSetMaps(["a", "b", "c"])
-            sage: F.from_dict({"a": "b", "b": "a", "c": "b"}).image_set()
-            {'a', 'b'}
+            sage: sorted(F.from_dict({"a": "b", "b": "a", "c": "b"}).image_set())
+            ['a', 'b']
             sage: F = FiniteSetMaps(["a", "b", "c"])
             sage: F(lambda x: "c").image_set()
             {'c'}
@@ -460,7 +507,7 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
         image_i = self._parent._unrank_codomain
         return Set_object_enumerated([image_i(i) for i in self])
 
-    cpdef setimage(self, i, j):
+    cpdef setimage(self, i, j) noexcept:
         """
         Set the image of ``i`` as ``j`` in ``self``
 
@@ -481,21 +528,21 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
             sage: fs2
             map: a -> w, b -> v, c -> v, d -> v
             sage: with fs.clone() as fs3:
-            ...       fs3.setimage("a", "u")
-            ...       fs3.setimage("c", "w")
+            ....:     fs3.setimage("a", "u")
+            ....:     fs3.setimage("c", "w")
             sage: fs3
             map: a -> u, b -> v, c -> w, d -> v
 
         TESTS::
 
             sage: with fs.clone() as fs3:
-            ...       fs3.setimage("z", 2)
+            ....:     fs3.setimage("z", 2)
             Traceback (most recent call last):
             ...
             ValueError: 'z' is not in dict
 
             sage: with fs.clone() as fs3:
-            ...       fs3.setimage(1, 4)
+            ....:     fs3.setimage(1, 4)
             Traceback (most recent call last):
             ...
             ValueError: 1 is not in dict
@@ -503,7 +550,7 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
         parent = self._parent
         return self._setitem(parent._rank_domain(i), parent._rank_codomain(j))
 
-    cpdef getimage(self, i):
+    cpdef getimage(self, i) noexcept:
         """
         Returns the image of ``i`` by ``self``
 
@@ -515,13 +562,13 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
 
             sage: F = FiniteSetMaps(["a", "b", "c", "d"], ["u", "v", "w"])
             sage: fs = F._from_list_([1, 0, 2, 1])
-            sage: map(fs.getimage, ["a", "b", "c", "d"])
+            sage: list(map(fs.getimage, ["a", "b", "c", "d"]))
             ['v', 'u', 'w', 'v']
         """
         parent = self._parent
         return parent._unrank_codomain(self._getitem(parent._rank_domain(i)))
 
-    cpdef items(self):
+    cpdef items(self) noexcept:
         """
         The items of ``self``
 
@@ -551,61 +598,15 @@ cdef class FiniteSetMap_Set(FiniteSetMap_MN):
             sage: F._from_list_([0, 2])
             map: a -> 3, b -> 5
         """
-        return "map: "+", ".join([("%s -> %s"%(i, self(i))) for i in self.domain()])
-
-
-cpdef FiniteSetMap_Set FiniteSetMap_Set_from_list(t, parent, lst):
-    """
-    Creates a ``FiniteSetMap`` from a list
-
-    .. warning:: no check is performed !
-
-    TESTS::
-
-        sage: from sage.sets.finite_set_map_cy import FiniteSetMap_Set_from_list as from_list
-        sage: F = FiniteSetMaps(["a", "b"], [3, 4, 5])
-        sage: f = from_list(F.element_class, F, [0,2]); f.check(); f
-        map: a -> 3, b -> 5
-        sage: f.parent() is F
-        True
-        sage: f.is_immutable()
-        True
-    """
-    cdef FiniteSetMap_MN res
-    cdef type cls = <type>t
-    res = cls.__new__(cls)
-    super(FiniteSetMap_MN, res).__init__(parent, lst)
-    return res
-
-cpdef FiniteSetMap_Set FiniteSetMap_Set_from_dict(t, parent, d):
-    """
-    Creates a ``FiniteSetMap`` from a dictionary
-
-    .. warning:: no check is performed !
-
-    TESTS::
-
-        sage: from sage.sets.finite_set_map_cy import FiniteSetMap_Set_from_dict as from_dict
-        sage: F = FiniteSetMaps(["a", "b"], [3, 4, 5])
-        sage: f = from_dict(F.element_class, F, {"a": 3, "b": 5}); f.check(); f
-        map: a -> 3, b -> 5
-        sage: f.parent() is F
-        True
-        sage: f.is_immutable()
-        True
-    """
-    cdef FiniteSetMap_Set res
-    cdef type cls = <type>t
-    res = cls.__new__(cls)
-    res.__init__(parent, d.__getitem__)
-    return res
+        return "map: " + ", ".join("%s -> %s" % (i, self(i))
+                                   for i in self.domain())
 
 
 cdef class FiniteSetEndoMap_N(FiniteSetMap_MN):
     """
     Maps from ``range(n)`` to itself.
 
-    .. seealso:: :class:`FiniteSetMap_MN` for assumptions on the parent
+    .. SEEALSO:: :class:`FiniteSetMap_MN` for assumptions on the parent
 
     TESTS::
 
@@ -651,14 +652,14 @@ cdef class FiniteSetEndoMap_N(FiniteSetMap_MN):
         """
         if dummy is not None:
             raise RuntimeError("__pow__ dummy argument not used")
-        return generic_power_c(self, n, self.parent().one())
+        return generic_power(self, n)
 
 
 cdef class FiniteSetEndoMap_Set(FiniteSetMap_Set):
     """
     Maps from a set to itself
 
-    .. seealso:: :class:`FiniteSetMap_Set` for assumptions on the parent
+    .. SEEALSO:: :class:`FiniteSetMap_Set` for assumptions on the parent
 
     TESTS::
 
@@ -709,4 +710,4 @@ cdef class FiniteSetEndoMap_Set(FiniteSetMap_Set):
         """
         if dummy is not None:
             raise RuntimeError("__pow__ dummy argument not used")
-        return generic_power_c(self, n, self.parent().one())
+        return generic_power(self, n)

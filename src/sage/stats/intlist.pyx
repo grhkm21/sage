@@ -1,3 +1,4 @@
+# sage.doctest: optional - numpy
 """
 C Int Lists
 
@@ -12,27 +13,32 @@ slices is also much faster.
 
 AUTHOR:
 
-   - William Stein, 2010-03
+- William Stein, 2010-03
 """
 
-#############################################################################
+# ****************************************************************************
 #       Copyright (C) 2010 William Stein <wstein@gmail.com>
-#  Distributed under the terms of the GNU General Public License (GPL), v2+.
-#  The full text of the GPL is available at:
-#                  http://www.gnu.org/licenses/
-#############################################################################
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 # Global parameter that sets the maximum number of entries of an IntList to print.
 max_print = 10
 
-
-# Imports
+cimport cython
 from libc.string cimport memcpy
+from cysignals.memory cimport sig_malloc, sig_free
+from cysignals.signals cimport sig_on, sig_off
+
 from sage.rings.integer import Integer
-from sage.finance.time_series cimport TimeSeries
-include "cysignals/memory.pxi"
-include "cysignals/signals.pxi"
-from cpython.string cimport *
+from sage.stats.time_series cimport TimeSeries
+from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
+from sage.structure.richcmp cimport rich_to_bool
+
 
 cdef class IntList:
     """
@@ -56,10 +62,10 @@ cdef class IntList:
 
         INPUT:
 
-            - values -- int, long, Integer, list of integers, or a TimeSeries
+        - values -- int, long, Integer, list of integers, or a TimeSeries
 
         If the input is a time series or list of floats, then the
-        integer parts of the intries are taken (not the floor).
+        integer parts of the entries are taken (not the floor).
 
         EXAMPLES::
 
@@ -90,7 +96,7 @@ cdef class IntList:
             [1, -2]
         """
         cdef TimeSeries T
-        if isinstance(values, (int,long,Integer)):
+        if isinstance(values, (int, Integer)):
             self._length = values
             values = None
         elif isinstance(values, TimeSeries):
@@ -113,12 +119,13 @@ cdef class IntList:
             for i in range(self._length):
                 self._values[i] = values[i]
 
-    def __cmp__(self, _other):
+    def __richcmp__(IntList self, other, int op):
         """
         Compare self and other.  This has the same semantics
         as list comparison.
 
-        EXAMPLES:
+        EXAMPLES::
+
             sage: v = stats.IntList([1,2,3]); w = stats.IntList([1,2])
             sage: v < w
             False
@@ -129,26 +136,26 @@ cdef class IntList:
             sage: w == w
             True
         """
-        cdef IntList other
+        cdef IntList _other
         cdef Py_ssize_t c, i
-        cdef int d
-        if not isinstance(_other, IntList):
-            _other = IntList(_other)
-        other = _other
-        for i in range(min(self._length, other._length)):
-            d = self._values[i] - other._values[i]
-            if d: return -1 if d < 0 else 1
-        c = self._length - other._length
-        if c < 0: return -1
-        elif c > 0: return 1
-        return 0
+        if not isinstance(other, IntList):
+            _other = IntList(other)
+        else:
+            _other = <IntList>other
+        for i in range(min(self._length, _other._length)):
+            d = self._values[i] - _other._values[i]
+            if d:
+                return rich_to_bool(op, -1 if d < 0 else 1)
+        c = self._length - _other._length
+        if c:
+            return rich_to_bool(op, -1 if c < 0 else 1)
+        return rich_to_bool(op, 0)
 
-    def  __dealloc__(self):
+    def __dealloc__(self):
         """
         Deallocate memory used by the IntList, if it was allocated.
         """
-        if self._values:
-            sig_free(self._values)
+        sig_free(self._values)
 
     def __repr__(self):
         """
@@ -168,8 +175,8 @@ cdef class IntList:
         if len(self) > max_print:
             v0 = self[:max_print//2]
             v1 = self[-max_print//2:]
-            return '[' + ', '.join([str(x) for x in v0]) + ' ... ' + \
-                         ', '.join([str(x) for x in v1]) + ']'
+            return '[' + ', '.join(str(x) for x in v0) + ' ... ' + \
+                         ', '.join(str(x) for x in v1) + ']'
         else:
             return str(self.list())
 
@@ -181,7 +188,7 @@ cdef class IntList:
 
         INPUT:
 
-            - i -- integer or slice
+        - i -- integer or slice
 
         EXAMPLES::
 
@@ -194,9 +201,9 @@ cdef class IntList:
             sage: a[5:-2]
             [5, 6, 7]
             sage: type(a[5:-2])
-            <type 'sage.stats.intlist.IntList'>
+            <... 'sage.stats.intlist.IntList'>
             sage: type(a[5])
-            <type 'int'>
+            <... 'int'>
         """
         cdef Py_ssize_t start, stop, step, j
         cdef IntList t
@@ -282,10 +289,9 @@ cdef class IntList:
             sage: loads(dumps(a)) == a
             True
 
-
             sage: v = stats.IntList([1,-3])
             sage: v.__reduce__()
-            (<built-in function unpickle_intlist_v1>, ('...', 2))
+            (<cyfunction unpickle_intlist_v1 at ...>, (..., 2))
             sage: loads(dumps(v)) == v
             True
 
@@ -295,14 +301,13 @@ cdef class IntList:
             sage: v = stats.IntList([1..10^5])
             sage: loads(dumps(v, compress=False),compress=False) == v
             True
-
         """
-        buf = PyString_FromStringAndSize(<char*>self._values, self._length*sizeof(int)/sizeof(char))
+        buf = PyBytes_FromStringAndSize(<char*>self._values, self._length*sizeof(int)/sizeof(char))
         return unpickle_intlist_v1, (buf, self._length)
 
     def list(self):
         """
-        Return Python list version of self with Python ints as entries.
+        Return Python list version of ``self`` with Python ints as entries.
 
         EXAMPLES::
 
@@ -313,14 +318,14 @@ cdef class IntList:
             sage: list(a) == a.list()
             True
             sage: type(a.list()[0])
-            <type 'int'>
+            <... 'int'>
         """
         cdef Py_ssize_t i
         return [self._values[i] for i in range(self._length)]
 
-    cpdef int sum(self):
+    cpdef int sum(self) noexcept:
         """
-        Return the sum of the entries of self.
+        Return the sum of the entries of ``self``.
 
         EXAMPLES::
 
@@ -342,9 +347,9 @@ cdef class IntList:
         sig_off()
         return s
 
-    cpdef int prod(self):
+    cpdef int prod(self) noexcept:
         """
-        Return the product of the entries of self.
+        Return the product of the entries of ``self``.
 
         EXAMPLES::
 
@@ -375,9 +380,10 @@ cdef class IntList:
         Return the number of entries in this time series.
 
         OUTPUT:
-            Python integer
 
-        EXAMPLES:
+        Python integer
+
+        EXAMPLES::
 
             sage: len(stats.IntList([1..15]))
             15
@@ -411,18 +417,18 @@ cdef class IntList:
     def min(self, bint index=False):
         """
         Return the smallest value in this integer list.  If this
-        series has length 0 we raise a ValueError.
+        series has length 0 we raise a :class:`ValueError`.
 
         INPUT:
 
-            - index -- bool (default: False); if True, also return
-              index of minimal entry.
+        - ``index`` -- bool (default: ``False``); if ``True``, also return
+          index of minimal entry.
 
         OUTPUT:
 
-            - float -- smallest value
-            - integer -- index of smallest value; only returned if
-              index=True
+        - float -- smallest value
+        - integer -- index of smallest value; only returned if
+          ``index=True``
 
         EXAMPLES::
 
@@ -449,17 +455,17 @@ cdef class IntList:
     def max(self, bint index=False):
         """
         Return the largest value in this time series. If this series
-        has length 0 we raise a ValueError
+        has length 0 we raise a :class:`ValueError`
 
         INPUT:
 
-            - index -- bool (default: False); if True, also return
-              index of maximum entry.
+        - ``index`` -- bool (default: ``False``); if ``True``, also return
+          index of maximum entry.
 
         OUTPUT:
 
-            - int -- largest value
-            - int -- index of largest value; only returned if index=True
+        - int -- largest value
+        - int -- index of largest value; only returned if ``index=True``
 
         EXAMPLES::
 
@@ -484,7 +490,7 @@ cdef class IntList:
 
     def time_series(self):
         """
-        Return TimeSeries version of self, which involves changing
+        Return :class:`TimeSeries` version of ``self``, which involves changing
         each entry to a double.
 
         EXAMPLES::
@@ -492,7 +498,7 @@ cdef class IntList:
             sage: T = stats.IntList([-2,3,5]).time_series(); T
             [-2.0000, 3.0000, 5.0000]
             sage: type(T)
-            <type 'sage.finance.time_series.TimeSeries'>
+            <... 'sage.stats.time_series.TimeSeries'>
         """
         cdef TimeSeries T = TimeSeries.__new__(TimeSeries)
         # We just reach into the data structure underlying T, since we
@@ -506,34 +512,39 @@ cdef class IntList:
 
     def plot(self, *args, **kwds):
         """
-        Return a plot of this IntList.  This just constructs the
-        corresponding double-precision floating point TimeSeries
+        Return a plot of this :class:`IntList`.
+
+        This just constructs the
+        corresponding double-precision floating point :class:`TimeSeries`
         object, passing on all arguments.
 
         EXAMPLES::
 
-            sage: stats.IntList([3,7,19,-2]).plot()
+            sage: stats.IntList([3,7,19,-2]).plot()                                     # needs sage.plot
             Graphics object consisting of 1 graphics primitive
-            sage: stats.IntList([3,7,19,-2]).plot(color='red',pointsize=50,points=True)
+            sage: stats.IntList([3,7,19,-2]).plot(color='red',                          # needs sage.plot
+            ....:                                 pointsize=50, points=True)
             Graphics object consisting of 1 graphics primitive
         """
         return self.time_series().plot(*args, **kwds)
 
     def plot_histogram(self, *args, **kwds):
         """
-        Return a histogram plot of this IntList.  This just constructs
-        the corresponding double-precision floating point TimeSeries object,
+        Return a histogram plot of this :class:`IntList`.
+
+        This just constructs
+        the corresponding double-precision floating point :class:`TimeSeries` object,
         and plots it, passing on all arguments.
 
         EXAMPLES::
 
-            sage: stats.IntList([1..15]).plot_histogram()
+            sage: stats.IntList([1..15]).plot_histogram()                               # needs sage.plot
             Graphics object consisting of 50 graphics primitives
         """
         return self.time_series().plot_histogram(*args, **kwds)
 
 
-cdef IntList new_int_list(Py_ssize_t length):
+cdef IntList new_int_list(Py_ssize_t length) noexcept:
     """
     Function that is used internally to quickly create a new intlist
     without initializing any of the allocated memory.
@@ -554,26 +565,28 @@ cdef IntList new_int_list(Py_ssize_t length):
     return t
 
 
-def unpickle_intlist_v1(v, Py_ssize_t n):
+@cython.binding(True)
+def unpickle_intlist_v1(bytes v, Py_ssize_t n):
     """
     Version 1 unpickle method.
 
     INPUT:
-        v -- a raw char buffer
+
+    - ``v`` -- a raw char buffer
 
     EXAMPLES::
 
         sage: v = stats.IntList([1,2,3])
         sage: s = v.__reduce__()[1][0]
-        sage: type(s)
-        <type 'str'>
+        sage: type(s) == type(b'')
+        True
         sage: sage.stats.intlist.unpickle_intlist_v1(s, 3)
         [1, 2, 3]
         sage: sage.stats.intlist.unpickle_intlist_v1(s+s,6)
         [1, 2, 3, 1, 2, 3]
-        sage: sage.stats.intlist.unpickle_intlist_v1('',0)
+        sage: sage.stats.intlist.unpickle_intlist_v1(b'',0)
         []
     """
     cdef IntList t = new_int_list(n)
-    memcpy(t._values, PyString_AsString(v), n*sizeof(int))
+    memcpy(t._values, PyBytes_AsString(v), n*sizeof(int))
     return t

@@ -5,7 +5,6 @@ AUTHORS:
 
 - William Stein (2007-03)
 """
-
 ###########################################################################
 #       Copyright (C) 2007 William Stein <wstein@gmail.com>               #
 #  Distributed under the terms of the GNU General Public License (GPL)    #
@@ -18,9 +17,9 @@ from sage.rings.integer import Integer
 
 from sage.modular.arithgroup.all import is_CongruenceSubgroup, Gamma0
 from sage.modular.modsym.space import is_ModularSymbolsSpace
-from abvar_newform import ModularAbelianVariety_newform
+from .abvar_newform import ModularAbelianVariety_newform
 import sage.modular.modform.element
-import abvar
+from . import abvar
 
 _cache = {}
 
@@ -35,7 +34,7 @@ def _get(key):
     -  ``key`` - hashable
 
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: sage.modular.abvar.constructor._saved('a', J0(37))
         Abelian variety J0(37) of dimension 2
@@ -96,7 +95,7 @@ def J0(N):
         sage: J0(33) is J0(33)
         True
     """
-    key = 'J0(%s)'%N
+    key = 'J0(%s)' % N
     try:
         return _get(key)
     except ValueError:
@@ -114,7 +113,7 @@ def J1(N):
         sage: J1(389)
         Abelian variety J1(389) of dimension 6112
     """
-    key = 'J1(%s)'%N
+    key = 'J1(%s)' % N
     try:
         return _get(key)
     except ValueError:
@@ -131,7 +130,7 @@ def JH(N, H):
         sage: JH(389,[16])
         Abelian variety JH(389,[16]) of dimension 64
     """
-    key = 'JH(%s,%s)'%(N,H)
+    key = 'JH(%s,%s)' % (N,H)
     try:
         return _get(key)
     except ValueError:
@@ -171,7 +170,7 @@ def AbelianVariety(X):
         ...
         TypeError: X must be an integer, string, newform, modsym space, congruence subgroup or tuple of congruence subgroups
     """
-    if isinstance(X, (int, long, Integer)):
+    if isinstance(X, (int, Integer)):
         X = Gamma0(X)
     if is_CongruenceSubgroup(X):
         X = X.modular_symbols().cuspidal_submodule()
@@ -185,7 +184,7 @@ def AbelianVariety(X):
     if is_ModularSymbolsSpace(X):
         return abvar.ModularAbelianVariety_modsym(X)
 
-    if isinstance(X, (tuple,list)) and all([is_CongruenceSubgroup(G) for G in X]):
+    if isinstance(X, (tuple,list)) and all(is_CongruenceSubgroup(G) for G in X):
         return abvar.ModularAbelianVariety(X)
 
     raise TypeError("X must be an integer, string, newform, modsym space, congruence subgroup or tuple of congruence subgroups")

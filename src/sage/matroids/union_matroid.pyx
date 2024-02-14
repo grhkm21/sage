@@ -1,12 +1,29 @@
-from matroid cimport Matroid
+
+from sage.matroids.matroid cimport Matroid
+
+
 cdef class MatroidUnion(Matroid):
     r"""
     Matroid Union.
 
-    The matroid union of a set of matroids `\{(E_1,I_1),\ldots,(E_n,I_n)\}` is 
-    a matroid `(E,I)` where `E= \bigcup_{i=1}^n E_i` and 
+    The matroid union of a set of matroids `\{(E_1,I_1),\ldots,(E_n,I_n)\}` is
+    a matroid `(E,I)` where `E= \bigcup_{i=1}^n E_i` and
 
         `I= \{\bigcup_{i=1}^n J_i | J_i \in I_i \}`.
+
+    EXAMPLES::
+
+        sage: M1 = matroids.Uniform(3,3)
+        sage: M2 = Matroid(bases = [frozenset({3}), frozenset({4})])
+        sage: M = M1.union(M2); M
+        Matroid of rank 4 on 5 elements as matroid union of
+        Matroid of rank 3 on 3 elements with circuit-closures
+        {}
+        Matroid of rank 1 on 2 elements with 2 bases
+        sage: M.bases()
+        Iterator over a system of subsets
+        sage: M.circuits()
+        [frozenset({3, 4})]
 
     INPUT:
 
@@ -36,7 +53,7 @@ cdef class MatroidUnion(Matroid):
             E.update(M.groundset())
         self._groundset = frozenset(E)
 
-    cpdef groundset(self):
+    cpdef groundset(self) noexcept:
         """
         Return the groundset of the matroid.
 
@@ -55,7 +72,7 @@ cdef class MatroidUnion(Matroid):
         """
         return self._groundset
 
-    cpdef _rank(self, X):
+    cpdef _rank(self, X) noexcept:
         r"""
         Return the rank of a set ``X``.
 
@@ -82,7 +99,6 @@ cdef class MatroidUnion(Matroid):
         ALGORITHM:
 
             Matroid intersection of a matroid sum and partition matroid.
-
         """
         summands = []
         for e in self.matroids:
@@ -90,7 +106,7 @@ cdef class MatroidUnion(Matroid):
         sum_matroid = MatroidSum(summands)
         d = {}
         for (i,x) in sum_matroid.groundset():
-            if not x in d:
+            if x not in d:
                 d[x]=set()
             d[x].add(i)
         part_matroid = PartitionMatroid([[(i,x) for i in d[x]] for x in d])
@@ -170,7 +186,7 @@ cdef class MatroidSum(Matroid):
             S = S + M._repr_() +"\n"
         return S[:-1]
 
-    cpdef groundset(self):
+    cpdef groundset(self) noexcept:
         """
         Return the groundset of the matroid.
 
@@ -189,7 +205,7 @@ cdef class MatroidSum(Matroid):
         """
         return self._groundset
 
-    cpdef _rank(self, X):
+    cpdef _rank(self, X) noexcept:
         r"""
         Return the rank of a set ``X``.
 
@@ -215,7 +231,7 @@ cdef class MatroidSum(Matroid):
         """
         partition = {}
         for (i,x) in X:
-            if not i in partition:
+            if i not in partition:
                 partition[i] = set()
             partition[i].add(x)
         rk = 0
@@ -228,7 +244,7 @@ cdef class PartitionMatroid(Matroid):
     Partition Matroid.
 
     Given a set of disjoint sets `S=\{S_1,\ldots,S_n\}`, the partition matroid
-    on `S` is `(E,I)` where `E=\bigcup_{i=1}^n S_i` and 
+    on `S` is `(E,I)` where `E=\bigcup_{i=1}^n S_i` and
 
         `I= \{X| |X\cap S_i|\leq 1,X\subset E \}`.
 
@@ -253,20 +269,23 @@ cdef class PartitionMatroid(Matroid):
             Traceback (most recent call last):
             ...
             ValueError: not an iterator of disjoint sets
+            sage: PartitionMatroid([])
+            Partition Matroid of rank 0 on 0 elements
         """
-        P2 = map(set,list(partition))
-        if len(set.union(*P2)) != sum(map(len,P2)):
-            raise ValueError("not an iterator of disjoint sets")
+        P2 = [set(p) for p in partition]
+        if P2:
+            if len(set.union(*P2)) != sum(len(pi) for pi in P2):
+                raise ValueError("not an iterator of disjoint sets")
         self.p = {}
-        for i in range(len(P2)):
-            for j in P2[i]:
+        for i, pi in enumerate(P2):
+            for j in pi:
                 self.p[j] = i
         E = set()
         for P in partition:
             E.update(P)
         self._groundset = frozenset(E)
 
-    cpdef groundset(self):
+    cpdef groundset(self) noexcept:
         """
         Return the groundset of the matroid.
 
@@ -285,7 +304,7 @@ cdef class PartitionMatroid(Matroid):
         """
         return self._groundset
 
-    cpdef _rank(self, X):
+    cpdef _rank(self, X) noexcept:
         r"""
         Return the rank of a set ``X``.
 
@@ -309,7 +328,7 @@ cdef class PartitionMatroid(Matroid):
             sage: M._rank([1,2])
             1
         """
-        return len(set(map(self.p.get,X)))
+        return len(set(map(self.p.get, X)))
 
     def _repr_(self):
         """
@@ -321,5 +340,4 @@ cdef class PartitionMatroid(Matroid):
             sage: PartitionMatroid([[1,2,3],[4,5,6]])
             Partition Matroid of rank 2 on 6 elements
         """
-        S = "Partition "+Matroid._repr_(self)
-        return S
+        return "Partition " + Matroid._repr_(self)

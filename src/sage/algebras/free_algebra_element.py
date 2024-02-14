@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 """
 Free algebra elements
 
@@ -32,17 +33,28 @@ TESTS::
 #
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
-from sage.misc.misc import repr_lincomb
+from sage.misc.repr import repr_lincomb
 from sage.monoids.free_monoid_element import FreeMonoidElement
-from sage.combinat.free_module import CombinatorialFreeModuleElement
-from sage.algebras.algebra_element import AlgebraElement
+from sage.modules.with_basis.indexed_element import IndexedFreeModuleElement
+from sage.structure.element import AlgebraElement
 
-# We need to have AlgebraElement first to avoid a segfault...
-class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
+
+class FreeAlgebraElement(IndexedFreeModuleElement, AlgebraElement):
     """
     A free algebra element.
+
+    TESTS:
+
+    The ordering is inherited from ``IndexedFreeModuleElement``::
+
+        sage: R.<x,y> = FreeAlgebra(QQ,2)
+        sage: x < y
+        True
+        sage: x * y < y * x
+        True
+        sage: y * x < x * y
+        False
     """
     def __init__(self, A, x):
         """
@@ -55,24 +67,20 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
             sage: TestSuite(elt).run()
         """
         if isinstance(x, FreeAlgebraElement):
+            # We should have an input for when we know we don't need to
+            #   convert the keys/values
             x = x._monomial_coefficients
         R = A.base_ring()
-        if isinstance(x, AlgebraElement): #and x.parent() == A.base_ring():
-            x = { A.monoid()(1):R(x) }
+        if isinstance(x, AlgebraElement):  # and x.parent() == A.base_ring():
+            x = {A.monoid()(1): R(x)}
         elif isinstance(x, FreeMonoidElement):
-            x = { x:R(1) }
+            x = {x: R(1)}
         elif True:
-            x = dict([ (A.monoid()(e1),R(e2)) for e1,e2 in x.items()])
+            x = {A.monoid()(e1): R(e2) for e1, e2 in x.items()}
         else:
-            raise TypeError("Argument x (= {}) is of the wrong type.".format(x))
+            raise TypeError("argument x (= {}) is of the wrong type".format(x))
 
-        CombinatorialFreeModuleElement.__init__(self, A, x)
-
-    # ...however AlgebraElement has a default error raising version of these
-    #   so we must explicitly pull them from CombinatorialFreeModuleElement
-    _add_ = CombinatorialFreeModuleElement._add_
-    _sub_ = CombinatorialFreeModuleElement._sub_
-    _neg_ = CombinatorialFreeModuleElement._neg_
+        IndexedFreeModuleElement.__init__(self, A, x)
 
     def _repr_(self):
         """
@@ -80,11 +88,11 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
 
         EXAMPLES::
 
-            sage: A.<x,y,z>=FreeAlgebra(ZZ,3)
+            sage: A.<x,y,z> = FreeAlgebra(ZZ,3)
             sage: repr(-x+3*y*z)    # indirect doctest
             '-x + 3*y*z'
 
-        Trac ticket :trac:`11068` enables the use of local variable names::
+        Github issue :trac:`11068` enables the use of local variable names::
 
             sage: from sage.structure.parent_gens import localvars
             sage: with localvars(A, ['a','b','c']):
@@ -108,7 +116,7 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
 
             sage: A.<x,y,z>=FreeAlgebra(ZZ,3)
             sage: latex(-x+3*y^20*z)   # indirect doctest
-            -x + 3y^{20}z
+            -x + 3 y^{20}z
             sage: alpha,beta,gamma=FreeAlgebra(ZZ,3,'alpha,beta,gamma').gens()
             sage: latex(alpha-beta)
             \alpha - \beta
@@ -137,12 +145,13 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
 
         - Joel B. Mohler (2007-10-27)
         """
-        if len(kwds)>0 and len(x)>0:
+        if kwds and x:
             raise ValueError("must not specify both a keyword and positional argument")
 
-        if len(kwds)>0:
+        if kwds:
             p = self.parent()
-            def extract_from(kwds,g):
+
+            def extract_from(kwds, g):
                 for x in g:
                     try:
                         return kwds[x]
@@ -151,45 +160,24 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
                 return None
 
             x = [extract_from(kwds,(p.gen(i),p.variable_name(i))) for i in range(p.ngens())]
-        elif isinstance(x[0],tuple):
+        elif isinstance(x[0], tuple):
             x = x[0]
 
         if len(x) != self.parent().ngens():
             raise ValueError("must specify as many values as generators in parent")
 
         # I don't start with 0, because I don't want to preclude evaluation with
-        #arbitrary objects (e.g. matrices) because of funny coercion.
+        # arbitrary objects (e.g. matrices) because of funny coercion.
         result = None
-        for m, c in self._monomial_coefficients.iteritems():
+        for m, c in self._monomial_coefficients.items():
             if result is None:
                 result = c*m(x)
             else:
                 result += c*m(x)
 
         if result is None:
-            return self.parent()(0)
+            return self.parent().zero()
         return result
-
-    def __cmp__(left, right):
-        """
-        Compare two free algebra elements with the same parents.
-
-        The ordering is the one on the underlying sorted list of
-        (monomial,coefficients) pairs.
-
-        EXAMPLES::
-
-            sage: R.<x,y> = FreeAlgebra(QQ,2)
-            sage: x < y
-            True
-            sage: x * y < y * x
-            True
-            sage: y * x < x * y
-            False
-        """
-        v = sorted(left._monomial_coefficients.items())
-        w = sorted(right._monomial_coefficients.items())
-        return cmp(v, w)
 
     def _mul_(self, y):
         """
@@ -215,6 +203,56 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
                     del z_elt[key]
         return A._from_dict(z_elt)
 
+    def is_unit(self):
+        r"""
+        Return ``True`` if ``self`` is invertible.
+
+        EXAMPLES::
+
+            sage: A.<x, y, z> = FreeAlgebra(ZZ)
+            sage: A(-1).is_unit()
+            True
+            sage: A(2).is_unit()
+            False
+            sage: A(1 + x).is_unit()
+            False
+            sage: A.<x, y> = FreeAlgebra(QQ, degrees=(1,-1))
+            sage: A(x * y).is_unit()
+            False
+            sage: A(2).is_unit()
+            True
+        """
+        mc = self._monomial_coefficients
+        if not mc or len(mc) > 1:
+            return False
+        m, c = next(iter(mc.items()))
+        return m.is_one() and c.is_unit()
+
+    def __invert__(self):
+        """
+        EXAMPLES::
+
+            sage: A.<x, y, z> = FreeAlgebra(QQ)
+            sage: ~A(1)
+            1
+
+        TESTS::
+
+            sage: ~A(0)
+            Traceback (most recent call last):
+            ...
+            ArithmeticError: element is not invertible
+
+            sage: ~A(1 + x)
+            Traceback (most recent call last):
+            ...
+            ArithmeticError: element is not invertible
+        """
+        if self.is_unit():
+            m, c = next(iter(self._monomial_coefficients.items()))
+            return type(self)(self.parent(), {m: c.inverse_of_unit()})
+        raise ArithmeticError("element is not invertible")
+
     def _acted_upon_(self, scalar, self_on_left=False):
         """
         Return the action of a scalar on ``self``.
@@ -236,11 +274,11 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
             if self_on_left:
                 return Factorization([(self, 1)]) * scalar
             return scalar * Factorization([(self, 1)])
-        return super(FreeAlgebraElement, self)._acted_upon_(scalar, self_on_left)
+        return super()._acted_upon_(scalar, self_on_left)
 
     # For backward compatibility
-    #_lmul_ = _acted_upon_
-    #_rmul_ = _acted_upon_
+    # _lmul_ = _acted_upon_
+    # _rmul_ = _acted_upon_
 
     def variables(self):
         """
@@ -259,23 +297,23 @@ class FreeAlgebraElement(AlgebraElement, CombinatorialFreeModuleElement):
             sage: elt.variables()
             [x, y, z]
         """
-        v = set([])
-        for s in self._monomial_coefficients: # Only gets the keys
-            for var,exp in s:
+        v = set()
+        for s in self._monomial_coefficients:  # Only gets the keys
+            for var, _ in s:
                 v.add(var)
         A = self.parent()
         return sorted(map(A, v))
 
     def to_pbw_basis(self):
         """
-        Return ``self`` in the Poincare-Birkhoff-Witt (PBW) basis.
+        Return ``self`` in the Poincaré-Birkhoff-Witt (PBW) basis.
 
         EXAMPLES::
 
             sage: F.<x,y,z> = FreeAlgebra(ZZ, 3)
             sage: p = x^2*y + 3*y*x + 2
             sage: p.to_pbw_basis()
-            2*PBW[1] + 3*PBW[y]*PBW[x] + PBW[x^2*y] + PBW[x*y]*PBW[x] + PBW[y]*PBW[x]^2
+            2*PBW[1] + 3*PBW[y]*PBW[x] + PBW[x^2*y]
+             + 2*PBW[x*y]*PBW[x] + PBW[y]*PBW[x]^2
         """
         return self.parent().pbw_element(self)
-

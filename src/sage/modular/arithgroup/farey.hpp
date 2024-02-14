@@ -29,6 +29,7 @@
 #include <gmpxx.h>
 #include "sl2z.hpp"
 
+
 //--- pure virtual base class for helper class for membership test --------
 
 class is_element_group {

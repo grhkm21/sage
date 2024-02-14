@@ -1,8 +1,8 @@
 """
-Bar Charts
+Bar charts
 """
 
-#*****************************************************************************
+# *****************************************************************************
 #       Copyright (C) 2006 Alex Clemesha <clemesha@gmail.com>,
 #                          William Stein <wstein@gmail.com>,
 #                     2008 Mike Hansen <mhansen@gmail.com>,
@@ -17,13 +17,15 @@ Bar Charts
 #  The full text of the GPL is available at:
 #
 #                  http://www.gnu.org/licenses/
-#*****************************************************************************
+# *****************************************************************************
 from sage.plot.primitive import GraphicPrimitive
 from sage.plot.plot import minmax_data
 from sage.plot.graphics import Graphics
 from sage.misc.decorators import options, rename_keyword
 
-#TODO: make bar_chart more general
+# TODO: make bar_chart more general
+
+
 class BarChart(GraphicPrimitive):
     """
     Graphics primitive that represents a bar chart.
@@ -31,7 +33,7 @@ class BarChart(GraphicPrimitive):
     EXAMPLES::
 
         sage: from sage.plot.bar_chart import BarChart
-        sage: g = BarChart(range(4), [1,3,2,0], {}); g
+        sage: g = BarChart(list(range(4)), [1,3,2,0], {}); g
         BarChart defined by a 4 datalist
         sage: type(g)
         <class 'sage.plot.bar_chart.BarChart'>
@@ -43,7 +45,7 @@ class BarChart(GraphicPrimitive):
         EXAMPLES::
 
             sage: from sage.plot.bar_chart import BarChart
-            sage: BarChart(range(3), [10,3,5], {'width':0.7})
+            sage: BarChart(list(range(3)), [10,3,5], {'width':0.7})
             BarChart defined by a 3 datalist
         """
         self.datalist = datalist
@@ -74,15 +76,15 @@ class BarChart(GraphicPrimitive):
         EXAMPLES::
 
             sage: from sage.plot.bar_chart import BarChart
-            sage: g = BarChart(range(4), [1,3,2,0], {})
-            sage: list(sorted(g._allowed_options().iteritems()))
+            sage: g = BarChart(list(range(4)), [1,3,2,0], {})
+            sage: list(sorted(g._allowed_options().items()))
             [('hue', 'The color given as a hue.'), ('legend_label', 'The label for this item in the legend.'), ('rgbcolor', 'The color as an RGB tuple.'), ('width', 'The width of the bars'), ('zorder', 'The layer level in which to draw')]
         """
-        return {'rgbcolor':'The color as an RGB tuple.',
-                'hue':'The color given as a hue.',
-                'legend_label':'The label for this item in the legend.',
-                'width':'The width of the bars',
-                'zorder':'The layer level in which to draw'}
+        return {'rgbcolor': 'The color as an RGB tuple.',
+                'hue': 'The color given as a hue.',
+                'legend_label': 'The label for this item in the legend.',
+                'width': 'The width of the bars',
+                'zorder': 'The layer level in which to draw'}
 
     def _repr_(self):
         """
@@ -91,11 +93,11 @@ class BarChart(GraphicPrimitive):
         EXAMPLES::
 
             sage: from sage.plot.bar_chart import BarChart
-            sage: g = BarChart(range(4), [1,3,2,0], {})
+            sage: g = BarChart(list(range(4)), [1,3,2,0], {})
             sage: g._repr_()
             'BarChart defined by a 4 datalist'
         """
-        return "BarChart defined by a %s datalist"%(len(self.datalist))
+        return "BarChart defined by a %s datalist" % (len(self.datalist))
 
     def _render_on_subplot(self, subplot):
         """
@@ -120,8 +122,9 @@ class BarChart(GraphicPrimitive):
         datalist = numpy.array(self.datalist, dtype=float)
         subplot.bar(ind, datalist, color=color, width=width, label=options['legend_label'])
 
+
 @rename_keyword(color='rgbcolor')
-@options(width=0.5, rgbcolor=(0,0,1), legend_label=None, aspect_ratio='automatic')
+@options(width=0.5, rgbcolor=(0, 0, 1), legend_label=None, aspect_ratio='automatic')
 def bar_chart(datalist, **options):
     """
     A bar chart of (currently) one list of numerical data.
@@ -134,50 +137,67 @@ def bar_chart(datalist, **options):
         sage: bar_chart([1,2,3,4])
         Graphics object consisting of 1 graphics primitive
 
+    .. PLOT::
+
+        sphinx_plot(bar_chart([1,2,3,4]))
+
     A bar_chart with thinner bars::
 
         sage: bar_chart([x^2 for x in range(1,20)], width=0.2)
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        sphinx_plot(bar_chart([x**2 for x in range(1,20)], width=0.2))
 
     A bar_chart with negative values and red bars::
 
         sage: bar_chart([-3,5,-6,11], rgbcolor=(1,0,0))
         Graphics object consisting of 1 graphics primitive
 
+    .. PLOT::
+
+        sphinx_plot(bar_chart([-3,5,-6,11], rgbcolor=(1,0,0)))
+
     A bar chart with a legend (it's possible, not necessarily useful)::
 
         sage: bar_chart([-1,1,-1,1], legend_label='wave')
         Graphics object consisting of 1 graphics primitive
+
+    .. PLOT::
+
+        sphinx_plot(bar_chart([-1,1,-1,1], legend_label='wave'))
 
     Extra options will get passed on to show(), as long as they are valid::
 
         sage: bar_chart([-2,8,-7,3], rgbcolor=(1,0,0), axes=False)
         Graphics object consisting of 1 graphics primitive
         sage: bar_chart([-2,8,-7,3], rgbcolor=(1,0,0)).show(axes=False) # These are equivalent
+
+    .. PLOT::
+
+        sphinx_plot(bar_chart([-2,8,-7,3], rgbcolor=(1,0,0), axes=False))
     """
     dl = len(datalist)
-    #if dl > 1:
-    #    print "WARNING, currently only 1 data set allowed"
-    #    datalist = datalist[0]
     if dl == 3:
-        datalist = datalist+[0]
-    #bardata = []
-    #cnt = 1
-    #for pnts in datalist:
-        #ind = [i+cnt/dl for i in range(len(pnts))]
-        #bardata.append([ind, pnts, xrange, yrange])
-        #cnt += 1
+        datalist = datalist + [0]
+    # bardata = []
+    # cnt = 1
+    # for pnts in datalist:
+        # ind = [i+cnt/dl for i in range(len(pnts))]
+        # bardata.append([ind, pnts, xrange, yrange])
+        # cnt += 1
 
     g = Graphics()
     g._set_extra_kwds(Graphics._extract_kwds_for_show(options))
-    #TODO: improve below for multiple data sets!
-    #cnt = 1
-    #for ind, pnts, xrange, yrange in bardata:
-        #options={'rgbcolor':hue(cnt/dl),'width':0.5/dl}
+    # TODO: improve below for multiple data sets!
+    # cnt = 1
+    # for ind, pnts, xrange, yrange in bardata:
+    #    options={'rgbcolor':hue(cnt/dl),'width':0.5/dl}
     #    g._bar_chart(ind, pnts, xrange, yrange, options=options)
     #    cnt += 1
-    #else:
-    ind = range(len(datalist))
+    # else:
+    ind = list(range(len(datalist)))
     g.add_primitive(BarChart(ind, datalist, options=options))
     if options['legend_label']:
         g.legend(True)

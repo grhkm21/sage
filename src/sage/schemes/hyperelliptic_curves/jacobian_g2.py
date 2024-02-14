@@ -1,5 +1,5 @@
 """
-Jacobian of a Hyperelliptic curve of Genus 2
+Jacobian of a hyperelliptic curve of genus 2
 """
 
 #*****************************************************************************
@@ -8,8 +8,8 @@ Jacobian of a Hyperelliptic curve of Genus 2
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-import jacobian_generic
-import kummer_surface
+from . import jacobian_generic
+from . import kummer_surface
 
 # The generic genus 2 curve in Weierstrass form:
 #
@@ -28,4 +28,3 @@ class HyperellipticJacobian_g2(jacobian_generic.HyperellipticJacobian_generic):
             return self._kummer_surface
         except AttributeError:
             return kummer_surface.KummerSurface(self)
-

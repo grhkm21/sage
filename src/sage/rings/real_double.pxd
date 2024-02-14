@@ -1,20 +1,15 @@
 from sage.structure.element cimport RingElement, ModuleElement, Element, FieldElement
 from sage.rings.ring cimport Field
+cimport sage.rings.abc
 
-cdef extern from "limits.h":
-    int INT_MAX
-    double NAN
-
-cdef class RealDoubleField_class(Field):
-    cdef _new_c(self, double value)
+cdef class RealDoubleField_class(sage.rings.abc.RealDoubleField):
+    cdef _new_c(self, double value) noexcept
 
 cdef class RealDoubleElement(FieldElement):
     cdef double _value
-    cdef _new_c(self, double value)
-    cpdef RealDoubleElement abs(RealDoubleElement self)
-    cdef RealDoubleElement __pow_float(self, double exponent)
-    cdef RealDoubleElement __pow_int(self, int exponent)
-    cdef _log_base(self, double log_of_base)
+    cdef _new_c(self, double value) noexcept
+    cpdef _add_(self, other) noexcept
+    cpdef _mul_(self, other) noexcept
+    cpdef RealDoubleElement abs(RealDoubleElement self) noexcept
 
-cdef double_repr(double x)
-cdef double_str(double x)
+cdef double_repr(double x) noexcept

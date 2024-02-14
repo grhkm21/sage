@@ -1,11 +1,6 @@
 """
 Abstract base class for modules
 
-Two classes for modules are defined here: :class:`.Module_old` and
-:class:`.Module`. The former is a legacy class which should not be used for new
-code anymore as it does not conform to the coercion model. Eventually all
-occurences shall be ported to :class:`.Module`.
-
 AUTHORS:
 
 - William Stein: initial version
@@ -16,29 +11,33 @@ EXAMPLES:
 
 A minimal example of a module::
 
+    sage: from sage.structure.richcmp import richcmp
     sage: class MyElement(sage.structure.element.ModuleElement):
     ....:     def __init__(self, parent, x):
     ....:         self.x = x
     ....:         sage.structure.element.ModuleElement.__init__(self, parent=parent)
-    ....:     def _rmul_(self, c):
+    ....:     def _lmul_(self, c):
     ....:         return self.parent()(c*self.x)
     ....:     def _add_(self, other):
     ....:         return self.parent()(self.x + other.x)
-    ....:     def __cmp__(self, other):
-    ....:         return cmp(self.x, other.x)
+    ....:     def _richcmp_(self, other, op):
+    ....:         return richcmp(self.x, other.x, op)
     ....:     def __hash__(self):
     ....:         return hash(self.x)
     ....:     def _repr_(self):
     ....:         return repr(self.x)
 
-    sage: class MyModule(sage.modules.module.Module):
+    sage: from sage.modules.module import Module
+    sage: class MyModule(Module):
     ....:     Element = MyElement
     ....:     def _element_constructor_(self, x):
     ....:         if isinstance(x, MyElement): x = x.x
     ....:         return self.element_class(self, self.base_ring()(x))
-    ....:     def __cmp__(self, other):
-    ....:         if not isinstance(other, MyModule): return cmp(type(other),MyModule)
-    ....:         return cmp(self.base_ring(),other.base_ring())
+    ....:     def __eq__(self, other):
+    ....:         if not isinstance(other, MyModule): return False
+    ....:         return self.base_ring() == other.base_ring()
+    ....:     def __hash__(self):
+    ....:         return hash(self.base_ring())
 
     sage: M = MyModule(QQ)
     sage: M(1)
@@ -67,28 +66,7 @@ A minimal example of a module::
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from sage.structure.parent_gens cimport ParentWithAdditiveAbelianGens
-from sage.structure.parent cimport Parent
-
-cdef class Module_old(sage.structure.parent_gens.ParentWithAdditiveAbelianGens):
-    """
-    Generic module class.
-    """
-    def __init__(self, *args, **kwds):
-        """
-        TESTS::
-
-            sage: sage.modules.module.Module_old(ZZ)
-            doctest:...: DeprecationWarning: the class Module_old is superseded by Module.
-            See http://trac.sagemath.org/17543 for details.
-            <type 'sage.modules.module.Module_old'>
-        """
-        from sage.misc.superseded import deprecation
-        deprecation(17543, "the class Module_old is superseded by Module.")
-        ParentWithAdditiveAbelianGens.__init__(self, *args, **kwds)
-
-
-cdef class Module(sage.structure.parent.Parent):
+cdef class Module(Parent):
     """
     Generic module class.
 
@@ -99,6 +77,8 @@ cdef class Module(sage.structure.parent.Parent):
     - ``category`` -- a category (default: ``None``), the category for this
       module. If ``None``, then this is set to the category of modules/vector
       spaces over ``base``.
+
+    - ``names`` -- names of generators
 
     EXAMPLES::
 
@@ -127,6 +107,7 @@ cdef class Module(sage.structure.parent.Parent):
 
      We check that :trac:`8119` has been resolved::
 
+        sage: # needs sage.modules
         sage: M = ZZ^3
         sage: h = M.__hash__()
         sage: M.rename('toto')
@@ -134,7 +115,7 @@ cdef class Module(sage.structure.parent.Parent):
         True
 
     """
-    def __init__(self, base, category=None):
+    def __init__(self, base, category=None, names=None):
         """
         Initialization.
 
@@ -143,15 +124,15 @@ cdef class Module(sage.structure.parent.Parent):
             sage: from sage.modules.module import Module
             sage: M = Module(ZZ)
             sage: type(M)
-            <type 'sage.modules.module.Module'>
+            <class 'sage.modules.module.Module'>
 
         """
         from sage.categories.modules import Modules
         if category is None:
             category = Modules(base)
-        Parent.__init__(self, base=base, category=category)
+        Parent.__init__(self, base=base, category=category, names=names)
 
-    cpdef _coerce_map_from_(self, M):
+    cpdef _coerce_map_from_(self, M) noexcept:
         """
         Return a coercion map from `M` to ``self``, or None.
 
@@ -182,7 +163,7 @@ cdef class Module(sage.structure.parent.Parent):
 
         Make sure :trac:`3638` is fixed::
 
-            sage: vector(ZZ,[1,2,11])==vector(Zmod(8),[1,2,3])
+            sage: vector(ZZ,[1,2,11]) == vector(Zmod(8),[1,2,3])                        # needs sage.modules
             True
 
         AUTHORS:
@@ -207,7 +188,9 @@ cdef class Module(sage.structure.parent.Parent):
 
         EXAMPLES::
 
-            sage: sage.modular.modform.space.ModularFormsSpace(Gamma0(11), 2, DirichletGroup(1)[0], QQ).change_ring(GF(7))
+            sage: from sage.modular.modform.space import ModularFormsSpace              # needs sage.modular
+            sage: ModularFormsSpace(Gamma0(11), 2,                                      # needs sage.modular sage.rings.finite_rings
+            ....:                   DirichletGroup(1)[0], QQ).change_ring(GF(7))
             Traceback (most recent call last):
             ...
             NotImplementedError: the method change_ring() has not yet been implemented
@@ -222,7 +205,7 @@ cdef class Module(sage.structure.parent.Parent):
         Return the base extension of ``self`` to `R`.
 
         This is the same as ``self.change_ring(R)`` except that a
-        ``TypeError`` is raised if there is no canonical coerce map
+        :class:`TypeError` is raised if there is no canonical coerce map
         from the base ring of ``self`` to `R`.
 
         INPUT:
@@ -231,32 +214,38 @@ cdef class Module(sage.structure.parent.Parent):
 
         EXAMPLES::
 
-            sage: V = ZZ^7
-            sage: V.base_extend(QQ)
+            sage: V = ZZ^7                                                              # needs sage.modules
+            sage: V.base_extend(QQ)                                                     # needs sage.modules
             Vector space of dimension 7 over Rational Field
 
         TESTS::
 
-            sage: N = ModularForms(6, 4)
-            sage: N.base_extend(CyclotomicField(7))
-            Modular Forms space of dimension 5 for Congruence Subgroup Gamma0(6) of weight 4 over Cyclotomic Field of order 7 and degree 6
+            sage: N = ModularForms(6, 4)                                                # needs sage.modular
+            sage: N.base_extend(CyclotomicField(7))                                     # needs sage.modular sage.rings.number_field
+            Modular Forms space of dimension 5 for Congruence Subgroup Gamma0(6)
+             of weight 4 over Cyclotomic Field of order 7 and degree 6
 
-            sage: m = ModularForms(DirichletGroup(13).0^2,2); m
-            Modular Forms space of dimension 3, character [zeta6] and weight 2 over Cyclotomic Field of order 6 and degree 2
-            sage: m.base_extend(CyclotomicField(12))
-            Modular Forms space of dimension 3, character [zeta6] and weight 2 over Cyclotomic Field of order 12 and degree 4
+            sage: m = ModularForms(DirichletGroup(13).0^2,2); m                         # needs sage.modular sage.rings.number_field
+            Modular Forms space of dimension 3, character [zeta6] and weight 2
+             over Cyclotomic Field of order 6 and degree 2
+            sage: m.base_extend(CyclotomicField(12))                                    # needs sage.modular sage.rings.number_field
+            Modular Forms space of dimension 3, character [zeta6] and weight 2
+             over Cyclotomic Field of order 12 and degree 4
 
+            sage: # needs sage.modular sage.rings.number_field
             sage: chi = DirichletGroup(109, CyclotomicField(3)).0
             sage: S3 = CuspForms(chi, 2)
-            sage: S9 = S3.base_extend(CyclotomicField(9))
-            sage: S9
-            Cuspidal subspace of dimension 8 of Modular Forms space of dimension 10, character [zeta3 + 1] and weight 2 over Cyclotomic Field of order 9 and degree 6
-            sage: S9.has_coerce_map_from(S3) # not implemented
+            sage: S9 = S3.base_extend(CyclotomicField(9)); S9
+            Cuspidal subspace of dimension 8 of
+             Modular Forms space of dimension 10, character [zeta3 + 1] and weight 2
+              over Cyclotomic Field of order 9 and degree 6
+            sage: S9.has_coerce_map_from(S3)    # not implemented
             True
             sage: S9.base_extend(CyclotomicField(3))
             Traceback (most recent call last):
             ...
-            TypeError: Base extension of self (over 'Cyclotomic Field of order 9 and degree 6') to ring 'Cyclotomic Field of order 3 and degree 2' not defined.
+            TypeError: Base extension of self (over 'Cyclotomic Field of order 9 and degree 6')
+            to ring 'Cyclotomic Field of order 3 and degree 2' not defined.
 
         """
         if R.has_coerce_map_from(self.base_ring()):
@@ -273,10 +262,12 @@ cdef class Module(sage.structure.parent.Parent):
             sage: from sage.modules.module import Module
             sage: M = Module(ZZ)
             sage: M.endomorphism_ring()
-            Set of Morphisms from <type 'sage.modules.module.Module'> to <type 'sage.modules.module.Module'> in Category of modules over Integer Ring
-
+            Set of Morphisms
+             from <sage.modules.module.Module object at ...>
+               to <sage.modules.module.Module object at ...>
+               in Category of modules over Integer Ring
         """
-        from sage.categories.all import End
+        from sage.categories.homset import End
         return End(self)
 
 def is_Module(x):
@@ -290,14 +281,14 @@ def is_Module(x):
     EXAMPLES::
 
         sage: from sage.modules.module import is_Module
-        sage: M = FreeModule(RationalField(),30)
-        sage: is_Module(M)
+        sage: M = FreeModule(RationalField(),30)                                        # needs sage.modules
+        sage: is_Module(M)                                                              # needs sage.modules
         True
         sage: is_Module(10)
         False
 
     """
-    return isinstance(x, Module) or isinstance(x, Module_old)
+    return isinstance(x, Module)
 
 def is_VectorSpace(x):
     """
@@ -309,6 +300,7 @@ def is_VectorSpace(x):
 
     EXAMPLES::
 
+        sage: # needs sage.modules
         sage: from sage.modules.module import is_Module, is_VectorSpace
         sage: M = FreeModule(RationalField(),30)
         sage: is_VectorSpace(M)
@@ -324,5 +316,3 @@ def is_VectorSpace(x):
         return is_Module(x) and x.base_ring().is_field()
     except AttributeError:
         return False
-
-

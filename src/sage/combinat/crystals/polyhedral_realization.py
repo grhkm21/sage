@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 r"""
 Polyhedral Realization of `B(\infty)`
 """
@@ -25,6 +26,7 @@ from sage.combinat.crystals.tensor_product import TensorProductOfCrystals, \
 from sage.combinat.crystals.elementary_crystals import ElementaryCrystal
 from sage.combinat.root_system.cartan_type import CartanType
 
+
 class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
     r"""
     The polyhedral realization of `B(\infty)`.
@@ -47,11 +49,11 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
     where `B_i` is an
     :class:`~sage.combinat.crystals.elementary_crystals.ElementaryCrystal`.
 
-    As given in Theorem 2.1.1 of [K93]_, there exists a strict crystal embedding
+    As given in Theorem 2.1.1 of [Ka1993]_, there exists a strict crystal embedding
     `\Psi_i \colon B(\infty) \to B_i \otimes B(\infty)` defined by `u_{\infty}
     \mapsto b_i(0) \otimes u_{\infty}`, where `b_i(0) \in B_i` and `u_{\infty}`
     is the (unique) highest weight element in `B(\infty)`. This is sometimes
-    known as the *Kashiwara embedding* [NZ97]_ (though, in [NZ97]_, the target
+    known as the *Kashiwara embedding* [NZ1997]_ (though, in [NZ1997]_, the target
     of this map is denoted by `\ZZ_J^\infty`).  By iterating this embedding by
     taking `\Psi_J = \Psi_{j_n} \circ \Psi_{j_{n-1}} \circ \cdots \circ
     \Psi_{j_1}`, we obtain the following strict crystal embedding:
@@ -60,7 +62,7 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
 
         \Psi_J^n \colon B(\infty) \to B_J^{\otimes n} \otimes B(\infty).
 
-    We note there is a natural analog of Lemma 10.6.2 in [HK02]_ that
+    We note there is a natural analog of Lemma 10.6.2 in [HK2002]_ that
     for any `b \in B(\infty)`, there exists a positive integer `N` such that
 
     .. MATH::
@@ -105,11 +107,6 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
         \otimes e_i\left( b^{(N)} \right),
 
     then we consider this to be `0`.
-
-    REFERENCES:
-
-    .. [K93] \M. Kashiwara. *The crystal base and Littelmann's refined Demazure
-       character formula*. Duke Math. J. **71**. 1993.
 
     INPUT:
 
@@ -161,7 +158,7 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
             seq = tuple(seq)
         if set(seq) != set(cartan_type.index_set()):
             raise ValueError("the support of seq is not the index set")
-        return super(InfinityCrystalAsPolyhedralRealization, cls).__classcall__(cls, cartan_type, seq)
+        return super().__classcall__(cls, cartan_type, seq)
 
     def __init__(self, cartan_type, seq):
         """
@@ -219,6 +216,7 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
         An element in the polyhedral realization of `B(\infty)`.
         """
         # For simplicity (and safety), we use the regular crystals implementation
+
         def epsilon(self, i):
             r"""
             Return `\varepsilon_i` of ``self``.
@@ -266,7 +264,7 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
                 sage: [elt.phi(i) for i in B.index_set()]
                 [1, 1, 0]
             """
-            P = self[-1].parent().weight_lattice_realization()
+            P = self.parent().weight_lattice_realization()
             h = P.simple_coroots()
             omega = P(self.weight()).scalar(h[i])
             return self.epsilon(i) + omega
@@ -297,7 +295,7 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
             if pos is None or pos <= nf:
                 return None
 
-            l = self._list[:]
+            l = list(self)
             l[-pos] = crystal
             if pos <= 2*nf and all(b._m == 0 for b in l[-2*nf:-nf]):
                 return self.__class__(self.parent(), l[:-nf])
@@ -327,10 +325,10 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
 
             nf = len(self.parent()._factors)
             if pos <= nf:
-                l = self._list[:]
+                l = list(self)
                 l[-pos] = l[-pos].f(i)
                 return self.__class__(self.parent(), l + self.parent()._tp)
-            return self.set_index(-pos, crystal)
+            return self._set_index(-pos, crystal)
 
         def truncate(self, k=None):
             r"""
@@ -359,16 +357,15 @@ class InfinityCrystalAsPolyhedralRealization(TensorProductOfCrystals):
                 [-1, -2, -1, 0, 0, 0, 0, 0, 0, 0]
             """
             if k is None:
-                k = len(self._list)
+                k = len(self)
 
             P = self.parent().finite_tensor_product(k)
-            if k <= len(self._list):
-                l = self._list[:k]
+            if k <= len(self):
+                l = self[:k]
             else:
-                l = self._list[:]
+                l = list(self)
                 N = len(self.parent()._tp)
                 while len(l) < k:
                     i = len(l) % N
                     l.append(self.parent()._tp[i])
             return P(*l)
-

@@ -5,16 +5,19 @@
 #       Copyright (C) 2010 Burcin Erocal <burcin@erocal.org>
 #  Distributed under the terms of the GNU General Public License (GPL),
 #  version 2 or any later version.  The full text of the GPL is available at:
-#                  http://www.gnu.org/licenses/
+#                  https://www.gnu.org/licenses/
 ###############################################################################
 
 from sage.structure.sage_object import SageObject
 from sage.interfaces.maxima import MaximaFunctionElement
+from sage.misc.instancedoc import instancedoc
 
+
+@instancedoc
 class MaximaFunctionElementWrapper(MaximaFunctionElement):
     def __call__(self, *args, **kwds):
         """
-        Returns a Sage expression instead of a Maxima pexpect interface element.
+        Return a Sage expression instead of a Maxima pexpect interface element.
 
         EXAMPLES::
 
@@ -22,11 +25,11 @@ class MaximaFunctionElementWrapper(MaximaFunctionElement):
             cos(x)^2 + sin(x)^2
             sage: res = t.maxima_methods().trigsimp(); res
             1
-            sage: type(res)
-            <type 'sage.symbolic.expression.Expression'>
+            sage: parent(res)
+            Symbolic Ring
         """
-        return super(MaximaFunctionElementWrapper, self).__call__(*args,
-                **kwds).sage()
+        return super().__call__(*args, **kwds).sage()
+
 
 class MaximaWrapper(SageObject):
     def __init__(self, exp):
@@ -54,9 +57,9 @@ class MaximaWrapper(SageObject):
 
         Test tab completions::
 
-            sage: import sagenb.misc.support as s
+            sage: import sage.interfaces.tab_completion as s
             sage: u = t.maxima_methods()
-            sage: s.completions('u.elliptic_',globals(),system='python')
+            sage: s.completions('u.elliptic_',globals())
             ['u.elliptic_e', 'u.elliptic_ec', 'u.elliptic_eu', 'u.elliptic_f', 'u.elliptic_kc', 'u.elliptic_pi']
         """
         self._exp = exp
@@ -74,8 +77,8 @@ class MaximaWrapper(SageObject):
             sage: t = sin(x)^2 + cos(x)^2; t
             cos(x)^2 + sin(x)^2
             sage: u = t.maxima_methods()
-            sage: import sagenb.misc.support as s
-            sage: s.completions('u.airy_',globals(),system='python')
+            sage: import sage.interfaces.tab_completion as s
+            sage: s.completions('u.airy_',globals())
             ['u.airy_ai', 'u.airy_bi', 'u.airy_dai', 'u.airy_dbi']
             sage: type(u.airy_ai)
             <class 'sage.symbolic.maxima_wrapper.MaximaFunctionElementWrapper'>
@@ -86,12 +89,22 @@ class MaximaWrapper(SageObject):
             self._maxima_exp = self._exp._maxima_()
         if s[0] == '_':
             return getattr(self._maxima_exp, s)
-        if s == 'trait_names':  # SageNB backward compatibility
-            return self._maxima_()._tab_completion
-        else:
-            # add a wrapper function which converts the result back to
-            # a Sage expression
-            return MaximaFunctionElementWrapper(self._maxima_exp, s)
+        # add a wrapper function which converts the result back to
+        # a Sage expression
+        return MaximaFunctionElementWrapper(self._maxima_exp, s)
+
+    def __dir__(self):
+        """
+        Enable the tab completions.
+
+        EXAMPLES::
+
+            sage: t = sin(x) + cos(x)
+            sage: u = t.maxima_methods()
+            sage: 'zeta' in u.__dir__()
+            True
+        """
+        return self._maxima_()._tab_completion()
 
     def sage(self):
         """
@@ -145,4 +158,4 @@ class MaximaWrapper(SageObject):
             sage: u._repr_()
             'MaximaWrapper(log(sqrt(2) + 1) + log(sqrt(2) - 1))'
         """
-        return "MaximaWrapper(%s)"%(self._exp)
+        return "MaximaWrapper(%s)" % (self._exp)

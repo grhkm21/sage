@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.rings.number_field
 r"""
 Dual groups of Finite Multiplicative Abelian Groups
 
@@ -34,7 +35,10 @@ EXAMPLES::
     sage: A(b), A(c), A(d), A(e)
     (1, 1, 1, 1)
 
+    sage: # needs sage.rings.real_mpfr
     sage: Fd = F.dual_group(names='ABCDE', base_ring=CC)
+    sage: Fd.category()
+    Category of commutative groups
     sage: A,B,C,D,E = Fd.gens()
     sage: A(a)    # abs tol 1e-8
     -1.00000000000000 + 0.00000000000000*I
@@ -62,13 +66,11 @@ AUTHORS:
 #  Distributed under the terms of the GNU General Public License (GPL)
 #                  http://www.gnu.org/licenses/
 ###########################################################################
-from __future__ import print_function
-
-from sage.rings.infinity import infinity
+from sage.categories.groups import Groups
 from sage.structure.category_object import normalize_names
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.groups.abelian_gps.dual_abelian_group_element import (
-    DualAbelianGroupElement, is_DualAbelianGroupElement )
+    DualAbelianGroupElement, is_DualAbelianGroupElement)
 from sage.misc.mrange import mrange
 from sage.misc.cachefunc import cached_method
 from sage.groups.group import AbelianGroup as AbelianGroupBase
@@ -105,8 +107,9 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         sage: F.dual_group()
         Dual of Abelian Group isomorphic to Z/3Z x Z/5Z x Z/7Z x Z/8Z x Z/9Z
         over Cyclotomic Field of order 2520 and degree 576
+
         sage: F = AbelianGroup(4,[15,7,8,9], names="abcd")
-        sage: F.dual_group(base_ring=CC)
+        sage: F.dual_group(base_ring=CC)                                                # needs sage.rings.real_mpfr
         Dual of Abelian Group isomorphic to Z/15Z x Z/7Z x Z/8Z x Z/9Z
         over Complex Field with 53 bits of precision
     """
@@ -122,12 +125,12 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
             sage: F.dual_group()
             Dual of Abelian Group isomorphic to Z/3Z x Z/5Z x Z/7Z x Z/8Z x Z/9Z
             over Cyclotomic Field of order 2520 and degree 576
-       """
+        """
         self._base_ring = base_ring
         self._group = G
         names = normalize_names(G.ngens(), names)
         self._assign_names(names)
-        AbelianGroupBase.__init__(self) # TODO: category=CommutativeGroups()
+        AbelianGroupBase.__init__(self, category=Groups().Commutative())
 
     def group(self):
         """
@@ -166,7 +169,7 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
             sage: print(Fd)
             DualAbelianGroup( AbelianGroup ( 3, (5, 64, 729) ) )
         """
-        s = "DualAbelianGroup( AbelianGroup ( %s, %s ) )"%(self.ngens(), self.gens_orders())
+        s = "DualAbelianGroup( AbelianGroup ( %s, %s ) )" % (self.ngens(), self.gens_orders())
         return s
 
     def _repr_(self):
@@ -176,12 +179,13 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         EXAMPLES::
 
             sage: F = AbelianGroup(5, [2,5,7,8,9], names='abcde')
-            sage: Fd = F.dual_group(names='ABCDE', base_ring=CyclotomicField(2*5*7*8*9))
+            sage: Fd = F.dual_group(names='ABCDE',
+            ....:                   base_ring=CyclotomicField(2*5*7*8*9))
             sage: Fd   # indirect doctest
             Dual of Abelian Group isomorphic to Z/2Z x Z/5Z x Z/7Z x Z/8Z x Z/9Z
             over Cyclotomic Field of order 5040 and degree 1152
-            sage: Fd = F.dual_group(names='ABCDE', base_ring=CC)
-            sage: Fd
+            sage: Fd = F.dual_group(names='ABCDE', base_ring=CC)                        # needs sage.rings.real_mpfr
+            sage: Fd                                                                    # needs sage.rings.real_mpfr
             Dual of Abelian Group isomorphic to Z/2Z x Z/5Z x Z/7Z x Z/8Z x Z/9Z
             over Complex Field with 53 bits of precision
         """
@@ -189,9 +193,9 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         eldv = G.gens_orders()
         gp = ""
         for x in eldv:
-            if x!=0:
-                gp = gp + "Z/%sZ x "%x
-            if x==0:
+            if x != 0:
+                gp = gp + "Z/%sZ x " % x
+            if x == 0:
                 gp = gp + "Z x "
         gp = gp[:-2].strip()
         s = 'Dual of Abelian Group isomorphic to ' + gp + ' over ' + str(self.base_ring())
@@ -208,8 +212,7 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
             sage: Fd._latex_()
             '$\\mathrm{DualAbelianGroup}( AbelianGroup ( 3, (2, 2, 2) ) )$'
         """
-        s = "$\mathrm{DualAbelianGroup}( AbelianGroup ( %s, %s ) )$"%(self.ngens(), self.gens_orders())
-        return s
+        return r"$\mathrm{DualAbelianGroup}( AbelianGroup ( %s, %s ) )$" % (self.ngens(), self.gens_orders())
 
     def random_element(self):
         """
@@ -218,26 +221,27 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         EXAMPLES::
 
             sage: G = AbelianGroup([2,3,9])
-            sage: Gd = G.dual_group(base_ring=CC)
-            sage: Gd.random_element()
-            X1^2
+            sage: Gd = G.dual_group(base_ring=CC)                                       # needs sage.rings.real_mpfr
+            sage: Gd.random_element().parent() is Gd                                    # needs sage.rings.real_mpfr
+            True
 
-            sage: N = 43^2-1
-            sage: G = AbelianGroup([N],names="a")
+            sage: # needs sage.rings.real_mpfr
+            sage: N = 43^2 - 1
+            sage: G = AbelianGroup([N], names="a")
             sage: Gd = G.dual_group(names="A", base_ring=CC)
             sage: a, = G.gens()
             sage: A, = Gd.gens()
             sage: x = a^(N/4); y = a^(N/3); z = a^(N/14)
-            sage: X = A*Gd.random_element(); X
-            A^615
-            sage: len([a for a in [x,y,z] if abs(X(a)-1)>10^(-8)])
-            2
+            sage: found = [False]*4
+            sage: while not all(found):
+            ....:     X = A*Gd.random_element()
+            ....:     found[len([b for b in [x,y,z] if abs(X(b)-1)>10^(-8)])] = True
         """
         from sage.misc.prandom import randint
         result = self.one()
         for g in self.gens():
             order = g.order()
-            result *= g**(randint(0,order))
+            result *= g**(randint(0, order))
         return result
 
     def gen(self, i=0):
@@ -246,7 +250,7 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
 
         EXAMPLES::
 
-            sage: F = AbelianGroup(3,[1,2,3],names='a')
+            sage: F = AbelianGroup(3, [1,2,3], names='a')
             sage: Fd = F.dual_group(names="A")
             sage: Fd.0
             1
@@ -257,13 +261,13 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         """
         n = self.group().ngens()
         if i < 0 or i >= n:
-            raise IndexError("Argument i (= %s) must be between 0 and %s."%(i, n-1))
-        x = [0]*n
+            raise IndexError("Argument i (= %s) must be between 0 and %s." % (i, n - 1))
+        x = [0] * n
         if self.gens_orders()[i] != 1:
             x[i] = 1
         return self.element_class(self, x)
 
-    def gens(self):
+    def gens(self) -> tuple:
         """
         Return the generators for the group.
 
@@ -326,7 +330,7 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
         # TODO: deprecate
         return self.group().gens_orders()
 
-    def __contains__(self,X):
+    def __contains__(self, X):
         """
         Implements "in".
 
@@ -334,7 +338,7 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
 
             sage: F = AbelianGroup(5,[2, 3, 5, 7, 8], names="abcde")
             sage: a,b,c,d,e = F.gens()
-            sage: Fd = F.dual_group(names = "ABCDE")
+            sage: Fd = F.dual_group(names="ABCDE")
             sage: A,B,C,D,E = Fd.gens()
             sage: A*B^2*D^7 in Fd
             True
@@ -382,13 +386,10 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
             sage: Gd.list()
             (1, B, B^2, A, A*B, A*B^2)
         """
-        if not(self.is_finite()):
-           raise NotImplementedError("Group must be finite")
+        if not self.is_finite():
+            raise NotImplementedError("the group must be finite")
         invs = self.gens_orders()
-        T = mrange(invs)
-        n = self.order()
-        L = tuple( self(t) for t in T )
-        return L
+        return tuple(self(t) for t in mrange(invs))
 
     def __iter__(self):
         """
@@ -400,19 +401,18 @@ class DualAbelianGroup_class(UniqueRepresentation, AbelianGroupBase):
             sage: Gd = G.dual_group(names="AB")
             sage: [X for X in Gd]
             [1, B, B^2, A, A*B, A*B^2]
-            sage: N = 43^2-1
-            sage: G = AbelianGroup([N],names="a")
+
+            sage: # needs sage.rings.real_mpfr
+            sage: N = 43^2 - 1
+            sage: G = AbelianGroup([N], names="a")
             sage: Gd = G.dual_group(names="A", base_ring=CC)
             sage: a, = G.gens()
             sage: A, = Gd.gens()
             sage: x = a^(N/4)
             sage: y = a^(N/3)
             sage: z = a^(N/14)
-            sage: len([X for X in Gd if abs(X(x)-1)>0.01 and abs(X(y)-1)>0.01 and abs(X(z)-1)>0.01])
+            sage: len([X for X in Gd
+            ....:      if abs(X(x)-1)>0.01 and abs(X(y)-1)>0.01 and abs(X(z)-1)>0.01])
             880
         """
-        for g in self.list():
-            yield g
-
-
-
+        yield from self.list()

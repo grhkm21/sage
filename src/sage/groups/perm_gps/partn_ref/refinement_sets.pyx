@@ -17,13 +17,19 @@ REFERENCE:
 """
 
 #*****************************************************************************
-#      Copyright (C) 2006 - 2011 Robert L. Miller <rlmillster@gmail.com>
+#       Copyright (C) 2006 - 2011 Robert L. Miller <rlmillster@gmail.com>
 #
-# Distributed  under  the  terms  of  the  GNU  General  Public  License (GPL)
-#                         http://www.gnu.org/licenses/
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-include 'data_structures_pyx.pxi' # includes bitsets
+from sage.groups.perm_gps.partn_ref.data_structures cimport *
+from sage.groups.perm_gps.partn_ref.double_coset cimport double_coset
+from sage.data_structures.bitset_base cimport *
+
 
 def set_stab_py(generators, sett, relab=False):
     r"""
@@ -175,7 +181,7 @@ def set_stab_py(generators, sett, relab=False):
         return stab_gens, relabeling
     return stab_gens
 
-cdef aut_gp_and_can_lab *set_stab(StabilizerChain *supergroup, subset *sett, bint relab):
+cdef aut_gp_and_can_lab *set_stab(StabilizerChain *supergroup, subset *sett, bint relab) noexcept:
     r"""
     Computes the set stabilizer of ``sett`` within ``supergroup``. (Note that
     ``set`` is a reserved Python keyword.) If ``relab`` is specified then
@@ -372,17 +378,15 @@ def sets_isom_py(generators, set1, set2):
         False
         sage: sets_isom_py([[2,3,0,1]], [0,1,3], [1,2,3])
         [2, 3, 0, 1]
-
-
     """
-    from sage.misc.misc import uniq
-    set1 = uniq(set1)
-    set2 = uniq(set2)
-    if len(generators) == 0:
+    set1 = set(set1)
+    set2 = set(set2)
+    if not generators:
         if set1 == set2:
-            return range(max(set1)+1)
+            return list(range(max(set1) + 1))
         else:
             return False
+
     cdef int i, j, n = len(generators[0]), n_gens = len(generators)
     cdef StabilizerChain *supergroup = SC_new(n)
     cdef int *gens = <int *> sig_malloc(n*n_gens * sizeof(int))
@@ -435,10 +439,10 @@ cdef int sets_isom(StabilizerChain *supergroup, subset *set1, subset *set2, int 
     PS_dealloc(part)
     return x
 
-cdef bint all_set_children_are_equivalent(PartitionStack *PS, void *S):
+cdef bint all_set_children_are_equivalent(PartitionStack *PS, void *S) noexcept:
     return 0
 
-cdef int refine_set(PartitionStack *PS, void *S, int *cells_to_refine_by, int ctrb_len):
+cdef int refine_set(PartitionStack *PS, void *S, int *cells_to_refine_by, int ctrb_len) noexcept:
     """
     Given a set S, refine the partition stack PS so that each cell contains
     elements which are all either in the set or not in the set. If the depth is
@@ -449,7 +453,7 @@ cdef int refine_set(PartitionStack *PS, void *S, int *cells_to_refine_by, int ct
         return 0
     cdef subset *subset1 = <subset *> S
     cdef int *scratch = subset1.scratch
-    cdef int start, i, n = PS.degree, x
+    cdef int start, i, n = PS.degree
     start = 0
     while start < n:
         i = 0
@@ -459,13 +463,13 @@ cdef int refine_set(PartitionStack *PS, void *S, int *cells_to_refine_by, int ct
                 break
             i += 1
         sort_by_function(PS, start, scratch)
-        start += i+1
+        start += i + 1
     return 0
 
-cdef inline int _bint_cmp(bint a, bint b):
+cdef inline int _bint_cmp(bint a, bint b) noexcept:
     return (<int> b) - (<int> a)
 
-cdef int compare_sets(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree):
+cdef int compare_sets(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree) noexcept:
     r"""
     Compare two sets according to the lexicographic order.
     """
@@ -474,12 +478,13 @@ cdef int compare_sets(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree
     cdef bitset_s set1 = subset1.bits
     cdef bitset_s set2 = subset2.bits
     cdef int i, j
-    for i from 0 <= i < degree:
+    for i in range(degree):
         j = _bint_cmp(bitset_in(&set1, gamma_1[i]), bitset_in(&set2, gamma_2[i]))
-        if j != 0: return j
+        if j != 0:
+            return j
     return 0
 
-cdef void *allocate_subset(int n):
+cdef void *allocate_subset(int n) noexcept:
     r"""
     Allocates a subset struct of degree n.
     """
@@ -498,7 +503,7 @@ cdef void *allocate_subset(int n):
     set1.scratch = scratch
     return <void *> set1
 
-cdef void free_subset(void *child):
+cdef void free_subset(void *child) noexcept:
     r"""
     Deallocates a subset struct.
     """
@@ -508,7 +513,7 @@ cdef void free_subset(void *child):
         bitset_free(&set1.bits)
     sig_free(set1)
 
-cdef void *allocate_sgd(int degree):
+cdef void *allocate_sgd(int degree) noexcept:
     r"""
     Allocates the data part of an iterator which generates augmentations, i.e.,
     elements to add to the set.
@@ -520,7 +525,7 @@ cdef void *allocate_sgd(int degree):
         return NULL
     return <void *> sgd
 
-cdef void deallocate_sgd(void *data):
+cdef void deallocate_sgd(void *data) noexcept:
     r"""
     Deallocates the data part of the augmentation iterator.
     """
@@ -529,7 +534,7 @@ cdef void deallocate_sgd(void *data):
         OP_dealloc(sgd.orbits)
     sig_free(sgd)
 
-cdef void *subset_generator_next(void *data, int *degree, bint *mem_err):
+cdef void *subset_generator_next(void *data, int *degree, bint *mem_err) noexcept:
     r"""
     Returns the next element to consider adding to the set.
     """
@@ -545,17 +550,16 @@ cdef void *subset_generator_next(void *data, int *degree, bint *mem_err):
         return NULL
     return <void *> &sgd.cur_point
 
-cdef int generate_child_subsets(void *S, aut_gp_and_can_lab *group, iterator *child_iterator):
+cdef int generate_child_subsets(void *S, aut_gp_and_can_lab *group, iterator *child_iterator) noexcept:
     r"""
     Sets up an iterator of augmentations, i.e., elements to add to the given set.
     """
     cdef subset *subset1 = <subset *> S
-    cdef bitset_s set1 = subset1.bits
     cdef int i, j, n = group.group.degree
     cdef subset_generator_data *sgd = <subset_generator_data *> child_iterator.data
     OP_clear(sgd.orbits)
-    for i from 0 <= i < group.num_gens:
-        for j from 0 <= j < n:
+    for i in range(group.num_gens):
+        for j in range(n):
             OP_join(sgd.orbits, j, group.generators[n*i + j])
     i = bitset_first(&subset1.bits)
     j = bitset_next(&subset1.bits, i+1)
@@ -566,7 +570,7 @@ cdef int generate_child_subsets(void *S, aut_gp_and_can_lab *group, iterator *ch
     sgd.bits = subset1.bits
     return 0
 
-cdef void *apply_subset_aug(void *parent, void *aug, void *child, int *degree, bint *mem_err):
+cdef void *apply_subset_aug(void *parent, void *aug, void *child, int *degree, bint *mem_err) noexcept:
     r"""
     Adds the element represented by ``aug`` to ``parent``, storing the result to
     ``child``.
@@ -580,17 +584,16 @@ cdef void *apply_subset_aug(void *parent, void *aug, void *child, int *degree, b
     degree[0] = n
     return <void *> set1
 
-cdef void free_subset_aug(void *aug):
+cdef void free_subset_aug(void *aug) noexcept:
     return
 
-cdef void *canonical_set_parent(void *child, void *parent, int *permutation, int *degree, bint *mem_err):
+cdef void *canonical_set_parent(void *child, void *parent, int *permutation, int *degree, bint *mem_err) noexcept:
     r"""
     Determines the canonical parent of the set ``child`` by applying
     ``permutation``, deleting the largest element in lexicographic order, and
     storing the result to ``parent``.
     """
     cdef subset *set1 = <subset *> child
-    cdef bitset_t can_par
     cdef int i, max_in_can_lab, max_loc, n = set1.bits.size
     cdef subset *par
     if parent is NULL:
@@ -614,7 +617,7 @@ cdef void *canonical_set_parent(void *child, void *parent, int *permutation, int
     degree[0] = n
     return <void *> par
 
-cdef iterator *allocate_subset_gen(int degree, int max_size):
+cdef iterator *allocate_subset_gen(int degree, int max_size) noexcept:
     r"""
     Allocates the generator of subsets.
     """
@@ -625,7 +628,7 @@ cdef iterator *allocate_subset_gen(int degree, int max_size):
             subset_gen = NULL
     return subset_gen
 
-cdef int allocate_subset_gen_2(int degree, int max_size, iterator *it):
+cdef int allocate_subset_gen_2(int degree, int max_size, iterator *it) noexcept:
     r"""
     Given an already allocated iterator, allocates the generator of subsets.
     """
@@ -648,19 +651,20 @@ cdef int allocate_subset_gen_2(int degree, int max_size, iterator *it):
             deallocate_cgd(cgd)
             return 1
     it.data = <void *> cgd
-    it.next = &canonical_generator_next
+    it.next = canonical_generator_next
     return 0
 
-cdef void free_subset_gen(iterator *subset_gen):
+cdef void free_subset_gen(iterator *subset_gen) noexcept:
     r"""
     Frees the iterator of subsets.
     """
-    if subset_gen is NULL: return
+    if subset_gen is NULL:
+        return
     cdef canonical_generator_data *cgd = <canonical_generator_data *> subset_gen.data
     deallocate_cgd(cgd)
     sig_free(subset_gen)
 
-cdef iterator *setup_set_gen(iterator *subset_gen, int degree, int max_size):
+cdef iterator *setup_set_gen(iterator *subset_gen, int degree, int max_size) noexcept:
     r"""
     Initiates the iterator of subsets.
     """
@@ -681,7 +685,9 @@ cdef iterator *setup_set_gen(iterator *subset_gen, int degree, int max_size):
         bitset_clear(&empty_set.bits)
     return subset_iterator
 
-def sets_modulo_perm_group(list generators, int max_size, bint indicate_mem_err = 1):
+
+def sets_modulo_perm_group(list generators, int max_size,
+                           bint indicate_mem_err=1):
     r"""
     Given generators of a permutation group, list subsets up to permutations in
     the group.
@@ -794,7 +800,6 @@ def sets_modulo_perm_group(list generators, int max_size, bint indicate_mem_err 
         sage: X = sets_modulo_perm_group([[0,2,1,4,3,5,8,7,6],[8,7,6,3,5,4,2,1,0]], 9)
         sage: len(X)
         74
-
     """
     cdef list out_list = []
     cdef int i
@@ -803,7 +808,7 @@ def sets_modulo_perm_group(list generators, int max_size, bint indicate_mem_err 
     if len(generators) == 0:
         ll = []
         for i in range(max_size,-1,-1):
-            ll.append(range(i))
+            ll.append(list(range(i)))
         return ll
     cdef int n = len(generators[0]), n_gens = len(generators)
     cdef iterator *subset_iterator
@@ -838,7 +843,8 @@ def sets_modulo_perm_group(list generators, int max_size, bint indicate_mem_err 
         start_canonical_generator(group, NULL, n, subset_gen)
     while not mem_err:
         thing = <subset *> subset_iterator.next(subset_iterator.data, NULL, &mem_err)
-        if thing is NULL: break
+        if thing is NULL:
+            break
         out_list.append( bitset_list(&thing.bits) )
     free_subset_gen(subset_gen)
     SC_dealloc(group)
@@ -848,9 +854,3 @@ def sets_modulo_perm_group(list generators, int max_size, bint indicate_mem_err 
         else:
             out_list.append(MemoryError())
     return out_list
-
-
-
-
-
-

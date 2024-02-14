@@ -2,6 +2,8 @@
 
 .. linkall
 
+.. _prep-advanced-2dplotting:
+
 Tutorial for Advanced 2d Plotting
 =================================
 
@@ -37,9 +39,10 @@ following sections:
 
 - :ref:`Saving`
 
-This tutorial assumes that one is familiar with the basics of Sage, such
-as evaluating a cell by clicking the "evaluate" link, or by pressing
-Shift\-Enter (hold down Shift while pressing the Enter key).
+This tutorial assumes that one is familiar with the basics of Sage,
+such as evaluating a cell by clicking the "evaluate" link, or by
+pressing :kbd:`Shift` + :kbd:`Enter` (hold down :kbd:`Shift` while
+pressing the :kbd:`Enter` key).
 
 .. fixme - if log plots are in by the time this makes it in, put them in!!!
 
@@ -186,7 +189,7 @@ Notice the automatic graded shading of the fill color.
     Graphics object consisting of 4 graphics primitives
 
 Problem: Create a plot for the following problem. Find the area that is
-inside the circle :math:`r=2`, but outside the cardiod
+inside the circle :math:`r=2`, but outside the cardioid
 :math:`2+2\cos(\theta)`.
 
 Interactive Demonstration
@@ -202,7 +205,7 @@ to put together.
 ::
 
     sage: html('<h2>Sine and unit circle (by Jurgis Pralgauskis)</h2> inspired by <a href="http://www.youtube.com/watch?v=Ohp6Okk_tww&feature=related">this video</a>' )
-    sage: # http://www.sagemath.org/doc/reference/sage/plot/plot.html
+    sage: # http://doc.sagemath.org/html/en/reference/sage/plot/plot.html
     sage: radius = 100 # scale for radius of "unit" circle
     sage: graph_params = dict(xmin = -2*radius,    xmax = 360,
     ....:                    ymin = -(radius+30), ymax = radius+30,
@@ -236,7 +239,7 @@ to put together.
     ....:     graph +=  arrow( [0,0], [360, 0], color = "#000" )
     ....:     # let's set tics
     ....:     # or http://aghitza.org/posts/tweak_labels_and_ticks_in_2d_plots_using_matplotlib/
-    ....:     # or wayt for http://trac.sagemath.org/sage_trac/ticket/1431
+    ....:     # or wayt for https://github.com/sagemath/sage/issues/1431
     ....:     # ['$-\pi/3$', '$2\pi/3$', '$5\pi/3$']
     ....:     for x in range(0, 361, 30):
     ....:         graph += point( [x, 0] )
@@ -562,7 +565,7 @@ Sage includes a variety of built\-in graphics objects.  These are
 particularly useful for adding to one's plot certain objects which are
 difficult to describe with equations, but which are basic geometric
 objects nonetheless.  In this section we will try to demonstrate the
-syntax of some of the most useful of them; for most of the the
+syntax of some of the most useful of them; for most of them the
 contextual (remember, append ``?``) help will give more details.
 
 Points
@@ -629,7 +632,7 @@ possible.
     Graphics object consisting of 1 graphics primitive
 
 There are also ellipses and various arcs; see the `full plot
-documentation <http://sagemath.org/doc/reference/plotting/index.html>`_.
+documentation <http://doc.sagemath.org/html/en/reference/plotting/index.html>`_.
 
 Arrows
 ######
@@ -659,7 +662,7 @@ text is just text.
 
 ::
 
-    sage: text('$\int_0^2 x^2\, dx$', (0.5,2))+plot(x^2,(x,0,2),fill=True)
+    sage: text(r'$\int_0^2 x^2\, dx$', (0.5,2))+plot(x^2,(x,0,2),fill=True)
     Graphics object consisting of 3 graphics primitives
 
 .. _Saving:

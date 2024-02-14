@@ -54,12 +54,13 @@ AUTHORS:
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-import types, copy_reg
+import types
 
-from sage_object cimport SageObject
+from sage.structure.sage_object cimport SageObject
 
 cdef sage_version
 from sage.version import version as sage_version
+from sage.cpython.string cimport bytes_to_str
 
 sage_version = sage_version.split('.')
 for i in range(len(sage_version)):
@@ -195,7 +196,7 @@ cdef class UniqueFactory(SageObject):
     :class:`object`. The third allows attribute assignment and is derived
     from :class:`object`.  ::
 
-        sage: cython("cdef class C: pass")
+        sage: cython("cdef class C: pass")                                              # needs sage.misc.cython
         sage: class D:
         ....:     def __init__(self, *args):
         ....:         self.t = args
@@ -213,7 +214,7 @@ cdef class UniqueFactory(SageObject):
     It is impossible to create an instance of ``C`` with our factory, since it
     does not allow weak references::
 
-        sage: F(1, impl='C')
+        sage: F(1, impl='C')                                                            # needs sage.misc.cython
         Traceback (most recent call last):
         ...
         TypeError: cannot create weak reference to '....C' object
@@ -221,12 +222,14 @@ cdef class UniqueFactory(SageObject):
     Let us try again, with a Cython class that does allow weak
     references. Now, creation of an instance using the factory works::
 
-        sage: cython('''cdef class C:
+        sage: cython(                                                                   # needs sage.misc.cython
+        ....: '''
+        ....: cdef class C:
         ....:     cdef __weakref__
         ....: ''')
         ....:
-        sage: c = F(1, impl='C')
-        sage: isinstance(c, C)
+        sage: c = F(1, impl='C')                                                        # needs sage.misc.cython
+        sage: isinstance(c, C)                                                          # needs sage.misc.cython
         True
 
     The cache is used when calling the factory again---even if it is suggested
@@ -234,16 +237,16 @@ cdef class UniqueFactory(SageObject):
     only considered an "extra argument" that does not count for the key.
     ::
 
-        sage: c is F(1, impl='C') is F(1, impl="D") is F(1)
+        sage: c is F(1, impl='C') is F(1, impl="D") is F(1)                             # needs sage.misc.cython
         True
 
     However, pickling and unpickling does not use the cache. This is because
     the factory has tried to assign an attribute to the instance that provides
     information on the key used to create the instance, but failed::
 
-        sage: loads(dumps(c)) is c
+        sage: loads(dumps(c)) is c                                                      # needs sage.misc.cython
         False
-        sage: hasattr(c, '_factory_data')
+        sage: hasattr(c, '_factory_data')                                               # needs sage.misc.cython
         False
 
     We have already seen that our factory will only take the requested
@@ -257,12 +260,16 @@ cdef class UniqueFactory(SageObject):
 
     The factory only knows about the pickling protocol used by new style
     classes. Hence, again, pickling and unpickling fails to use the cache,
-    even though the "factory data" are now available::
+    even though the "factory data" are now available (this is not the case
+    on Python 3 which *only* has new style classes)::
 
         sage: loads(dumps(d)) is d
-        False
+        True
         sage: d._factory_data
-        (<class '__main__.MyFactory'>, (...), (2,), {'impl': 'D'})
+        (<__main__.MyFactory object at ...>,
+         (...),
+         (2,),
+         {'impl': 'D'})
 
     Only when we have a new style class that can be weak referenced and allows
     for attribute assignment, everything works::
@@ -273,10 +280,11 @@ cdef class UniqueFactory(SageObject):
         sage: loads(dumps(e)) is e
         True
         sage: e._factory_data
-        (<class '__main__.MyFactory'>, (...), (3,), {'impl': None})
-
+        (<__main__.MyFactory object at ...>,
+         (...),
+         (3,),
+         {'impl': None})
     """
-
     cdef readonly _name
     cdef readonly _cache
 
@@ -294,7 +302,7 @@ cdef class UniqueFactory(SageObject):
             sage: fake_factory = UniqueFactory('ZZ')
             sage: loads(dumps(fake_factory))
             Integer Ring
-            sage: fake_factory = UniqueFactory('sage.rings.all.QQ')
+            sage: fake_factory = UniqueFactory('sage.rings.rational_field.QQ')
             sage: loads(dumps(fake_factory))
             Rational Field
         """
@@ -308,6 +316,8 @@ cdef class UniqueFactory(SageObject):
             sage: A = FiniteField(127)
             sage: A is loads(dumps(A)) # indirect doctest
             True
+
+            sage: # needs sage.rings.finite_rings
             sage: B = FiniteField(3^3,'b')
             sage: B is loads(dumps(B))
             True
@@ -343,12 +353,12 @@ cdef class UniqueFactory(SageObject):
             sage: from sage.structure.test_factory import test_factory
             sage: _ = test_factory(1,2,3); _
             Making object (1, 2, 3)
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
 
         It already created one, so don't re-create::
 
             sage: test_factory(1,2,3)
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
             sage: test_factory(1,2,3) is test_factory(1,2,3)
             True
 
@@ -362,7 +372,7 @@ cdef class UniqueFactory(SageObject):
         version = self.get_version(sage_version)
         return self.get_object(version, key, kwds)
 
-    cpdef get_object(self, version, key, extra_args):
+    cpdef get_object(self, version, key, extra_args) noexcept:
         """
         Returns the object corresponding to ``key``, creating it with
         ``extra_args`` if necessary (for example, it isn't in the cache
@@ -373,7 +383,7 @@ cdef class UniqueFactory(SageObject):
             sage: from sage.structure.test_factory import test_factory
             sage: a = test_factory.get_object(3.0, 'a', {}); a
             Making object a
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
             sage: test_factory.get_object(3.0, 'a', {}) is test_factory.get_object(3.0, 'a', {})
             True
             sage: test_factory.get_object(3.0, 'a', {}) is test_factory.get_object(3.1, 'a', {})
@@ -388,9 +398,10 @@ cdef class UniqueFactory(SageObject):
         Check that :trac:`16317` has been fixed, i.e., caching works for
         unhashable objects::
 
-            sage: K.<u> = Qq(4)
-            sage: test_factory.get_object(3.0, (K(1), 'c'), {})  is test_factory.get_object(3.0, (K(1), 'c'), {})
+            sage: K.<u> = Qq(4)                                                         # needs sage.rings.padics
+            sage: d = test_factory.get_object(3.0, (K(1), 'c'), {})                     # needs sage.rings.padics
             Making object (1 + O(2^20), 'c')
+            sage: d is test_factory.get_object(3.0, (K(1), 'c'), {})                    # needs sage.rings.padics
             True
 
         """
@@ -412,14 +423,20 @@ cdef class UniqueFactory(SageObject):
                 except TypeError: # key is unhashable
                     self._cache[version, _cache_key(key)] = obj
             obj._factory_data = self, version, key, extra_args
-            if obj.__class__.__reduce__.__objclass__ is object:
-                # replace the generic object __reduce__ to use this one
+
+            # Install a custom __reduce__ method on the instance "obj"
+            # that we just created. We only do this if the class of
+            # "obj" has a generic __reduce__ method, which is either
+            # object.__reduce__ or __reduce_cython__, the
+            # auto-generated pickling function for Cython.
+            f = obj.__class__.__reduce__
+            if f.__objclass__ is object or f.__name__ == "__reduce_cython__":
                 obj.__reduce_ex__ = types.MethodType(generic_factory_reduce, obj)
         except AttributeError:
             pass
         return obj
 
-    cpdef get_version(self, sage_version):
+    cpdef get_version(self, sage_version) noexcept:
         """
         This is provided to allow more or less granular control over
         pickle versioning. Objects pickled in the same version of Sage
@@ -453,8 +470,8 @@ cdef class UniqueFactory(SageObject):
             sage: from sage.structure.test_factory import test_factory
             sage: test_factory.create_key_and_extra_args(1, 2, key=5)
             ((1, 2), {})
-            sage: GF.create_key_and_extra_args(3, foo='value')
-            ((3, ('x',), None, 'modn', "{'foo': 'value'}", 3, 1, True), {'foo': 'value'})
+            sage: GF.create_key_and_extra_args(3)
+            ((3, ('x',), None, 'modn', 3, 1, True, None, None, None, True, False), {})
         """
         return self.create_key(*args, **kwds), {}
 
@@ -481,16 +498,16 @@ cdef class UniqueFactory(SageObject):
             sage: from sage.structure.test_factory import test_factory
             sage: test_factory.create_object(0, (1,2,3))
             Making object (1, 2, 3)
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
             sage: test_factory('a')
             Making object ('a',)
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
             sage: test_factory('a') # NOT called again
-            <sage.structure.test_factory.A instance at ...>
+            <sage.structure.test_factory.A object at ...>
         """
         raise NotImplementedError
 
-    cpdef other_keys(self, key, obj):
+    cpdef other_keys(self, key, obj) noexcept:
         """
         Sometimes during object creation, certain defaults are chosen which
         may result in a new (more specific) key. This allows the more specific
@@ -503,30 +520,33 @@ cdef class UniqueFactory(SageObject):
         The ``GF`` factory used to have a custom :meth:`other_keys`
         method, but this was removed in :trac:`16934`::
 
+            sage: # needs sage.libs.linbox sage.ring.finite_rings
             sage: key, _ = GF.create_key_and_extra_args(27, 'k'); key
-            (27, ('k',), x^3 + 2*x + 1, 'givaro', '{}', 3, 3, True)
+            (27, ('k',), x^3 + 2*x + 1, 'givaro', 3, 3, True, None, 'poly', True, True, True)
             sage: K = GF.create_object(0, key); K
             Finite Field in k of size 3^3
             sage: GF.other_keys(key, K)
             []
 
-            sage: K = GF(7^40, 'a')
-            sage: loads(dumps(K)) is K
+            sage: K = GF(7^40, 'a')                                                     # needs sage.rings.finite_rings
+            sage: loads(dumps(K)) is K                                                  # needs sage.rings.finite_rings
             True
         """
         return []
 
-    cpdef reduce_data(self, obj):
+    cpdef reduce_data(self, obj) noexcept:
         """
         The results of this function can be returned from
         :meth:`__reduce__`. This is here so the factory internals can
         change without having to re-write :meth:`__reduce__` methods
         that use it.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: V = FreeModule(ZZ, 5)
-            sage: factory, data = FreeModule.reduce_data(V)
+            sage: # needs sage.modules
+            sage: from sage.modules.free_module import FreeModuleFactory_with_standard_basis as F
+            sage: V = F(ZZ, 5)
+            sage: factory, data = F.reduce_data(V)
             sage: factory(*data)
             Ambient free module of rank 5 over the principal ideal domain Integer Ring
             sage: factory(*data) is V
@@ -537,7 +557,7 @@ cdef class UniqueFactory(SageObject):
             Making object (1, 2)
             sage: test_factory.reduce_data(a)
             (<built-in function generic_factory_unpickle>,
-             (<class 'sage.structure.test_factory.UniqueFactoryTester'>,
+             (<sage.structure.test_factory.UniqueFactoryTester object at ...>,
               (...),
               (1, 2),
               {}))
@@ -557,7 +577,7 @@ def register_factory_unpickle(name, callable):
 
     :class:`UniqueFactory` pickles use a global name through
     :func:`generic_factory_unpickle()`, so the usual
-    :func:`~sage.structure.sage_object.register_unpickle_override()`
+    :func:`~sage.misc.persist.register_unpickle_override()`
     cannot be used here.
 
     .. SEEALSO::
@@ -576,7 +596,7 @@ def register_factory_unpickle(name, callable):
 
         sage: from sage.structure.factory import UniqueFactory, register_factory_unpickle
         sage: import __main__
-        sage: class OldStuff(object):
+        sage: class OldStuff():
         ....:     def __init__(self, n, **extras):
         ....:         self.n = n
         ....:     def __repr__(self):
@@ -622,8 +642,10 @@ def generic_factory_unpickle(factory, *args):
 
     EXAMPLES::
 
-        sage: V = FreeModule(ZZ, 5)
-        sage: func, data = FreeModule.reduce_data(V)
+        sage: # needs sage.modules
+        sage: from sage.modules.free_module import FreeModuleFactory_with_standard_basis as F
+        sage: V = F(ZZ, 5)
+        sage: func, data = F.reduce_data(V)
         sage: func is sage.structure.factory.generic_factory_unpickle
         True
         sage: sage.structure.factory.generic_factory_unpickle(*data) is V
@@ -646,7 +668,7 @@ def generic_factory_unpickle(factory, *args):
 
         sage: from sage.structure.factory import UniqueFactory
         sage: import __main__
-        sage: class OldStuff(object):
+        sage: class OldStuff():
         ....:     def __init__(self, n, **extras):
         ....:         self.n = n
         ....:     def __repr__(self):
@@ -713,8 +735,8 @@ def generic_factory_reduce(self, proto):
 
     EXAMPLES::
 
-        sage: V = QQ^6
-        sage: sage.structure.factory.generic_factory_reduce(V, 1) == V.__reduce_ex__(1)
+        sage: V = QQ^6                                                                  # needs sage.modules
+        sage: sage.structure.factory.generic_factory_reduce(V, 1) == V.__reduce_ex__(1)             # needs sage.modules
         True
     """
     if self._factory_data is None:
@@ -731,9 +753,10 @@ def lookup_global(name):
         sage: from sage.structure.factory import lookup_global
         sage: lookup_global('ZZ')
         Integer Ring
-        sage: lookup_global('sage.rings.all.ZZ')
+        sage: lookup_global('sage.rings.integer_ring.ZZ')
         Integer Ring
     """
+    name = bytes_to_str(name, encoding='ASCII')
     try:
         return factory_unpickles[name]
     except KeyError:
@@ -747,5 +770,5 @@ def lookup_global(name):
     return getattr(all, name)
 
 
-# To make the pickle jar happy:
+# Old imports required for unpickling old pickles
 from sage.structure.test_factory import test_factory

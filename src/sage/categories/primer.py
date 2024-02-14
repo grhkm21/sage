@@ -1,8 +1,9 @@
 r"""
-Elements, parents, and categories in Sage: a (draft of) primer
+Elements, parents, and categories in Sage: a primer
 
 .. contents::
-    :depth: 2
+   :depth: 2
+   :class: this-will-duplicate-information-and-it-is-still-useful-here
 
 Abstract
 ========
@@ -77,12 +78,12 @@ Some challenges
       sage: Permutations(5).cardinality()
       120
 
-      sage: GL(2,2).cardinality()
+      sage: GL(2,2).cardinality()                                                       # needs sage.modules
       6
 
-      sage: A=random_matrix(ZZ,6,3,x=7)
-      sage: L=LatticePolytope(A.rows())
-      sage: L.npoints()                # oops!   # random
+      sage: A = random_matrix(ZZ, 6, 3, x=7)                                            # needs sage.modules
+      sage: L = LatticePolytope(A.rows())                                               # needs sage.geometry.polyhedron sage.modules
+      sage: L.npoints()                # oops!   # random                               # needs sage.geometry.polyhedron sage.modules
       37
 
 - How to ensure robustness?
@@ -97,7 +98,9 @@ Some challenges
 
   ::
 
-      sage: m=random_matrix(QQ, 4, algorithm='echelonizable', rank=3, upper_bound=60)
+      sage: # needs sage.modules
+      sage: m = random_matrix(QQ, 4, algorithm='echelonizable',
+      ....:                   rank=3, upper_bound=60)
       sage: m^8 == m*m*m*m*m*m*m*m == ((m^2)^2)^2
       True
 
@@ -113,24 +116,25 @@ The hierarchy of categories
 
 What makes binary powering work in the above examples? In both cases,
 we have *a set* endowed with a *multiplicative binary operation* which
-is *associative*. Such a set is called a *semigroup*, and binary
-powering works generally for any semigroup.
+is *associative* and which has a unit element. Such a set is called a
+*monoid*, and binary powering (to a non-negative power) works generally
+for any monoid.
 
-Sage knows about semigroups::
+Sage knows about monoids::
 
-    sage: Semigroups()
-    Category of semigroups
+    sage: Monoids()
+    Category of monoids
 
 and sure enough, binary powering is defined there::
 
-    sage: m._pow_.__module__
-    'sage.categories.semigroups'
+    sage: m._pow_int.__module__                                                         # needs sage.modules
+    'sage.categories.monoids'
 
 That's our bookshelf! And it's used in many places::
 
-    sage: GL(2,ZZ) in Semigroups()
+    sage: GL(2, ZZ) in Monoids()                                                        # needs sage.modules
     True
-    sage: NN in Semigroups()
+    sage: NN in Monoids()
     True
 
 For a less trivial bookshelf we can consider euclidean rings: once we
@@ -155,7 +159,7 @@ concepts. This includes for example::
     Category of fields
 
     sage: HopfAlgebras(QQ)
-    Category of hopf algebras over Rational Field
+    Category of Hopf algebras over Rational Field
 
 Each of the above is called a *category*. It typically specifies what
 are the operations on the elements, as well as the axioms satisfied by
@@ -166,40 +170,40 @@ which is associative and admits a unit and inverses.
 Each set in Sage knows which bookshelf of generic algorithms it can
 use, that is to which category it belongs::
 
-    sage: G = GL(2,ZZ)
-    sage: G.category()
-    Category of groups
+    sage: G = GL(2, ZZ)                                                                 # needs sage.modules
+    sage: G.category()                                                                  # needs sage.modules
+    Category of infinite groups
 
 In fact a group is a semigroup, and Sage knows about this::
 
     sage: Groups().is_subcategory(Semigroups())
     True
-    sage: G in Semigroups()
+    sage: G in Semigroups()                                                             # needs sage.modules
     True
 
 Altogether, our group gets algorithms from a bunch of bookshelves::
 
-    sage: G.categories()
-    [Category of groups, Category of monoids, Category of semigroups,
+    sage: G.categories()                                                                # needs sage.modules
+    [Category of infinite groups, Category of groups, Category of monoids,
      ...,
      Category of magmas,
-     Category of sets, ...]
+     Category of infinite sets, ...]
 
 Those can be viewed graphically::
 
-    sage: g = Groups().category_graph()
-    sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: g = Groups().category_graph()                                                 # needs sage.graphs
+    sage: g.set_latex_options(format="dot2tex")                                         # needs sage.graphs sage.modules
+    sage: view(g)                               # not tested                            # needs sage.graphs sage.modules sage.plot
 
 In case ``dot2tex`` is not available, you can use instead::
 
-    sage: g.show(vertex_shape=None, figsize=20)
+    sage: g.show(vertex_shape=None, figsize=20)                                         # needs sage.graphs sage.modules sage.plot
 
 Here is an overview of all categories in Sage::
 
-    sage: g = sage.categories.category.category_graph()
-    sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: g = sage.categories.category.category_graph()                                 # needs sage.graphs sage.modules
+    sage: g.set_latex_options(format="dot2tex")                                         # needs sage.graphs sage.modules
+    sage: view(g)                               # not tested                            # needs sage.graphs sage.modules sage.plot
 
 Wrap-up: generic algorithms in Sage are organized in a hierarchy of
 bookshelves modelled upon the usual hierarchy of categories provided
@@ -346,14 +350,17 @@ categories and their super categories::
     Integer Ring
 
     sage: ZZ.category()
-    Join of Category of euclidean domains
+    Join of Category of Dedekind domains
+        and Category of euclidean domains
         and Category of infinite enumerated sets
         and Category of metric spaces
 
     sage: ZZ.categories()
-    [Join of Category of euclidean domains
+    [Join of Category of Dedekind domains
+         and Category of euclidean domains
          and Category of infinite enumerated sets
          and Category of metric spaces,
+     Category of Dedekind domains,
      Category of euclidean domains, Category of principal ideal domains,
      Category of unique factorization domains, Category of gcd domains,
      Category of integral domains, Category of domains,
@@ -368,9 +375,9 @@ categories and their super categories::
      Category of sets with partial maps,
      Category of objects]
 
-    sage: g = EuclideanDomains().category_graph()
-    sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: g = EuclideanDomains().category_graph()                                       # needs sage.graphs
+    sage: g.set_latex_options(format="dot2tex")                                         # needs sage.graphs sage.plot
+    sage: view(g)                               # not tested                            # needs sage.graphs sage.plot
 
 A bit of help from computer science
 ===================================
@@ -397,30 +404,33 @@ classes. For example, an integer in Sage is an instance of the class
 
     sage: i = 12
     sage: type(i)
-    <type 'sage.rings.integer.Integer'>
+    <class 'sage.rings.integer.Integer'>
 
 Applying an operation is generally done by *calling a method*::
 
     sage: i.factor()
     2^2 * 3
 
+    sage: # needs sage.symbolic
     sage: x = var('x')
     sage: p = 6*x^2 + 12*x + 6
     sage: type(p)
-    <type 'sage.symbolic.expression.Expression'>
+    <class 'sage.symbolic.expression.Expression'>
     sage: p.factor()
     6*(x + 1)^2
 
+    sage: # needs sage.symbolic
     sage: R.<x> = PolynomialRing(QQ, sparse=True)
-    sage: pQ = R ( p )
+    sage: pQ = R(p)
     sage: type(pQ)
-    <class 'sage.rings.polynomial.polynomial_element_generic.PolynomialRing_field_with_category.element_class'>
+    <class 'sage.rings.polynomial.polynomial_ring.PolynomialRing_field_with_category.element_class'>
     sage: pQ.factor()
     (6) * (x + 1)^2
 
-    sage: pZ = ZZ['x'] ( p )
+    sage: # needs sage.symbolic
+    sage: pZ = ZZ['x'](p)
     sage: type(pZ)
-    <type 'sage.rings.polynomial.polynomial_integer_dense_flint.Polynomial_integer_dense_flint'>
+    <class 'sage.rings.polynomial.polynomial_integer_dense_flint.Polynomial_integer_dense_flint'>
     sage: pZ.factor()
     2 * 3 * (x + 1)^2
 
@@ -438,12 +448,12 @@ done by introspection::
 For plain Python methods, one can also just ask in which module they
 are implemented::
 
-    sage: i._pow_.__module__
+    sage: i._pow_.__module__  # not tested (Issue #24275)
     'sage.categories.semigroups'
 
-    sage: pQ._mul_.__module__
+    sage: pQ._mul_.__module__                                                           # needs sage.symbolic
     'sage.rings.polynomial.polynomial_element_generic'
-    sage: pQ._pow_.__module__
+    sage: pQ._pow_.__module__                   # not tested (Issue #24275)             # needs sage.symbolic
     'sage.categories.semigroups'
 
 We see that integers and polynomials have each their own
@@ -484,9 +494,9 @@ hierarchy of categories and provide generic algorithms.
 
 The full hierarchy is best viewed graphically::
 
-    sage: g = class_graph(m.__class__)
-    sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: g = class_graph(m.__class__)                                                  # needs sage.combinat sage.graphs
+    sage: g.set_latex_options(format="dot2tex")                                         # needs sage.combinat sage.graphs
+    sage: view(g)                               # not tested                            # needs sage.combinat sage.graphs sage.plot
 
 Parallel hierarchy of classes for parents
 -----------------------------------------
@@ -520,14 +530,14 @@ Hence, following the OOP fundamental principle, parents should also be
 modelled by instances of some (hierarchy of) classes. For example, our
 group `G` is an instance of the following class::
 
-    sage: G = GL(2,ZZ)
-    sage: type(G)
-    <class 'sage.groups.matrix_gps.linear.LinearMatrixGroup_gap_with_category'>
+    sage: G = GL(2, ZZ)                                                                 # needs sage.modules
+    sage: type(G)                                                                       # needs sage.libs.gap sage.modules
+    <class 'sage.groups.matrix_gps.linear_gap.LinearMatrixGroup_gap_with_category'>
 
 Here is a piece of the hierarchy of classes above it::
 
-    sage: for cls in G.__class__.mro(): print(cls)
-    <class 'sage.groups.matrix_gps.linear.LinearMatrixGroup_gap_with_category'>
+    sage: for cls in G.__class__.mro(): print(cls)                                      # needs sage.libs.gap sage.modules
+    <class 'sage.groups.matrix_gps.linear_gap.LinearMatrixGroup_gap_with_category'>
     ...
     <class 'sage.categories.groups.Groups.parent_class'>
     <class 'sage.categories.monoids.Monoids.parent_class'>
@@ -538,10 +548,11 @@ Note that the hierarchy of abstract classes is again attached to
 categories and parallel to that we had seen for the elements. This is
 best viewed graphically::
 
+    sage: # needs sage.graphs sage.modules
     sage: g = class_graph(m.__class__)
-    sage: g.relabel(lambda x: x.replace("_","\_"))
+    sage: g.relabel(lambda x: x.replace("_",r"\_"))
     sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: view(g)                               # not tested                            # needs sage.plot
 
 .. NOTE::
 
@@ -575,7 +586,7 @@ classes:
 
 - Group, Monoid, Semigroup, Magma, ...
 - GroupElement, MonoidElement, SemigroupElement, MagmaElement, ...
-- GroupMorphism, SemigroupElement, SemigroupMorphism, MagmaMorphism, ...
+- GroupMorphism, MonoidMorphism, SemigroupMorphism, MagmaMorphism, ...
 
 (and in fact many more as we will see).
 
@@ -722,7 +733,7 @@ Categories are instances and have operations
 Note that categories themselves are naturally modelled by instances
 because they can have operations of their own. An important one is::
 
-    sage: Groups().example()
+    sage: Groups().example()                                                            # needs sage.modules
     General Linear Group of degree 4 over Rational Field
 
 which gives an example of object of the category. Besides illustrating
@@ -802,10 +813,12 @@ element of the parent?)::
     running ._test_associativity() . . . pass
     running ._test_cardinality() . . . pass
     running ._test_category() . . . pass
+    running ._test_construction() . . . pass
     running ._test_elements() . . .
       Running the test suite of self.an_element()
       running ._test_category() . . . pass
       running ._test_eq() . . . pass
+      running ._test_new() . . . pass
       running ._test_not_implemented_methods() . . . pass
       running ._test_pickling() . . . pass
       pass
@@ -817,6 +830,7 @@ element of the parent?)::
     running ._test_enumerated_set_iter_cardinality() . . . pass
     running ._test_enumerated_set_iter_list() . . . pass
     running ._test_eq() . . . pass
+    running ._test_new() . . . pass
     running ._test_not_implemented_methods() . . . pass
     running ._test_pickling() . . . pass
     running ._test_some_elements() . . . pass
@@ -847,9 +861,9 @@ And rerun the test::
     Traceback (most recent call last):
     ...
       File ".../sage/categories/semigroups.py", line ..., in _test_associativity
-        tester.assert_((x * y) * z == x * (y * z))
+        tester.assertTrue((x * y) * z == x * (y * z))
     ...
-    AssertionError: False is not true
+    AssertionError: '((aa)a)' != '(a(aa))'
 
 We can recover instantly the actual values of ``x``, ``y``, ``z``, that is,
 a counterexample to the associativity of our broken semigroup, using post
@@ -862,7 +876,7 @@ work yet in the notebook)::
     -> raise self.failureException(msg)
     (Pdb) u
     > /opt/sage-5.11.rc1/local/lib/python2.7/site-packages/sage/categories/semigroups.py(145)_test_associativity()
-    -> tester.assert_((x * y) * z == x * (y * z))
+    -> tester.assertTrue((x * y) * z == x * (y * z))
     (Pdb) p x, y, z
     ('a', 'a', 'a')
     (Pdb) p (x * y) * z
@@ -917,9 +931,9 @@ to use Sage's introspection tools to recover where it's implemented::
     sage: sage.misc.sageinspect.sage_getfile(x._repr_)
     '.../sage/structure/element_wrapper.pyx'
 
-``__pow__`` is a generic method for all finite semigroups::
+``_pow_int`` is a generic method for all finite semigroups::
 
-    sage: x.__pow__.__module__
+    sage: x._pow_int.__module__
     'sage.categories.semigroups'
 
 ``__mul__`` is a generic method provided by the :class:`Magmas`
@@ -937,11 +951,6 @@ in a separate file::
     sage: x._mul_.__module__
     'sage.categories.coercion_methods'
 
-But we can check that it is indeed provided by the Magmas category::
-
-    sage: x.__mul__.im_func is Magmas.ElementMethods.__mul__.im_func
-    True
-
 ``_mul_`` is a default implementation, also provided by the
 :class:`Magmas` category, that delegates the work to the method
 ``product`` of the parent (following the advice: if you do not know
@@ -950,7 +959,7 @@ what to do, ask your parent); it's also a speed critical method::
     sage: x._mul_??                             # not tested
     sage: x._mul_.__module__
     'sage.categories.coercion_methods'
-    sage: x._mul_.im_func is Magmas.ElementMethods._mul_parent.im_func
+    sage: x._mul_.__func__ is Magmas.ElementMethods._mul_parent
     True
 
 ``product`` is a mathematical method implemented by the parent::
@@ -1017,17 +1026,18 @@ additional properties of the parent that we know to hold a priori. For
 example, permutation groups are by default in the category of finite
 permutation groups (no surprise)::
 
-    sage: P = PermutationGroup([[(1,2,3)]]); P
+    sage: P = PermutationGroup([[(1,2,3)]]); P                                          # needs sage.combinat sage.groups
     Permutation Group with generators [(1,2,3)]
-    sage: P.category()
-    Category of finite permutation groups
+    sage: P.category()                                                                  # needs sage.combinat
+    Category of finite enumerated permutation groups
 
 In this case, the group is commutative, so we can specify this::
 
-    sage: P = PermutationGroup([[(1,2,3)]], category=PermutationGroups().Finite().Commutative()); P
+    sage: P = PermutationGroup([[(1,2,3)]],                                             # needs sage.combinat sage.groups
+    ....:                      category=PermutationGroups().Finite().Commutative()); P
     Permutation Group with generators [(1,2,3)]
-    sage: P.category()
-    Category of finite commutative permutation groups
+    sage: P.category()                                                                  # needs sage.combinat
+    Category of finite enumerated commutative permutation groups
 
 This feature can even be used, typically in experimental code, to add
 more structure to existing parents, and in particular to add methods
@@ -1041,7 +1051,8 @@ for the parents or the elements, without touching the code base::
     ....:     class ElementMethods:
     ....:         def bar(self): print("bar")
 
-    sage: P = PermutationGroup([[(1,2,3)]], category=Foos())
+    sage: # needs sage.combinat
+    sage: P = PermutationGroup([[(1,2,3)]], category=Foos())                            # needs sage.groups
     sage: P.foo()
     foo
     sage: p = P.an_element()
@@ -1052,7 +1063,7 @@ In the long run, it would be thinkable to use this idiom to implement
 forgetful functors; for example the above group could be constructed
 as a plain set with::
 
-    sage: P = PermutationGroup([[(1,2,3)]], category=Sets()) # todo: not implemented
+    sage: P = PermutationGroup([[(1,2,3)]], category=Sets())    # not implemented, needs sage.combinat
 
 At this stage though, this is still to be explored for robustness
 and practicality. For now, most parents that accept a category argument
@@ -1095,14 +1106,14 @@ algebraic structure. This includes:
   See :meth:`Modules().DualObjects <Modules.SubcategoryMethods.DualObjects>`.
 
 - Algebras, as in group algebras, monoid algebras, ...:
-  See: :meth:`Sets.ParentMethods.algebras`.
+  See: :meth:`Sets.ParentMethods.algebra`.
 
 Let for example `A` and `B` be two parents, and let us construct the
 Cartesian product `A \times B \times B`::
 
-    sage: A = AlgebrasWithBasis(QQ).example();     A.rename("A")
-    sage: B = HopfAlgebrasWithBasis(QQ).example(); B.rename("B")
-    sage: C = cartesian_product([A, B, B]); C
+    sage: A = AlgebrasWithBasis(QQ).example();     A.rename("A")                        # needs sage.combinat sage.modules
+    sage: B = HopfAlgebrasWithBasis(QQ).example(); B.rename("B")                        # needs sage.combinat sage.modules
+    sage: C = cartesian_product([A, B, B]); C                                           # needs sage.combinat sage.modules
     A (+) B (+) B
 
 In which category should this new parent be? Since `A` and `B` are
@@ -1111,14 +1122,14 @@ vector spaces, the result is, as a vector space, the direct sum
 are monoids, `A \times B \times B` is naturally endowed with a monoid
 structure for pointwise multiplication::
 
-    sage: C in Monoids()
+    sage: C in Monoids()                                                                # needs sage.combinat sage.modules
     True
 
 the unit being the Cartesian product of the units of the operands::
 
-    sage: C.one()
+    sage: C.one()                                                                       # needs sage.combinat sage.modules
     B[(0, word: )] + B[(1, ())] + B[(2, ())]
-    sage: cartesian_product([A.one(), B.one(), B.one()])
+    sage: cartesian_product([A.one(), B.one(), B.one()])                                # needs sage.combinat sage.modules
     B[(0, word: )] + B[(1, ())] + B[(2, ())]
 
 The pointwise product can be implemented generically for all magmas
@@ -1126,7 +1137,7 @@ The pointwise product can be implemented generically for all magmas
 constructed as Cartesian products. It's thus implemented in the
 :class:`Magmas` category::
 
-    sage: C.product.__module__
+    sage: C.product.__module__                                                          # needs sage.combinat sage.modules
     'sage.categories.magmas'
 
 More specifically, keeping on using nested classes to structure the
@@ -1153,12 +1164,12 @@ code, the product method is put in the nested class
     reveal some glitches in their implementation, in particular around
     class naming and introspection. Sage currently works around the
     more annoying ones but some remain visible. See
-    e.g. :mod:`sage.misc.nested_class_test`.
+    e.g. :mod:`sage.misc.test_nested_class`.
 
 
 Let us now look at the categories of ``C``::
 
-    sage: C.categories()
+    sage: C.categories()                                                                # needs sage.combinat sage.modules
     [Category of finite dimensional Cartesian products of algebras with basis over Rational Field, ...
      Category of Cartesian products of algebras over Rational Field, ...
      Category of Cartesian products of semigroups, Category of semigroups, ...
@@ -1294,7 +1305,7 @@ The infrastructure allows for specifying further deduction rules, in
 order to encode mathematical facts like Wedderburn's theorem::
 
     sage: DivisionRings() & Sets().Finite()
-    Category of finite fields
+    Category of finite enumerated fields
 
 .. NOTE::
 
@@ -1369,13 +1380,14 @@ for a category with two operations `+` and `*`::
     sage: C = (Magmas() & AdditiveMagmas()).Distributive(); C
     Category of distributive magmas and additive magmas
 
-    sage: C.Associative().AdditiveAssociative().AdditiveCommutative().AdditiveUnital().AdditiveInverse()
+    sage: CAA = C.Associative().AdditiveAssociative()
+    sage: CAA.AdditiveCommutative().AdditiveUnital().AdditiveInverse()
     Category of rngs
 
-    sage: C.Associative().AdditiveAssociative().AdditiveCommutative().AdditiveUnital().Unital()
+    sage: CAA.AdditiveCommutative().AdditiveUnital().Unital()
     Category of semirings
 
-    sage: C.Associative().AdditiveAssociative().AdditiveCommutative().AdditiveUnital().AdditiveInverse().Unital()
+    sage: CAA.AdditiveCommutative().AdditiveUnital().AdditiveInverse().Unital()
     Category of rings
 
     sage: Rings().Division()
@@ -1385,13 +1397,13 @@ for a category with two operations `+` and `*`::
     Category of fields
 
     sage: Rings().Division().Finite()
-    Category of finite fields
+    Category of finite enumerated fields
 
 or for more advanced categories::
 
-    sage: g = HopfAlgebras(QQ).WithBasis().Graded().Connected().category_graph()
-    sage: g.set_latex_options(format="dot2tex")
-    sage: view(g, tightpage=True)                 # not tested
+    sage: g = HopfAlgebras(QQ).WithBasis().Graded().Connected().category_graph()        # needs sage.graphs
+    sage: g.set_latex_options(format="dot2tex")                                         # needs sage.graphs
+    sage: view(g)                               # not tested                            # needs sage.graphs sage.plot
 
 Difference between axioms and regressive covariant functorial constructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1413,7 +1425,7 @@ Let also ``Ds`` be a subcategory of ``Cs``, say::
 
 A finite dimensional algebra is also a finite dimensional module::
 
-    sage: Algebras(QQ).FiniteDimensional().is_subcategory( Modules(QQ).FiniteDimensional() )
+    sage: Algebras(QQ).FiniteDimensional().is_subcategory(Modules(QQ).FiniteDimensional())
     True
 
 Similarly a graded algebra is also a graded module::
@@ -1437,7 +1449,8 @@ necessarily a graded algebra! Indeed, the grading on `O` may not be
 compatible with the product on `O`::
 
     sage: Modules(QQ).Graded() & Algebras(QQ)
-    Join of Category of algebras over Rational Field and Category of graded modules over Rational Field
+    Join of Category of algebras over Rational Field
+     and Category of graded vector spaces over Rational Field
 
 The relevant difference between ``FiniteDimensional`` and ``Graded``
 is that ``FiniteDimensional`` is a statement about the properties of
@@ -1601,7 +1614,7 @@ elements). For instance::
     2*x*y
     sage: P.prod.__module__
     'sage.categories.monoids'
-    sage: P.prod.__func__ is Monoids().ParentMethods.prod.__func__
+    sage: P.prod.__func__ is raw_getattr(Monoids().ParentMethods, "prod")
     True
 
 We recommend to study the code of one example::
@@ -1631,7 +1644,7 @@ methods ``foo`` in `C_1` and `C_2` must have the same semantic. Code
 should not rely on any specific order, as it is subject to later
 change. Whenever one of the implementations is preferred in some common
 subcategory of `C_1` and `C_2`, for example for efficiency reasons,
-the ambiguity should be resolved explicitly by definining a
+the ambiguity should be resolved explicitly by defining a
 method ``foo`` in this category. See the method ``some_elements`` in
 the code of the category :class:`FiniteCoxeterGroups` for an example.
 

@@ -21,7 +21,7 @@ class ComplexReflectionGroups(Category_singleton):
     The category of complex reflection groups.
 
     Let `V` be a complex vector space. A *complex reflection* is an
-    element of `\operatorname{GL}(V)` fixing an hyperplane pointwise
+    element of `\operatorname{GL}(V)` fixing a hyperplane pointwise
     and acting by multiplication by a root of unity on a complementary
     line.
 
@@ -39,21 +39,16 @@ class ComplexReflectionGroups(Category_singleton):
 
         :func:`ReflectionGroup` for usage examples of this category.
 
-    REFERENCES:
-
-    .. [LT2009] G.I. Lehrer and D.E. Taylor. *Unitary reflection groups*.
-       Australian Mathematical Society Lecture Series, 2009.
-
     EXAMPLES::
 
         sage: from sage.categories.complex_reflection_groups import ComplexReflectionGroups
         sage: ComplexReflectionGroups()
         Category of complex reflection groups
         sage: ComplexReflectionGroups().super_categories()
-        [Category of complex reflection or generalized coxeter groups]
+        [Category of complex reflection or generalized Coxeter groups]
         sage: ComplexReflectionGroups().all_super_categories()
         [Category of complex reflection groups,
-         Category of complex reflection or generalized coxeter groups,
+         Category of complex reflection or generalized Coxeter groups,
          Category of groups,
          Category of monoids,
          Category of finitely generated semigroups,
@@ -69,17 +64,17 @@ class ComplexReflectionGroups(Category_singleton):
 
     An example of a reflection group::
 
-        sage: W = ComplexReflectionGroups().example(); W
+        sage: W = ComplexReflectionGroups().example(); W                                # needs sage.combinat
         5-colored permutations of size 3
 
     ``W`` is in the category of complex reflection groups::
 
-        sage: W in ComplexReflectionGroups()
+        sage: W in ComplexReflectionGroups()                                            # needs sage.combinat
         True
 
     TESTS::
 
-        sage: TestSuite(W).run()
+        sage: TestSuite(W).run()                                                        # needs sage.combinat
         sage: TestSuite(ComplexReflectionGroups()).run()
     """
 
@@ -92,7 +87,7 @@ class ComplexReflectionGroups(Category_singleton):
 
             sage: from sage.categories.complex_reflection_groups import ComplexReflectionGroups
             sage: ComplexReflectionGroups().super_categories()
-            [Category of complex reflection or generalized coxeter groups]
+            [Category of complex reflection or generalized Coxeter groups]
         """
         return [ComplexReflectionOrGeneralizedCoxeterGroups()]
 
@@ -120,7 +115,7 @@ class ComplexReflectionGroups(Category_singleton):
         EXAMPLES::
 
             sage: from sage.categories.complex_reflection_groups import ComplexReflectionGroups
-            sage: ComplexReflectionGroups().example()
+            sage: ComplexReflectionGroups().example()                                   # needs sage.combinat
             5-colored permutations of size 3
         """
         from sage.combinat.colored_permutations import ColoredPermutations
@@ -146,4 +141,3 @@ class ComplexReflectionGroups(Category_singleton):
 
     Finite = LazyImport('sage.categories.finite_complex_reflection_groups',
                         'FiniteComplexReflectionGroups', as_name='Finite')
-

@@ -55,31 +55,34 @@ AUTHORS:
 
 TESTS::
 
-    sage: F = matroids.named_matroids.Fano()
+    sage: F = matroids.catalog.Fano()
     sage: M = Matroid(bases=F.bases())
     sage: TestSuite(M).run()
 
 Methods
 =======
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013 Rudi Pendavingh <rudi.pendavingh@gmail.com>
 #       Copyright (C) 2013 Stefan van Zwam <stefanvanzwam@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-include 'sage/data_structures/bitset.pxi'
-from matroid cimport Matroid
-from basis_exchange_matroid cimport BasisExchangeMatroid
-from itertools import permutations
-from sage.arith.all import binomial
-from set_system cimport SetSystem
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+
+from sage.data_structures.bitset_base cimport *
+from sage.structure.richcmp cimport rich_to_bool
+from sage.matroids.matroid cimport Matroid
+from sage.matroids.basis_exchange_matroid cimport BasisExchangeMatroid
+from sage.matroids.set_system cimport SetSystem
+from cpython.object cimport Py_EQ, Py_NE
+
 from itertools import combinations
 
 # class of general matroids, represented by their list of bases
+
 
 cdef class BasisMatroid(BasisExchangeMatroid):
     """
@@ -107,7 +110,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
     Create a BasisMatroid instance out of any other matroid::
 
         sage: from sage.matroids.advanced import *
-        sage: F = matroids.named_matroids.Fano()
+        sage: F = matroids.catalog.Fano()
         sage: M = BasisMatroid(F)
         sage: F.groundset() == M.groundset()
         True
@@ -147,7 +150,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: F = matroids.named_matroids.Fano()
+            sage: F = matroids.catalog.Fano()
             sage: M = BasisMatroid(F)
             sage: F.groundset() == M.groundset()
             True
@@ -156,6 +159,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         """
         cdef SetSystem NB
         cdef long i
+        cdef mp_bitcnt_t bc
 
         if isinstance(M, BasisMatroid):
             BasisExchangeMatroid.__init__(self, groundset=(<BasisMatroid>M)._E, rank=(<BasisMatroid>M)._matroid_rank)
@@ -174,7 +178,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             bitset_init(self._bb, bc)
             bitset_set_first_n(self._bb, bc)
             NB = M.nonbases()
-            for i in xrange(len(NB)):
+            for i in range(len(NB)):
                 bitset_discard(self._bb, set_to_index(NB._subsets[i]))
 
             bitset_init(self._b, (<BasisExchangeMatroid>M)._bitset_size)
@@ -215,7 +219,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
                     raise ValueError("basis has wrong cardinality.")
                 if not b.issubset(self._groundset):
                     raise ValueError("basis is not a subset of the groundset")
-                self.__pack(self._b, b)
+                self._pack(self._b, b)
                 i = set_to_index(self._b)
                 if not bitset_in(self._bb, i):
                     self._bcount += 1
@@ -227,10 +231,10 @@ cdef class BasisMatroid(BasisExchangeMatroid):
                 for B in nonbases:
                     b = frozenset(B)
                     if len(b) != self._matroid_rank:
-                        raise ValueError("nonbasis has wrong cardinalty.")
+                        raise ValueError("nonbasis has wrong cardinality")
                     if not b.issubset(self._groundset):
                         raise ValueError("nonbasis is not a subset of the groundset")
-                    self.__pack(self._b, b)
+                    self._pack(self._b, b)
                     i = set_to_index(self._b)
                     if bitset_in(self._bb, i):
                         self._bcount -= 1
@@ -239,8 +243,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         self.reset_current_basis()
 
     def __dealloc__(self):
-            bitset_free(self._b)
-            bitset_free(self._bb)
+        bitset_free(self._b)
+        bitset_free(self._bb)
 
     # Sage special functions
     def _repr_(self):
@@ -250,16 +254,15 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
             sage: repr(M)  # indirect doctest
             'Matroid of rank 3 on 7 elements with 28 bases'
-
         """
         return Matroid._repr_(self) + " with " + str(self.bases_count()) + " bases"
 
     # support for parent BasisExchangeMatroid
 
-    cdef bint __is_exchange_pair(self, long x, long y) except -1:      # test if current_basis-x + y is a basis
+    cdef bint _is_exchange_pair(self, long x, long y) except -1:      # test if current_basis-x + y is a basis
         """
         Test if `B-e + f` is a basis of the current matroid.
 
@@ -279,14 +282,13 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         NOTE: this is an internal function, supporting the parent class
         BasisExchangeMatroid of BasisMatroid.
-
         """
         bitset_copy(self._b, self._current_basis)
         bitset_discard(self._b, x)
         bitset_add(self._b, y)
         return bitset_in(self._bb, set_to_index(self._b))
 
-    cdef reset_current_basis(self):
+    cdef reset_current_basis(self) noexcept:
         """
         Set the current basis to the (lexicographically) first basis of the
         matroid.
@@ -295,7 +297,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
     # a function that is very efficient for this class
 
-    cpdef _is_basis(self, X):
+    cpdef _is_basis(self, X) noexcept:
         """
         Test if input is a basis.
 
@@ -316,19 +318,19 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.Vamos().bases())
+            sage: M = Matroid(bases=matroids.catalog.Vamos().bases())
             sage: M._is_basis(set(['a', 'b', 'c', 'e']))
             True
             sage: M._is_basis(set(['a', 'b', 'c', 'd']))
             False
         """
-        self.__pack(self._b, X)
+        self._pack(self._b, X)
         return bitset_in(self._bb, set_to_index(self._b))
 
     # dual and minors
 
-    cpdef dual(self):
-        """
+    cpdef dual(self) noexcept:
+        r"""
         Return the dual of the matroid.
 
         Let `M` be a matroid with ground set `E`. If `B` is the set of bases
@@ -341,26 +343,25 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.Pappus().bases())
+            sage: M = Matroid(bases=matroids.catalog.Pappus().bases())
             sage: M.dual()
             Matroid of rank 6 on 9 elements with 75 bases
 
         ALGORITHM:
 
         A BasisMatroid on `n` elements and of rank `r` is stored as a
-        bitvector of length `n \choose r`. The `i`-th bit in this vector
+        bitvector of length `\binom{n}{r}`. The `i`-th bit in this vector
         indicates that the `i`-th `r`-set in the lexicographic enumeration of
         `r`-subsets of the groundset is a basis. Reversing this bitvector
         yields a bitvector that indicates whether the complement of an
         `(n - r)`-set is a basis, i.e. gives the bitvector of the bases of the
         dual.
-
         """
         cdef long i, N
         cdef BasisMatroid D
         D = BasisMatroid(groundset=self._E, rank=self.full_corank())
         N = binom[self._groundset_size][self._matroid_rank]
-        for i in xrange(N):
+        for i in range(N):
             if not bitset_in(self._bb, i):
                 bitset_discard(D._bb, N - i - 1)
         D.reset_current_basis()
@@ -368,7 +369,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         D._bcount = self._bcount
         return D
 
-    cpdef _minor(self, contractions, deletions):
+    cpdef _minor(self, contractions, deletions) noexcept:
         """
         Return a minor.
 
@@ -395,17 +396,16 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: M._minor(contractions=set(['a']), deletions=set(['b', 'c']))
             Matroid of rank 3 on 5 elements with 10 bases
-
         """
         E = self.groundset() - (contractions | deletions)
         mr = self.full_rank() - len(contractions)
         NB = [frozenset(B) for B in combinations(E, mr) if not self._is_basis(contractions | frozenset(B))]
         return BasisMatroid(groundset=E, nonbases=NB, rank=mr)
 
-    cpdef truncation(self):
+    cpdef truncation(self) noexcept:
         r"""
         Return a rank-1 truncation of the matroid.
 
@@ -425,20 +425,19 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.N2().bases())
+            sage: M = Matroid(bases=matroids.catalog.N2().bases())
             sage: M.truncation()
             Matroid of rank 5 on 12 elements with 702 bases
             sage: M.f_vector()
             [1, 12, 66, 190, 258, 99, 1]
             sage: M.truncation().f_vector()
             [1, 12, 66, 190, 258, 1]
-
         """
         if self.full_rank() == 0:
             return None
         return BasisMatroid(groundset=self._E, nonbases=self.dependent_r_sets(self.full_rank() - 1), rank=self.full_rank() - 1)
 
-    cpdef _extension(self, e, H):
+    cpdef _extension(self, e, H) noexcept:
         r"""
         Extend the matroid by a new element.
 
@@ -490,7 +489,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         BE += BB
         return BasisMatroid(groundset=self._E + (e,), bases=BE)
 
-    cpdef _with_coloop(self, e):
+    cpdef _with_coloop(self, e) noexcept:
         r"""
         Return the matroid that arises by adding an element `e` to the
         groundset, that is a coloop of the resulting matroid.
@@ -507,17 +506,16 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
             sage: M
             Matroid of rank 3 on 7 elements with 28 bases
             sage: M._with_coloop('x')
             Matroid of rank 4 on 8 elements with 28 bases
-
         """
         cdef frozenset se = frozenset([e])
         return BasisMatroid(groundset=self._E + (e,), bases=[B | se for B in self.bases()])
 
-    cpdef relabel(self, l):
+    cpdef relabel(self, l) noexcept:
         """
         Return an isomorphic matroid with relabeled groundset.
 
@@ -544,21 +542,20 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
             sage: sorted(M.groundset())
             ['a', 'b', 'c', 'd', 'e', 'f', 'g']
             sage: N = M.relabel({'g':'x'})
             sage: sorted(N.groundset())
             ['a', 'b', 'c', 'd', 'e', 'f', 'x']
-
         """
         M = BasisMatroid(M=self)
-        M.__relabel(l)
+        M._relabel(l)
         return M
 
     # enumeration
 
-    cpdef bases_count(self):
+    cpdef bases_count(self) noexcept:
         r"""
         Return the number of bases of the matroid.
 
@@ -568,7 +565,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.Fano().bases())
+            sage: M = Matroid(bases=matroids.catalog.Fano().bases())
             sage: M
             Matroid of rank 3 on 7 elements with 28 bases
             sage: M.bases_count()
@@ -578,7 +575,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             self._bcount = bitset_len(self._bb)
         return self._bcount
 
-    cpdef bases(self):
+    cpdef bases(self) noexcept:
         r"""
         Return the list of bases of the matroid.
 
@@ -590,7 +587,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.Fano().bases())
+            sage: M = Matroid(bases=matroids.catalog.Fano().bases())
             sage: M
             Matroid of rank 3 on 7 elements with 28 bases
             sage: len(M.bases())
@@ -609,7 +606,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             b = bitset_next(self._bb, b + 1)
         return BB
 
-    cpdef nonbases(self):
+    cpdef nonbases(self) noexcept:
         r"""
         Return the list of nonbases of the matroid.
 
@@ -626,7 +623,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
         EXAMPLES::
 
-            sage: M = Matroid(bases=matroids.named_matroids.Fano().bases())
+            sage: M = Matroid(bases=matroids.catalog.Fano().bases())
             sage: M
             Matroid of rank 3 on 7 elements with 28 bases
             sage: len(M.nonbases())
@@ -654,7 +651,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 
     # isomorphism test
 
-    cpdef _bases_invariant(self):
+    cpdef _bases_invariant(self) noexcept:
         """
         Return an isomorphism invariant based on the incidences of groundset
         elements with bases.
@@ -670,19 +667,18 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
+            sage: N = BasisMatroid(matroids.catalog.Fano())
             sage: M._bases_invariant() == N._bases_invariant()
             True
         """
         if self._bases_invariant_var is not None:
             return self._bases_invariant_var
         cdef long i, j
-        cdef bitset_t bb_comp
         cdef list bc
         cdef dict bi
-        bc = [0 for i in xrange(len(self))]
-        for i in xrange(binom[self._groundset_size][self._matroid_rank]):
+        bc = [0 for i in range(len(self))]
+        for i in range(binom[self._groundset_size][self._matroid_rank]):
             if not bitset_in(self._bb, i):
                 index_to_set(self._b, i, self._matroid_rank, self._groundset_size)
                 j = bitset_first(self._b)
@@ -690,7 +686,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
                     bc[j] += 1
                     j = bitset_next(self._b, j + 1)
         bi = {}
-        for e in xrange(len(self)):
+        for e in range(len(self)):
             if bc[e] in bi:
                 bi[bc[e]].append(e)
             else:
@@ -699,7 +695,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         self._bases_partition_var = SetSystem(self._E, [[self._E[e] for e in bi[c]] for c in sorted(bi)])
         return self._bases_invariant_var
 
-    cpdef _bases_partition(self):
+    cpdef _bases_partition(self) noexcept:
         """
         Return an ordered partition based on the incidences of groundset
         elements with bases.
@@ -707,16 +703,16 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: [sorted(p) for p in M._bases_partition()]
             [['c', 'd', 'g', 'h'], ['a', 'b', 'e', 'f']]
         """
         self._bases_invariant()
         return self._bases_partition_var
 
-    cpdef _bases_invariant2(self):
+    cpdef _bases_invariant2(self) noexcept:
         """
-        Return an isomophism invariant of the matroid.
+        Return an isomorphism invariant of the matroid.
 
         Compared to BasisMatroid._bases_invariant() this invariant
         distinguishes more frequently between nonisomorphic matroids but
@@ -730,8 +726,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
-            sage: N = BasisMatroid(matroids.named_matroids.NonFano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
+            sage: N = BasisMatroid(matroids.catalog.NonFano())
             sage: M._bases_invariant2() == N._bases_invariant2()
             False
         """
@@ -741,7 +737,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             self._bases_invariant2_var = CP[2]
         return self._bases_invariant2_var
 
-    cpdef _bases_partition2(self):
+    cpdef _bases_partition2(self) noexcept:
         """
         Return an equitable partition which refines
         :meth:`<BasisMatroid._bases_partition2>`.
@@ -749,14 +745,14 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: [sorted(p) for p in M._bases_partition2()]
             [['c', 'd', 'g', 'h'], ['a', 'b', 'e', 'f']]
         """
         self._bases_invariant2()
         return self._bases_partition2_var
 
-    cpdef _bases_invariant3(self):
+    cpdef _bases_invariant3(self) noexcept:
         """
         Return a number characteristic for the construction of
         :meth:`<BasisMatroid._bases_partition3>`.
@@ -764,8 +760,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
-            sage: N = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
+            sage: N = BasisMatroid(matroids.catalog.Vamos())
             sage: M._bases_invariant3() == N._bases_invariant3()
             True
         """
@@ -775,7 +771,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             self._bases_invariant3_var = CP[2]
         return self._bases_invariant3_var
 
-    cpdef _bases_partition3(self):
+    cpdef _bases_partition3(self) noexcept:
         """
         Return an ordered partition into singletons which refines an equitable
         partition of the matroid.
@@ -787,19 +783,19 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
-            sage: N = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
+            sage: N = BasisMatroid(matroids.catalog.Vamos())
             sage: PM = M._bases_partition3()
             sage: PN = N._bases_partition3()
             sage: morphism = {}
-            sage: for i in xrange(len(M)): morphism[min(PM[i])]=min(PN[i])
+            sage: for i in range(len(M)): morphism[min(PM[i])] = min(PN[i])
             sage: M._is_isomorphism(N, morphism)
             True
         """
         self._bases_invariant3()
         return self._bases_partition3_var
 
-    cdef _reset_invariants(self):
+    cdef _reset_invariants(self) noexcept:
         """
         Remove all precomputed invariants.
         """
@@ -813,7 +809,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         self._bases_partition3_var = None
         self._flush()
 
-    cpdef bint is_distinguished(self, e):
+    cpdef bint is_distinguished(self, e) noexcept:
         """
         Return whether ``e`` is a 'distinguished' element of the groundset.
 
@@ -841,10 +837,9 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.N1())
+            sage: M = BasisMatroid(matroids.catalog.N1())
             sage: sorted([e for e in M.groundset() if M.is_distinguished(e)])
             ['c', 'g', 'h', 'j']
-
         """
         P = self._bases_partition()
         p = P[0]
@@ -860,13 +855,16 @@ cdef class BasisMatroid(BasisExchangeMatroid):
                 q = q2
         return e in q
 
-    cpdef _is_relaxation(self, other, morphism):
+    cpdef _is_relaxation(self, other, morphism) noexcept:
         """
         Return if the application of a groundset morphism to this matroid
         yields a relaxation of the given matroid.
 
-        M is a relaxation of N if the set of bases of M is a subset of the
-        bases of N.
+        `M` is a relaxation of `N` if the set of bases of `M` is a superset of the
+        bases of `N`.
+
+        This method assumes that ``self`` and ``other`` have the same rank
+        and does not check this condition.
 
         INPUT:
 
@@ -883,8 +881,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.NonFano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.NonFano())
+            sage: N = BasisMatroid(matroids.catalog.Fano())
             sage: m = {e:e for e in M.groundset()}
             sage: M._is_relaxation(N, m)
             True
@@ -899,23 +897,30 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         bitset_complement(bb_comp, self._bb)
 
         bitset_init(b2, max(len(self), 1))
-        morph = [(<BasisMatroid>other)._idx[morphism[self._E[i]]] for i in xrange(len(self))]
+        morph = [(<BasisMatroid>other)._idx[morphism[self._E[i]]] for i in range(len(self))]
         i = bitset_first(bb_comp)
         while i != -1:
             index_to_set(self._b, i, self._matroid_rank, self._groundset_size)
             bitset_clear(b2)
             j = bitset_first(self._b)
             while j != -1:
-                bitset_add(b2, morph[j])
+                bitset_add(b2, <mp_bitcnt_t> morph[j])
                 j = bitset_next(self._b, j + 1)
             if bitset_in((<BasisMatroid>other)._bb, set_to_index(b2)):
+                bitset_free(b2)
+                bitset_free(bb_comp)
                 return False
             i = bitset_next(bb_comp, i + 1)
+        bitset_free(b2)
+        bitset_free(bb_comp)
         return True
 
-    cpdef _is_isomorphism(self, other, morphism):
+    cpdef _is_isomorphism(self, other, morphism) noexcept:
         """
-        Version of is_isomorphism() that does no type checking.
+        Version of :meth:`is_isomorphism` that does no type checking.
+
+        This method assumes that ``self`` and ``other`` have the same rank
+        and does not check this condition.
 
         INPUT:
 
@@ -934,8 +939,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.NonFano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.NonFano())
+            sage: N = BasisMatroid(matroids.catalog.Fano())
             sage: m = {e:e for e in M.groundset()}
             sage: M._is_relaxation(N, m)
             True
@@ -948,7 +953,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             ot = other
         return self.bases_count() == (<BasisMatroid>ot).bases_count() and self._is_relaxation(ot, morphism)
 
-    cpdef _isomorphism(self, other):
+    cpdef _isomorphism(self, other) noexcept:
         """
         Return isomorphism from ``self`` to ``other``, if one exists.
 
@@ -965,15 +970,15 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             Internal version that does no input checking.
 
         EXAMPLES::
-        
+
             sage: from sage.matroids.advanced import *
             sage: M = BasisMatroid(matroids.Wheel(3))
-            sage: N = BasisMatroid(matroids.CompleteGraphic(4))
-            sage: morphism = M._isomorphism(N)
-            sage: M._is_isomorphism(N, morphism)
+            sage: N = BasisMatroid(matroids.CompleteGraphic(4))                         # needs sage.graphs
+            sage: morphism = M._isomorphism(N)                                          # needs sage.graphs
+            sage: M._is_isomorphism(N, morphism)                                        # needs sage.graphs
             True
-            sage: M = BasisMatroid(matroids.named_matroids.NonFano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.NonFano())
+            sage: N = BasisMatroid(matroids.catalog.Fano())
             sage: M._isomorphism(N) is not None
             False
         """
@@ -986,7 +991,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         if self.full_rank() != other.full_rank():
             return None
         if self.full_rank() == 0:
-            return {self.groundset_list()[i]: other.groundset_list()[i] for i in xrange(len(self))}        
+            return {self.groundset_list()[i]: other.groundset_list()[i] for i in range(len(self))}
         if self.bases_count() != other.bases_count():
             return None
 
@@ -996,7 +1001,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         PO = other._bases_partition()
         if len(PS) == len(self) and len(PO) == len(other):
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PS[i])] = min(PO[i])
             if self._is_relaxation(other, morphism):
                 return morphism
@@ -1009,7 +1014,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         PO = other._bases_partition2()
         if len(PS) == len(self) and len(PO) == len(other):
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PS[i])] = min(PO[i])
             if self._is_relaxation(other, morphism):
                 return morphism
@@ -1020,14 +1025,14 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             PHS = self._bases_partition3()
             PHO = other._bases_partition3()
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PHS[i])] = min(PHO[i])
             if self._is_relaxation(other, morphism):
                 return morphism
 
         return self.nonbases()._isomorphism(other.nonbases(), PS, PO)
-        
-    cpdef _is_isomorphic(self, other, certificate=False):
+
+    cpdef _is_isomorphic(self, other, certificate=False) noexcept:
         """
         Return if this matroid is isomorphic to the given matroid.
 
@@ -1039,7 +1044,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         OUTPUT:
 
         Boolean,
-        and, if certificate = True, a dictionary giving the isomophism or None
+        and, if certificate = True, a dictionary giving the isomorphism or None
 
         .. NOTE::
 
@@ -1048,8 +1053,8 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.NonFano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano())
+            sage: M = BasisMatroid(matroids.catalog.NonFano())
+            sage: N = BasisMatroid(matroids.catalog.Fano())
             sage: M._is_isomorphic(N)
             False
             sage: M._is_isomorphic(N, certificate=True)
@@ -1078,7 +1083,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         PO = other._bases_partition()
         if len(PS) == len(self) and len(PO) == len(other):
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PS[i])] = min(PO[i])
             return self._is_relaxation(other, morphism)
 
@@ -1088,7 +1093,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         PO = other._bases_partition2()
         if len(PS) == len(self) and len(PO) == len(other):
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PS[i])] = min(PO[i])
             return self._is_relaxation(other, morphism)
 
@@ -1096,7 +1101,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
             PHS = self._bases_partition3()
             PHO = other._bases_partition3()
             morphism = {}
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 morphism[min(PHS[i])] = min(PHO[i])
             if self._is_relaxation(other, morphism):
                 return True
@@ -1120,9 +1125,9 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Fano())
-            sage: N = BasisMatroid(matroids.named_matroids.Fano().dual()).dual()
-            sage: O = BasisMatroid(matroids.named_matroids.NonFano())
+            sage: M = BasisMatroid(matroids.catalog.Fano())
+            sage: N = BasisMatroid(matroids.catalog.Fano().dual()).dual()
+            sage: O = BasisMatroid(matroids.catalog.NonFano())
             sage: hash(M) == hash(N)
             True
             sage: hash(M) == hash(O)
@@ -1142,24 +1147,19 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Pappus())
-            sage: N = BasisMatroid(matroids.named_matroids.NonPappus())
+            sage: M = BasisMatroid(matroids.catalog.Pappus())
+            sage: N = BasisMatroid(matroids.catalog.NonPappus())
             sage: M == N
             False
         """
-        if op in [0, 1, 4, 5]:  # <, <=, >, >=
+        if op not in [Py_EQ, Py_NE]:
             return NotImplemented
-        if not isinstance(left, BasisMatroid) or not isinstance(right, BasisMatroid):
+        if type(left) is not type(right):
             return NotImplemented
-        if op == 2:  # ==
-            res = True
-        if op == 3:  # !=
-            res = False
-        # res gets inverted if matroids are deemed different.
         if left.equals(right):
-            return res
+            return rich_to_bool(op, 0)
         else:
-            return not res
+            return rich_to_bool(op, 1)
 
     def __copy__(self):
         """
@@ -1168,17 +1168,16 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: N = copy(M)  # indirect doctest
             sage: M == N
             True
-
         """
         N = BasisMatroid(M=self)
-        N.rename(getattr(self, '__custom_name'))
+        N.rename(self.get_custom_name())
         return N
 
-    def __deepcopy__(self, memo={}):
+    def __deepcopy__(self, memo=None):
         """
         Create a deep copy.
 
@@ -1189,15 +1188,17 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: N = deepcopy(M)  # indirect doctest
             sage: M == N
             True
             sage: M.groundset() is N.groundset()
             False
         """
+        if memo is None:
+            memo = {}
         N = BasisMatroid(M=self)
-        N.rename(getattr(self, '__custom_name'))
+        N.rename(self.get_custom_name())
         return N
 
     def __reduce__(self):
@@ -1217,7 +1218,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         EXAMPLES::
 
             sage: from sage.matroids.advanced import *
-            sage: M = BasisMatroid(matroids.named_matroids.Vamos())
+            sage: M = BasisMatroid(matroids.catalog.Vamos())
             sage: M == loads(dumps(M))  # indirect doctest
             True
             sage: M.rename('Vamos')
@@ -1226,7 +1227,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
         """
         import sage.matroids.unpickling
         BB = bitset_pickle(self._bb)
-        data = (self._E, self._matroid_rank, getattr(self, '__custom_name'), BB)
+        data = (self._E, self._matroid_rank, self.get_custom_name(), BB)
         version = 0
         return sage.matroids.unpickling.unpickle_basis_matroid, (version, data)
 
@@ -1234,7 +1235,7 @@ cdef class BasisMatroid(BasisExchangeMatroid):
 cdef long binom[2956][33]   # Cached binomial table
 
 
-cdef  binom_init(long N, long K):
+cdef  binom_init(long N, long K) noexcept:
     """
     Fill up the cached binomial table.
     """
@@ -1242,7 +1243,7 @@ cdef  binom_init(long N, long K):
     if binom[0][0] != 1:
         binom[0][0] = 1
         binom[0][1] = 0
-        for n in xrange(1, 2955):
+        for n in range(1, 2955):
             bin = 1
             k = 0
             while bin < 2 ** 32 and k <= 32 and k <= n:
@@ -1260,7 +1261,7 @@ cdef  binom_init(long N, long K):
     if binom[N][K] == 0:
         raise ValueError("BasisMatroid: number of potential bases would exceed 2^32")
 
-cdef long set_to_index(bitset_t S):
+cdef long set_to_index(bitset_t S) noexcept:
     """
     Compute the rank of a set of integers amongst the sets of integers
     of the same cardinality.
@@ -1275,8 +1276,9 @@ cdef long set_to_index(bitset_t S):
         s = bitset_next(S, s + 1)
     return index
 
-cdef  index_to_set(bitset_t S, long index, long k, long n):
-    """
+
+cdef  index_to_set(bitset_t S, long index, long k, long n) noexcept:
+    r"""
     Compute the k-subset of `\{0, ..., n-1\}` of rank index
     """
     bitset_clear(S)

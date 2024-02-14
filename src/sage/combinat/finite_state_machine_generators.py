@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.graphs sage.modules
 r"""
 Common Automata and Transducers (Finite State Machines Generators)
 
@@ -76,19 +77,19 @@ Functions and methods
 ---------------------
 
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2014--2015 Clemens Heuberger <clemens.heuberger@aau.at>
 #                     2014--2015 Daniel Krenn <dev@danielkrenn.at>
 #                     2014 Sara Kropf <sara.kropf@aau.at>
 #
-#  Distributed under the terms of the GNU General Public License (GPL)
-#  as published by the Free Software Foundation; either version 2 of
-#  the License, or (at your option) any later version.
-#                http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-import collections
+from collections import namedtuple
 import operator
 
 from sage.combinat.finite_state_machine import Automaton, Transducer
@@ -96,7 +97,7 @@ from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
 
 
-class AutomatonGenerators(object):
+class AutomatonGenerators:
     r"""
     A collection of constructors for several common automata.
 
@@ -148,7 +149,6 @@ class AutomatonGenerators(object):
                          initial_states=[z],
                          final_states=[o])
 
-
     def AnyWord(self, input_alphabet):
         r"""
         Return an automaton recognizing any word of the given
@@ -192,7 +192,6 @@ class AutomatonGenerators(object):
                          initial_states=[z],
                          final_states=[z])
 
-
     def EmptyWord(self, input_alphabet=None):
         r"""
         Return an automaton recognizing the empty word.
@@ -223,7 +222,6 @@ class AutomatonGenerators(object):
         return Automaton(initial_states=[z],
                          final_states=[z],
                          input_alphabet=input_alphabet)
-
 
     def Word(self, word, input_alphabet=None):
         r"""
@@ -278,12 +276,11 @@ class AutomatonGenerators(object):
         letters = list(word)
         length = len(letters)
         from sage.rings.integer_ring import ZZ
-        return Automaton([(ZZ(i), ZZ(i+1), letter)
+        return Automaton([(ZZ(i), ZZ(i + 1), letter)
                           for i, letter in enumerate(letters)],
                          initial_states=[ZZ(0)],
                          final_states=[ZZ(length)],
                          input_alphabet=input_alphabet)
-
 
     def ContainsWord(self, word, input_alphabet):
         r"""
@@ -349,7 +346,7 @@ class AutomatonGenerators(object):
             final_states=[word])
 
 
-class TransducerGenerators(object):
+class TransducerGenerators:
     r"""
     A collection of constructors for several common transducers.
 
@@ -369,6 +366,7 @@ class TransducerGenerators(object):
     - :meth:`~CountSubblockOccurrences`
     - :meth:`~Wait`
     - :meth:`~GrayCode`
+    - :meth:`~Recursion`
     """
 
     def Identity(self, input_alphabet):
@@ -409,9 +407,8 @@ class TransducerGenerators(object):
             initial_states=[0],
             final_states=[0])
 
-
     def CountSubblockOccurrences(self, block, input_alphabet):
-        """
+        r"""
         Returns a transducer counting the number of (possibly
         overlapping) occurrences of a block in the input.
 
@@ -530,7 +527,6 @@ class TransducerGenerators(object):
             s.is_final = True
         return T
 
-
     def Wait(self, input_alphabet, threshold=1):
         r"""
         Writes ``False`` until reading the ``threshold``-th occurrence
@@ -574,7 +570,6 @@ class TransducerGenerators(object):
 
         return T
 
-
     def map(self, f, input_alphabet):
         r"""
         Return a transducer which realizes a function
@@ -591,7 +586,7 @@ class TransducerGenerators(object):
         A transducer mapping an input letter `x` to
         `f(x)`.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following binary transducer realizes component-wise
         absolute value (this transducer is also available as :meth:`.abs`)::
@@ -620,7 +615,6 @@ class TransducerGenerators(object):
                           initial_states=[0],
                           final_states=[0])
 
-
     def operator(self, operator, input_alphabet, number_of_operands=2):
         r"""
         Returns a transducer which realizes an operation
@@ -646,7 +640,7 @@ class TransducerGenerators(object):
         The input alphabet of the generated transducer is the Cartesian
         product of ``number_of_operands`` copies of ``input_alphabet``.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following binary transducer realizes component-wise
         addition (this transducer is also available as :meth:`.add`)::
@@ -703,9 +697,8 @@ class TransducerGenerators(object):
                           initial_states=[0],
                           final_states=[0])
 
-
     def all(self, input_alphabet, number_of_operands=2):
-        """
+        r"""
         Returns a transducer which realizes logical ``and`` over the given
         input alphabet.
 
@@ -725,7 +718,7 @@ class TransducerGenerators(object):
         The input alphabet of the generated transducer is the Cartesian
         product of ``number_of_operands`` copies of ``input_alphabet``.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following transducer realizes letter-wise
         logical ``and``::
@@ -755,9 +748,8 @@ class TransducerGenerators(object):
         return self.operator(lambda *args: all(args),
                              input_alphabet, number_of_operands)
 
-
     def any(self, input_alphabet, number_of_operands=2):
-        """
+        r"""
         Returns a transducer which realizes logical ``or`` over the given
         input alphabet.
 
@@ -777,7 +769,7 @@ class TransducerGenerators(object):
         The input alphabet of the generated transducer is the Cartesian
         product of ``number_of_operands`` copies of ``input_alphabet``.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following transducer realizes letter-wise
         logical ``or``::
@@ -807,9 +799,8 @@ class TransducerGenerators(object):
         return self.operator(lambda *args: any(args),
                              input_alphabet, number_of_operands)
 
-
     def add(self, input_alphabet, number_of_operands=2):
-        """
+        r"""
         Returns a transducer which realizes addition on pairs over the
         given input alphabet.
 
@@ -829,7 +820,7 @@ class TransducerGenerators(object):
         The input alphabet of the generated transducer is the Cartesian
         product of ``number_of_operands`` copies of ``input_alphabet``.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following transducer realizes letter-wise
         addition::
@@ -862,9 +853,8 @@ class TransducerGenerators(object):
                              input_alphabet,
                              number_of_operands=number_of_operands)
 
-
     def sub(self, input_alphabet):
-        """
+        r"""
         Returns a transducer which realizes subtraction on pairs over
         the given input alphabet.
 
@@ -880,7 +870,7 @@ class TransducerGenerators(object):
         The input alphabet of the generated transducer is the Cartesian
         product of two copies of ``input_alphabet``.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following transducer realizes letter-wise
         subtraction::
@@ -901,7 +891,6 @@ class TransducerGenerators(object):
             [0, -1, 1, 0]
         """
         return self.operator(operator.sub, input_alphabet)
-
 
     def weight(self, input_alphabet, zero=0):
         r"""
@@ -969,9 +958,8 @@ class TransducerGenerators(object):
                           initial_states=[0],
                           final_states=[0])
 
-
     def abs(self, input_alphabet):
-        """
+        r"""
         Returns a transducer which realizes the letter-wise
         absolute value of an input word over the given input alphabet.
 
@@ -984,7 +972,7 @@ class TransducerGenerators(object):
         A transducer mapping `i_0\ldots i_k`
         to `|i_0|\ldots |i_k|`.
 
-        EXAMPLE:
+        EXAMPLES:
 
         The following transducer realizes letter-wise
         absolute value::
@@ -1004,7 +992,6 @@ class TransducerGenerators(object):
         """
         return self.map(abs, input_alphabet)
 
-
     def GrayCode(self):
         """
         Returns a transducer converting the standard binary
@@ -1020,12 +1007,12 @@ class TransducerGenerators(object):
 
         Cf. the :wikipedia:`Gray_code` for a description of the Gray code.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: G = transducers.GrayCode()
             sage: G
             Transducer with 3 states
-            sage: for v in srange(0, 10):
+            sage: for v in srange(10):
             ....:     print("{} {}".format(v, G(v.digits(base=2))))
             0 []
             1 [1]
@@ -1057,10 +1044,7 @@ class TransducerGenerators(object):
                           final_states=[1],
                           with_final_word_out=[0])
 
-
-    RecursionRule = collections.namedtuple('RecursionRule',
-                                           ['K', 'r', 'k', 's', 't'])
-
+    RecursionRule = namedtuple('RecursionRule', ['K', 'r', 'k', 's', 't'])
 
     def _parse_recursion_equation_(self, equation, base, function, var,
                                    word_function=None, output_rings=[ZZ, QQ]):
@@ -1093,8 +1077,9 @@ class TransducerGenerators(object):
         A ``RecursionRule`` if the equation is of the first form
         described above and a dictionary ``{r: [t]}`` otherwise.
 
-        EXAMPLE::
+        EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: var('n')
             n
             sage: function('f')
@@ -1112,14 +1097,14 @@ class TransducerGenerators(object):
 
             The following tests check that the equations are well-formed::
 
-                sage: transducers._parse_recursion_equation_(f(4*n + 1), 2, f, n)
+                sage: transducers._parse_recursion_equation_(f(4*n + 1), 2, f, n)       # needs sage.symbolic
                 Traceback (most recent call last):
                 ...
                 ValueError: f(4*n + 1) is not an equation with ==.
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(n) + 1 == f(2*n),
+                sage: transducers._parse_recursion_equation_(f(n) + 1 == f(2*n),        # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1127,7 +1112,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n, 5) == 3,
+                sage: transducers._parse_recursion_equation_(f(2*n, 5) == 3,            # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1135,15 +1120,15 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(1/n) == f(n) + 3,
+                sage: transducers._parse_recursion_equation_(f(1/n) == f(n) + 3,        # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
-                ....:
+                ...
                 ValueError: 1/n is not a polynomial in n.
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(n^2 + 5) == 3,
+                sage: transducers._parse_recursion_equation_(f(n^2 + 5) == 3,           # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1151,7 +1136,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(3*n + 5) == f(n) + 7,
+                sage: transducers._parse_recursion_equation_(f(3*n + 5) == f(n) + 7,    # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1159,7 +1144,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(n + 5) == f(n) + 7,
+                sage: transducers._parse_recursion_equation_(f(n + 5) == f(n) + 7,      # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1167,7 +1152,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(
+                sage: transducers._parse_recursion_equation_(                           # needs sage.symbolic
                 ....:     f(2*n + 1) == f(n + 1) + f(n) + 2,
                 ....:     2, f, n)
                 Traceback (most recent call last):
@@ -1177,7 +1162,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == sin(n) + 2,
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == sin(n) + 2,  # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1186,7 +1171,8 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(n) + n + 2,
+                sage: transducers._parse_recursion_equation_(                           # needs sage.symbolic
+                ....:     f(2*n + 1) == f(n) + n + 2,
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1194,7 +1180,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == sin(n),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == sin(n),      # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1202,7 +1188,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(n, 2),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(n, 2),     # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1210,7 +1196,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(1/n),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(1/n),      # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1218,7 +1204,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(n^2 + 5),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(n^2 + 5),  # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1226,7 +1212,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(3*n + 5),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(3*n + 5),  # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1234,7 +1220,8 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f((1/2)*n + 5),
+                sage: transducers._parse_recursion_equation_(                           # needs sage.symbolic
+                ....:     f(2*n + 1) == f((1/2)*n + 5),
                 ....:     QQ(2), f, n)
                 Traceback (most recent call last):
                 ...
@@ -1242,7 +1229,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(2*n + 5),
+                sage: transducers._parse_recursion_equation_(f(2*n + 1) == f(2*n + 5),  # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1255,9 +1242,11 @@ class TransducerGenerators(object):
 
         def convert_output(output):
             for ring in output_rings:
-                if output in ring:
+                try:
                     return ring(output)
-            return(output)
+                except (ValueError, TypeError):
+                    pass
+            return output
 
         def to_list(output):
             if output == 0:
@@ -1285,7 +1274,7 @@ class TransducerGenerators(object):
 
         try:
             polynomial_left = base_ring[var](left_side.operands()[0])
-        except:
+        except Exception:
             raise ValueError("%s is not a polynomial "
                              "in %s." % (left_side.operands()[0], var))
         if polynomial_left in base_ring and is_scalar(right_side):
@@ -1296,7 +1285,10 @@ class TransducerGenerators(object):
                              % (polynomial_left,))
 
         [r, base_power_K] = list(polynomial_left)
-        K = log(base_power_K, base=base)
+        try:
+            K = log(base_power_K, base=base)
+        except RuntimeError:
+            K = 1
         try:
             K = K.simplify()
         except AttributeError:
@@ -1337,7 +1329,7 @@ class TransducerGenerators(object):
 
         try:
             polynomial_right = base_ring[var](next_function.operands()[0])
-        except:
+        except Exception:
             raise ValueError("%s is not a polynomial in %s."
                              % (next_function.operands()[0], var))
         if polynomial_right.degree() != 1:
@@ -1364,13 +1356,12 @@ class TransducerGenerators(object):
         assert equation == parsed_equation, \
             "Parsing of %s failed for unknown reasons." % (equation,)
 
-        rule = self.RecursionRule(K=K,r=r, k=k, s=s, t=to_list(t))
+        rule = self.RecursionRule(K=K, r=r, k=k, s=s, t=to_list(t))
         return rule
-
 
     def Recursion(self, recursions, base, function=None, var=None,
                   input_alphabet=None, word_function=None,
-                  is_zero=None,  output_rings=[ZZ, QQ]):
+                  is_zero=None, output_rings=[ZZ, QQ]):
         r"""
         Return a transducer realizing the given recursion when reading
         the digit expansion with base ``base``.
@@ -1396,7 +1387,7 @@ class TransducerGenerators(object):
 
         - ``base`` -- base of the digit expansion.
 
-        - ``function`` -- symbolic function ``f`` occuring in the
+        - ``function`` -- symbolic function ``f`` occurring in the
           recursions.
 
         - ``var`` -- symbolic variable.
@@ -1444,6 +1435,7 @@ class TransducerGenerators(object):
         -   The following example computes the Hamming weight of the
             ternary expansion of integers. ::
 
+                sage: # needs sage.symbolic
                 sage: function('f')
                 f
                 sage: var('n')
@@ -1462,6 +1454,7 @@ class TransducerGenerators(object):
             To illustrate what this transducer does, we consider the
             example of `n=601`::
 
+                sage: # needs sage.symbolic
                 sage: ternary_expansion = 601.digits(base=3)
                 sage: ternary_expansion
                 [1, 2, 0, 1, 1, 2]
@@ -1478,6 +1471,7 @@ class TransducerGenerators(object):
         -   The following example computes the Hamming weight of the
             non-adjacent form, cf. the :wikipedia:`Non-adjacent_form`. ::
 
+                sage: # needs sage.symbolic
                 sage: function('f')
                 f
                 sage: var('n')
@@ -1517,9 +1511,9 @@ class TransducerGenerators(object):
                 sage: binary_expansion = 29.digits(base=2)
                 sage: binary_expansion
                 [1, 0, 1, 1, 1]
-                sage: T(binary_expansion)
+                sage: T(binary_expansion)                                               # needs sage.symbolic
                 [1, 1, 1]
-                sage: sum(T(binary_expansion))
+                sage: sum(T(binary_expansion))                                          # needs sage.symbolic
                 3
 
             Indeed, the given non-adjacent form has three non-zero
@@ -1545,6 +1539,7 @@ class TransducerGenerators(object):
             the point of view of this method---is a contradicting recursion.
             We override this by the parameter ``is_zero``. ::
 
+                sage: # needs sage.symbolic
                 sage: var('n')
                 n
                 sage: function('f w')
@@ -1572,7 +1567,7 @@ class TransducerGenerators(object):
 
             We again consider the example of `n=29`::
 
-                sage: T(29.digits(base=2))
+                sage: T(29.digits(base=2))                                              # needs sage.symbolic
                 [1, 0, -1, 0, 0, 1, 0]
 
             The same transducer can also be entered bypassing the
@@ -1586,12 +1581,13 @@ class TransducerGenerators(object):
                 ....:       (0, [])],
                 ....:       2,
                 ....:       is_zero=lambda x: sum(x).is_zero())
-                sage: TR == T
+                sage: TR == T                                                           # needs sage.symbolic
                 True
 
         -   Here is an artificial example where some of the `s` are
             negative::
 
+                sage: # needs sage.symbolic
                 sage: function('f')
                 f
                 sage: var('n')
@@ -1623,6 +1619,7 @@ class TransducerGenerators(object):
         -   Abelian complexity of the paperfolding sequence
             (cf. [HKP2015]_, Example 2.8)::
 
+                sage: # needs sage.symbolic
                 sage: T = transducers.Recursion([
                 ....:     f(4*n) == f(2*n),
                 ....:     f(4*n+2) == f(2*n+1)+1,
@@ -1673,6 +1670,7 @@ class TransducerGenerators(object):
             parameter.  If no ``output_rings`` are specified, the
             output labels are converted into ``ZZ``::
 
+                sage: # needs sage.symbolic
                 sage: function('f')
                 f
                 sage: var('n')
@@ -1692,26 +1690,26 @@ class TransducerGenerators(object):
             In contrast, if ``output_rings`` is set to the empty list, the
             results are not converted::
 
-                sage: T = transducers.Recursion([
+                sage: T = transducers.Recursion([                                       # needs sage.symbolic
                 ....:     f(2*n + 1) == f(n) + 1,
                 ....:     f(2*n) == f(n),
                 ....:     f(0) == 2],
                 ....:     2, f, n, output_rings=[])
-                sage: for t in T.transitions():
+                sage: for t in T.transitions():                                         # needs sage.symbolic
                 ....:     print([x.parent() for x in t.word_out])
                 []
                 [Symbolic Ring]
-                sage: [x.parent() for x in T.states()[0].final_word_out]
+                sage: [x.parent() for x in T.states()[0].final_word_out]                # needs sage.symbolic
                 [Symbolic Ring]
 
             Finally, we use a somewhat questionable conversion::
 
-                sage: T = transducers.Recursion([
+                sage: T = transducers.Recursion([                                       # needs sage.rings.finite_rings sage.symbolic
                 ....:     f(2*n + 1) == f(n) + 1,
                 ....:     f(2*n) == f(n),
                 ....:     f(0) == 0],
                 ....:     2, f, n, output_rings=[GF(5)])
-                sage: for t in T.transitions():
+                sage: for t in T.transitions():                                         # needs sage.rings.finite_rings sage.symbolic
                 ....:     print([x.parent() for x in t.word_out])
                 []
                 [Finite Field of size 5]
@@ -1738,11 +1736,11 @@ class TransducerGenerators(object):
             The following tests fail due to missing or superfluous recursions
             or initial conditions. ::
 
-                sage: var('n')
+                sage: var('n')                                                          # needs sage.symbolic
                 n
-                sage: function('f')
+                sage: function('f')                                                     # needs sage.symbolic
                 f
-                sage: transducers.Recursion([f(2*n) == f(n)],
+                sage: transducers.Recursion([f(2*n) == f(n)],                           # needs sage.symbolic
                 ....:     2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1751,9 +1749,9 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers.Recursion([f(2*n + 1) == f(n),
+                sage: transducers.Recursion([f(2*n + 1) == f(n),                        # needs sage.symbolic
                 ....:                        f(4*n) == f(2*n) + 1,
-                ....:                        f(2*n) == f(n) +1],
+                ....:                        f(2*n) == f(n) + 1],
                 ....:                       2, f, n)
                 Traceback (most recent call last):
                 ...
@@ -1761,7 +1759,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers.Recursion([f(2*n + 1) == f(n) + 1,
+                sage: transducers.Recursion([f(2*n + 1) == f(n) + 1,                    # needs sage.symbolic
                 ....:                        f(2*n) == f(n),
                 ....:                        f(0) == 0,
                 ....:                        f(42) == 42], 2, f, n)
@@ -1771,7 +1769,7 @@ class TransducerGenerators(object):
 
             ::
 
-                sage: transducers.Recursion([f(2*n + 1) == f(n) + 1,
+                sage: transducers.Recursion([f(2*n + 1) == f(n) + 1,                    # needs sage.symbolic
                 ....:                        f(2*n) == f(n - 2) + 4,
                 ....:                        f(0) == 0], 2, f, n)
                 Traceback (most recent call last):
@@ -1781,7 +1779,7 @@ class TransducerGenerators(object):
             Here is an example of a transducer with a conflicting rule
             (it cannot hold for `n = 0`)::
 
-                sage: T = transducers.Recursion([
+                sage: T = transducers.Recursion([                                       # needs sage.symbolic
                 ....:     f(2*n + 1) == f(n - 1),
                 ....:     f(2*n) == f(n) + 1,
                 ....:     f(1) == 1,
@@ -1795,7 +1793,7 @@ class TransducerGenerators(object):
 
         if is_zero is None:
             is_zero = lambda x: not x
-        RuleRight = collections.namedtuple('Rule', ['k', 's', 't'])
+        RuleRight = namedtuple('Rule', ['k', 's', 't'])
         initial_values = {}
         rules = []
         if input_alphabet is None and base in ZZ:
@@ -1827,11 +1825,11 @@ class TransducerGenerators(object):
 
         for given_rule in rules:
             q, remainder = given_rule.r.quo_rem(base**given_rule.K)
-            rule=self.RecursionRule(K=given_rule.K,
-                                    r=remainder,
-                                    k=given_rule.k,
-                                    s=given_rule.s - base**given_rule.k*q,
-                                    t=given_rule.t)
+            rule = self.RecursionRule(K=given_rule.K,
+                                      r=remainder,
+                                      k=given_rule.k,
+                                      s=given_rule.s - base**given_rule.k * q,
+                                      t=given_rule.t)
             for m in range(max_K - rule.K + 1):
                 for ell in range(base**m):
                     R = rule.r + base**rule.K * ell
@@ -1941,7 +1939,7 @@ class TransducerGenerators(object):
                        input_alphabet=input_alphabet)
 
         def edge_recursion_digraph(n):
-            """
+            r"""
             Compute the list of outgoing edges of ``n`` in the recursion digraph.
 
             INPUT:
@@ -1977,7 +1975,7 @@ class TransducerGenerators(object):
              if carry >= 0},
             multiedges=False)
 
-        initial_values_set = set(initial_values.iterkeys())
+        initial_values_set = set(initial_values)
 
         missing_initial_values = required_initial_values.difference(
             initial_values_set)
@@ -1985,7 +1983,7 @@ class TransducerGenerators(object):
         if missing_initial_values:
             raise ValueError(
                 "Missing initial values for %s." %
-                sorted(list(missing_initial_values)))
+                sorted(missing_initial_values))
 
         for cycle in recursion_digraph.all_simple_cycles():
             assert cycle[0] is cycle[-1]
@@ -2000,9 +1998,8 @@ class TransducerGenerators(object):
                     "Too many initial conditions, only give one of %s." %
                     cycle[1:])
             required_initial_values.update(intersection)
-            output_sum = sum([edge[2]
-                              for edge in recursion_digraph.\
-                                  outgoing_edge_iterator(cycle[1:])],
+            output_sum = sum([e[2]
+                for e in recursion_digraph.outgoing_edge_iterator(cycle[1:])],
                              [])
             if not is_zero(output_sum):
                 raise ValueError(
@@ -2015,7 +2012,7 @@ class TransducerGenerators(object):
         if superfluous_initial_values:
             raise ValueError(
                 "Superfluous initial values for %s." %
-                sorted(list(superfluous_initial_values)))
+                sorted(superfluous_initial_values))
 
         for state in T.iter_states():
             state.is_final = True

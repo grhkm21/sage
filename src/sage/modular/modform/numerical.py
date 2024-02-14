@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.libs.flint
 """
 Numerical computation of newforms
 """
@@ -12,20 +13,25 @@ Numerical computation of newforms
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
+from sage.rings.fast_arith       import prime_range
+from sage.matrix.constructor     import matrix
+from sage.misc.verbose           import verbose
+from sage.misc.cachefunc         import cached_method
+from sage.misc.prandom           import randint
+from sage.modular.arithgroup.all import Gamma0
+from sage.modular.modsym.all     import ModularSymbols
+from sage.modules.free_module_element import free_module_element as vector
+from sage.rings.complex_double   import CDF
+from sage.rings.integer          import Integer
+from sage.rings.rational_field   import QQ
+from sage.structure.richcmp      import richcmp_method, richcmp
 from sage.structure.sage_object  import SageObject
 from sage.structure.sequence     import Sequence
-from sage.modular.modsym.all     import ModularSymbols
-from sage.modular.arithgroup.all import Gamma0
-from sage.modules.all            import vector
-from sage.misc.misc              import verbose
-from sage.rings.all import CDF, Integer, QQ
-from sage.arith.all import next_prime, prime_range
-from sage.misc.prandom           import randint
-from sage.matrix.constructor     import matrix
 
 # This variable controls importing the SciPy library sparingly
-scipy=None
+scipy = None
 
+@richcmp_method
 class NumericalEigenforms(SageObject):
     """
     numerical_eigenforms(group, weight=2, eps=1e-20, delta=1e-2, tp=[2,3,5])
@@ -50,7 +56,7 @@ class NumericalEigenforms(SageObject):
 
     A numerical eigenforms object, with the following useful methods:
 
-    - :meth:`ap` - return all eigenvalues of $T_p$
+    - :meth:`ap` - return all eigenvalues of `T_p`
 
     - :meth:`eigenvalues` - list of eigenvalues corresponding
       to the given list of primes, e.g.,::
@@ -68,24 +74,24 @@ class NumericalEigenforms(SageObject):
         sage: n = numerical_eigenforms(23)
         sage: n == loads(dumps(n))
         True
-        sage: n.ap(2)  # rel tol 2e-15
-        [3.0, 0.6180339887498941, -1.618033988749895]
-        sage: n.systems_of_eigenvalues(7)  # rel tol 2e-15
+        sage: n.ap(2)  # abs tol 1e-12
+        [3.0, -1.6180339887498947, 0.6180339887498968]
+        sage: n.systems_of_eigenvalues(7)  # abs tol 2e-12
         [
-        [-1.618033988749895, 2.23606797749979, -3.23606797749979],
-        [0.6180339887498941, -2.2360679774997902, 1.2360679774997883],
+        [-1.6180339887498947, 2.2360679774997894, -3.2360679774997894],
+        [0.6180339887498968, -2.236067977499788, 1.2360679774997936],
         [3.0, 4.0, 6.0]
         ]
-        sage: n.systems_of_abs(7)
+        sage: n.systems_of_abs(7)  # abs tol 2e-12
         [
-        [0.6180339887..., 2.236067977..., 1.236067977...],
-        [1.6180339887..., 2.236067977..., 3.236067977...],
+        [0.6180339887498943, 2.2360679774997894, 1.2360679774997887],
+        [1.6180339887498947, 2.23606797749979, 3.2360679774997894],
         [3.0, 4.0, 6.0]
         ]
-        sage: n.eigenvalues([2,3,5])  # rel tol 2e-15
-        [[3.0, 0.6180339887498941, -1.618033988749895],
-         [4.0, -2.2360679774997902, 2.23606797749979],
-         [6.0, 1.2360679774997883, -3.23606797749979]]
+        sage: n.eigenvalues([2,3,5])  # rel tol 2e-12
+        [[3.0, -1.6180339887498947, 0.6180339887498968],
+         [4.0, 2.2360679774997894, -2.236067977499788],
+         [6.0, -3.2360679774997894, 1.2360679774997936]]
     """
     def __init__(self, group, weight=2, eps=1e-20,
                  delta=1e-2, tp=[2,3,5]):
@@ -97,9 +103,9 @@ class NumericalEigenforms(SageObject):
             sage: numerical_eigenforms(61) # indirect doctest
             Numerical Hecke eigenvalues for Congruence Subgroup Gamma0(61) of weight 2
         """
-        if isinstance(group, (int, long, Integer)):
+        if isinstance(group, (int, Integer)):
             group = Gamma0(Integer(group))
-        self._group  = group
+        self._group = group
         self._weight = Integer(weight)
         self._tp = tp
         if self._weight < 2:
@@ -107,24 +113,22 @@ class NumericalEigenforms(SageObject):
         self._eps = eps
         self._delta = delta
 
-    def __cmp__(self, other):
+    def __richcmp__(self, other, op):
         """
-        Compare two spaces of numerical eigenforms. Currently
-        returns 0 if they come from the same space of modular
-        symbols, and -1 otherwise.
+        Compare two spaces of numerical eigenforms.
+
+        They are considered equal if and only if they come from the
+        same space of modular symbols.
 
         EXAMPLES::
 
             sage: n = numerical_eigenforms(23)
-            sage: n.__cmp__(loads(dumps(n)))
-            0
+            sage: n == loads(dumps(n))
+            True
         """
-        if not isinstance( other, NumericalEigenforms ):
-            raise ValueError("%s is not a space of numerical eigenforms"%other)
-        if self.modular_symbols() == other.modular_symbols():
-            return 0
-        else:
-            return -1
+        if not isinstance(other, NumericalEigenforms):
+            return NotImplemented
+        return richcmp(self.modular_symbols(), other.modular_symbols(), op)
 
     def level(self):
         """
@@ -160,9 +164,10 @@ class NumericalEigenforms(SageObject):
             sage: n._repr_()
             'Numerical Hecke eigenvalues for Congruence Subgroup Gamma0(61) of weight 2'
         """
-        return "Numerical Hecke eigenvalues for %s of weight %s"%(
+        return "Numerical Hecke eigenvalues for %s of weight %s" % (
             self._group, self._weight)
 
+    @cached_method
     def modular_symbols(self):
         """
         Return the space of modular symbols used for computing this
@@ -173,16 +178,13 @@ class NumericalEigenforms(SageObject):
             sage: n = numerical_eigenforms(61) ; n.modular_symbols()
             Modular Symbols space of dimension 5 for Gamma_0(61) of weight 2 with sign 1 over Rational Field
         """
-        try:
-            return self.__modular_symbols
-        except AttributeError:
-            M = ModularSymbols(self._group,
-                    self._weight, sign=1)
-            if M.base_ring() != QQ:
-                raise ValueError("modular forms space must be defined over QQ")
-            self.__modular_symbols = M
-            return M
+        M = ModularSymbols(self._group,
+                self._weight, sign=1)
+        if M.base_ring() != QQ:
+            raise ValueError("modular forms space must be defined over QQ")
+        return M
 
+    @cached_method
     def _eigenvectors(self):
         r"""
         Find numerical approximations to simultaneous eigenvectors in
@@ -206,24 +208,20 @@ class NumericalEigenforms(SageObject):
         then they should compare as equal, causing both eigenvectors
         to be absent from the matrix returned.  The remaining eigenvalues
         (ostensibly unique) are visible in the test, which should be
-        indepedent of which eigenvectors are returned, but it does presume
+        independent of which eigenvectors are returned, but it does presume
         an ordering of these eigenvectors for the test to succeed.
-        This exercises a correction in Trac 8018. ::
+        This exercises a correction in :trac:`8018`. ::
 
             sage: n = numerical_eigenforms(61, eps=2.0)
             sage: evectors = n._eigenvectors()
-            sage: evalues = diagonal_matrix(CDF, [-283.0, 108.522012456, 142.0])
-            sage: diff = n._hecke_matrix*evectors - evectors*evalues
-            sage: sum([abs(diff[i,j]) for i in range(5) for j in range(3)]) < 1.0e-9
+            sage: evalues = [(matrix((n._hecke_matrix*evectors).column(i))/matrix(evectors.column(i)))[0, 0]
+            ....:            for i in range(evectors.ncols())]
+            sage: diff = n._hecke_matrix*evectors - evectors*diagonal_matrix(evalues)
+            sage: sum(abs(a) for a in diff.list()) < 1.0e-9
             True
         """
-        try:
-            return self.__eigenvectors
-        except AttributeError:
-            pass
         verbose('Finding eigenvector basis')
         M = self.modular_symbols()
-        N = self.level()
 
         tp = self._tp
         p = tp[0]
@@ -254,9 +252,9 @@ class NumericalEigenforms(SageObject):
                     uniq = False
             if uniq:
                 w.append(i)
-        self.__eigenvectors = B.matrix_from_columns(w)
-        return self.__eigenvectors
+        return B.matrix_from_columns(w)
 
+    @cached_method
     def _easy_vector(self):
         """
         Return a very sparse vector v such that v times the eigenvector matrix
@@ -284,17 +282,11 @@ class NumericalEigenforms(SageObject):
             sage: n._easy_vector()                 # slightly random output
             (0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         """
-        try:
-            return self.__easy_vector
-        except AttributeError:
-            pass
         E = self._eigenvectors()
         delta = self._delta
         x = (CDF**E.nrows()).zero_vector()
         if E.nrows() == 0:
             return x
-
-
 
         def best_row(M):
             """
@@ -304,7 +296,7 @@ class NumericalEigenforms(SageObject):
             EXAMPLES::
 
                 sage: numerical_eigenforms(61)._easy_vector() # indirect doctest
-                (1.0, 1.0, 0.0, 0.0, 0.0)
+                (1.0, 0.0, 0.0, 0.0, 1.0)
             """
             R = M.rows()
             v = [len(support(r, delta)) for r in R]
@@ -318,18 +310,19 @@ class NumericalEigenforms(SageObject):
 
         while True:
             s = set(support(e, delta))
-            zp = [i for i in range(e.degree()) if not i in s]
-            if len(zp) == 0:
+            zp = [j for j in range(e.degree()) if j not in s]
+            if not zp:
                 break
             C = E.matrix_from_columns(zp)
             # best row
             i, f = best_row(C)
             x[i] += 1   # simplistic
-            e = x*E
+            e = x * E
 
         self.__easy_vector = x
         return x
 
+    @cached_method
     def _eigendata(self):
         """
         Return all eigendata for self._easy_vector().
@@ -339,13 +332,10 @@ class NumericalEigenforms(SageObject):
             sage: numerical_eigenforms(61)._eigendata() # random order
             ((1.0, 0.668205013164, 0.219198805797, 0.49263343893, 0.707106781187), (1.0, 1.49654668896, 4.5620686498, 2.02990686579, 1.41421356237), [0, 1], (1.0, 1.0))
         """
-        try:
-            return self.__eigendata
-        except AttributeError:
-            pass
         x = self._easy_vector()
 
         B = self._eigenvectors()
+
         def phi(y):
             """
             Take coefficients and a basis, and return that
@@ -368,6 +358,7 @@ class NumericalEigenforms(SageObject):
         self.__eigendata = (phi_x, phi_x_inv, nzp, x_nzp)
         return self.__eigendata
 
+    @cached_method
     def ap(self, p):
         """
         Return a list of the eigenvalues of the Hecke operator `T_p`
@@ -399,15 +390,7 @@ class NumericalEigenforms(SageObject):
         p = Integer(p)
         if not p.is_prime():
             raise ValueError("p must be a prime")
-        try:
-            return self._ap[p]
-        except AttributeError:
-            self._ap = {}
-        except KeyError:
-            pass
-        a = Sequence(self.eigenvalues([p])[0], immutable=True)
-        self._ap[p] = a
-        return a
+        return Sequence(self.eigenvalues([p])[0], immutable=True)
 
     def eigenvalues(self, primes):
         """
@@ -426,7 +409,7 @@ class NumericalEigenforms(SageObject):
         EXAMPLES::
 
             sage: n = numerical_eigenforms(1,12)
-            sage: n.eigenvalues([3,5,13])  # rel tol 2e-10
+            sage: n.eigenvalues([3,5,13])  # rel tol 2.4e-10
             [[177148.0, 252.00000000001896], [48828126.0, 4830.000000001376], [1792160394038.0, -577737.9999898539]]
         """
         primes = [Integer(p) for p in primes]
@@ -435,6 +418,7 @@ class NumericalEigenforms(SageObject):
                 raise ValueError('each element of primes must be prime.')
         phi_x, phi_x_inv, nzp, x_nzp = self._eigendata()
         B = self._eigenvectors()
+
         def phi(y):
             """
             Take coefficients and a basis, and return that
@@ -443,7 +427,7 @@ class NumericalEigenforms(SageObject):
             EXAMPLES::
 
                 sage: n = numerical_eigenforms(1,12)  # indirect doctest
-                sage: n.eigenvalues([3,5,13])  # rel tol 2e-10
+                sage: n.eigenvalues([3,5,13])  # rel tol 2.4e-10
                 [[177148.0, 252.00000000001896], [48828126.0, 4830.000000001376], [1792160394038.0, -577737.9999898539]]
             """
             return y.element() * B
@@ -463,7 +447,7 @@ class NumericalEigenforms(SageObject):
 
         EXAMPLES::
 
-            sage: numerical_eigenforms(61).systems_of_eigenvalues(10)  # rel tol 6e-14
+            sage: numerical_eigenforms(61).systems_of_eigenvalues(10)  # rel tol 1e-9
             [
             [-1.4811943040920152, 0.8060634335253695, 3.1563251746586642, 0.6751308705666477],
             [-1.0, -2.0000000000000027, -3.000000000000003, 1.0000000000000044],
@@ -490,7 +474,7 @@ class NumericalEigenforms(SageObject):
 
         EXAMPLES::
 
-            sage: numerical_eigenforms(61).systems_of_abs(10)  # rel tol 6e-14
+            sage: numerical_eigenforms(61).systems_of_abs(10)  # rel tol 1e-9
             [
             [0.3111078174659775, 2.903211925911551, 2.525427560843529, 3.214319743377552],
             [1.0, 2.0000000000000027, 3.000000000000003, 1.0000000000000044],
@@ -521,10 +505,7 @@ def support(v, eps):
         []
 
         sage: sage.modular.modform.numerical.support( numerical_eigenforms(61)._easy_vector(), 0.5 )
-        [0, 1]
+        [0, 4]
 
     """
     return [i for i in range(v.degree()) if abs(v[i]) > eps]
-
-
-

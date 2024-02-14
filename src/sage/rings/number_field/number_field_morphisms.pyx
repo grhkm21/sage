@@ -1,11 +1,11 @@
+# sage.doctest: needs sage.rings.number_field
 r"""
 Embeddings into ambient fields
 
 This module provides classes to handle embeddings of number fields into ambient
 fields (generally `\RR` or `\CC`).
 """
-
-#*****************************************************************************
+# ****************************************************************************
 #      Copyright (C) 2008 Robert Bradshaw <robertwb@math.washington.edu>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -17,8 +17,8 @@ fields (generally `\RR` or `\CC`).
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 import sage.rings.complex_double
 
@@ -27,9 +27,7 @@ from sage.categories.morphism cimport Morphism
 from sage.categories.map cimport Map
 from sage.categories.pushout import pushout
 
-from sage.rings.real_mpfr import RealField, mpfr_prec_min
-from sage.rings.complex_field import ComplexField
-from sage.rings.real_lazy import RLF, CLF
+from sage.rings.real_lazy import RLF, CLF, LazyField, LazyAlgebraic
 
 
 cdef class NumberFieldEmbedding(Morphism):
@@ -58,14 +56,13 @@ cdef class NumberFieldEmbedding(Morphism):
             0.37003947505256... - 1.09112363597172*I
         """
         from sage.categories.homset import Hom
-        from sage.rings.real_lazy import LazyField, LazyAlgebraic
         Morphism.__init__(self, Hom(K, R))
         if isinstance(R, LazyField) and not isinstance(gen_embedding.parent(), LazyField):
             self._gen_image = LazyAlgebraic(R, K.polynomial(), gen_embedding, prec=0)
         else:
             self._gen_image = R(gen_embedding)
 
-    cdef dict _extra_slots(self, dict _slots):
+    cdef dict _extra_slots(self) noexcept:
         """
         A helper for pickling and copying.
 
@@ -92,10 +89,11 @@ cdef class NumberFieldEmbedding(Morphism):
             sage: g(a)^3
             2.00000000000000?
         """
-        _slots['_gen_image'] = self._gen_image
-        return Morphism._extra_slots(self, _slots)
+        slots = Morphism._extra_slots(self)
+        slots['_gen_image'] = self._gen_image
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         """
         A helper for unpickling and copying.
 
@@ -121,7 +119,7 @@ cdef class NumberFieldEmbedding(Morphism):
         Morphism._update_slots(self, _slots)
         self._gen_image = _slots['_gen_image']
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         EXAMPLES::
 
@@ -139,7 +137,8 @@ cdef class NumberFieldEmbedding(Morphism):
         EXAMPLES::
 
             sage: from sage.rings.number_field.number_field_morphisms import NumberFieldEmbedding
-            sage: K.<a> = NumberField(x^2-2)
+            sage: x = polygen(ZZ, 'x')
+            sage: K.<a> = NumberField(x^2 - 2)
             sage: f = NumberFieldEmbedding(K, RLF, 1.4)
             sage: f # indirect doctest
             Generic morphism:
@@ -151,7 +150,7 @@ cdef class NumberFieldEmbedding(Morphism):
 
     def gen_image(self):
         """
-        Returns the image of the generator under this embedding.
+        Return the image of the generator under this embedding.
 
         EXAMPLES::
 
@@ -178,18 +177,19 @@ cdef class EmbeddedNumberFieldMorphism(NumberFieldEmbedding):
 
     EXAMPLES::
 
-        sage: K.<i> = NumberField(x^2+1,embedding=QQbar(I))
-        sage: L.<i> = NumberField(x^2+1,embedding=-QQbar(I))
+        sage: x = polygen(ZZ, 'x')
+        sage: K.<i> = NumberField(x^2 + 1, embedding=QQbar(I))
+        sage: L.<i> = NumberField(x^2 + 1, embedding=-QQbar(I))
         sage: from sage.rings.number_field.number_field_morphisms import EmbeddedNumberFieldMorphism
-        sage: EmbeddedNumberFieldMorphism(K,L,CDF)
+        sage: EmbeddedNumberFieldMorphism(K, L, CDF)
         Generic morphism:
-          From: Number Field in i with defining polynomial x^2 + 1
-          To:   Number Field in i with defining polynomial x^2 + 1
+          From: Number Field in i with defining polynomial x^2 + 1 with i = I
+          To:   Number Field in i with defining polynomial x^2 + 1 with i = -I
           Defn: i -> -i
-        sage: EmbeddedNumberFieldMorphism(K,L,QQbar)
+        sage: EmbeddedNumberFieldMorphism(K, L, QQbar)
         Generic morphism:
-          From: Number Field in i with defining polynomial x^2 + 1
-          To:   Number Field in i with defining polynomial x^2 + 1
+          From: Number Field in i with defining polynomial x^2 + 1 with i = I
+          To:   Number Field in i with defining polynomial x^2 + 1 with i = -I
           Defn: i -> -i
 
     """
@@ -200,8 +200,9 @@ cdef class EmbeddedNumberFieldMorphism(NumberFieldEmbedding):
         EXAMPLES::
 
             sage: from sage.rings.number_field.number_field_morphisms import EmbeddedNumberFieldMorphism
-            sage: K.<a> = NumberField(x^2-17, embedding=4.1)
-            sage: L.<b> = NumberField(x^4-17, embedding=2.0)
+            sage: x = polygen(ZZ, 'x')
+            sage: K.<a> = NumberField(x^2 - 17, embedding=4.1)
+            sage: L.<b> = NumberField(x^4 - 17, embedding=2.0)
             sage: f = EmbeddedNumberFieldMorphism(K, L)
             sage: f(a)
             b^2
@@ -226,7 +227,9 @@ cdef class EmbeddedNumberFieldMorphism(NumberFieldEmbedding):
             sage: F1.gen() + F2.gen()
             Traceback (most recent call last):
             ...
-            TypeError: unsupported operand parent(s) for '+': 'Number Field in a with defining polynomial x^3 + 2' and 'Number Field in a with defining polynomial x^3 + 2'
+            TypeError: unsupported operand parent(s) for +:
+            'Number Field in a with defining polynomial x^3 + 2 with a = -1.259921049894873?' and
+            'Number Field in a with defining polynomial x^3 + 2 with a = 0.6299605249474365? + 1.091123635971722?*I'
 
         The following was fixed to raise a ``TypeError`` in :trac:`15331`::
 
@@ -273,13 +276,14 @@ cdef class EmbeddedNumberFieldMorphism(NumberFieldEmbedding):
         EXAMPLES::
 
             sage: from sage.rings.number_field.number_field_morphisms import EmbeddedNumberFieldMorphism
-            sage: K.<a> = NumberField(x^2-700, embedding=25)
-            sage: L.<b> = NumberField(x^6-700, embedding=3)
+            sage: x = polygen(ZZ, 'x')
+            sage: K.<a> = NumberField(x^2 - 700, embedding=25)
+            sage: L.<b> = NumberField(x^6 - 700, embedding=3)
             sage: f = EmbeddedNumberFieldMorphism(K, L)
-            sage: f(2*a-1)
+            sage: f(2*a - 1)
             2*b^3 - 1
             sage: g = f.section()
-            sage: g(2*b^3-1)
+            sage: g(2*b^3 - 1)
             2*a - 1
         """
         return EmbeddedNumberFieldConversion(self.codomain(), self.domain(), self.ambient_field)
@@ -303,8 +307,9 @@ cdef class EmbeddedNumberFieldConversion(Map):
         EXAMPLES::
 
             sage: from sage.rings.number_field.number_field_morphisms import EmbeddedNumberFieldConversion
-            sage: K.<a> = NumberField(x^2-17, embedding=4.1)
-            sage: L.<b> = NumberField(x^4-17, embedding=2.0)
+            sage: x = polygen(ZZ, 'x')
+            sage: K.<a> = NumberField(x^2 - 17, embedding=4.1)
+            sage: L.<b> = NumberField(x^4 - 17, embedding=2.0)
             sage: f = EmbeddedNumberFieldConversion(K, L)
             sage: f(a)
             b^2
@@ -317,7 +322,7 @@ cdef class EmbeddedNumberFieldConversion(Map):
         self.ambient_field = ambient_field
         Map.__init__(self, K, L)
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         EXAMPLES::
 
@@ -339,14 +344,14 @@ cdef class EmbeddedNumberFieldConversion(Map):
         return gen_image
 
 
-cpdef matching_root(poly, target, ambient_field=None, margin=1, max_prec=None):
+cpdef matching_root(poly, target, ambient_field=None, margin=1, max_prec=None) noexcept:
     """
-    Given a polynomial and a target, this function chooses the root that
-    target best approximates as compared in ambient_field.
+    Given a polynomial and a ``target``, choose the root that
+    ``target`` best approximates as compared in ``ambient_field``.
 
-    If the parent of target is exact, the equality is required, otherwise
-    find closest root (with respect to the \code{abs} function) in the
-    ambient field to the target, and return the root of poly (if any) that
+    If the parent of ``target`` is exact, the equality is required, otherwise
+    find closest root (with respect to the ``abs`` function) in the
+    ambient field to the ``target``, and return the root of ``poly`` (if any) that
     approximates it best.
 
     EXAMPLES::
@@ -402,13 +407,13 @@ cpdef matching_root(poly, target, ambient_field=None, margin=1, max_prec=None):
             ambient_field = ambient_field.to_prec(ambient_field.prec() * 2)
 
 
-cpdef closest(target, values, margin=1):
+cpdef closest(target, values, margin=1) noexcept:
     """
-    This is a utility function that returns the item in values closest to
-    target (with respect to the \code{abs} function). If margin is greater
-    than 1, and x and y are the first and second closest elements to target,
-    then only return x if x is margin times closer to target than y, i.e.
-    margin * abs(target-x) < abs(target-y).
+    This is a utility function that returns the item in ``values`` closest to
+    target (with respect to the ``abs`` function). If ``margin`` is greater
+    than 1, and `x` and `y` are the first and second closest elements to ``target``,
+    then only return `x` if `x` is ``margin`` times closer to ``target`` than `y`, i.e.
+    ``margin * abs(target-x) < abs(target-y)``.
 
     TESTS::
 
@@ -439,19 +444,82 @@ cpdef closest(target, values, margin=1):
         else:
             return None
 
+def root_from_approx(f, a):
+    """
+    Return an exact root of the polynomial `f` closest to `a`.
+
+    INPUT:
+
+    - ``f`` -- polynomial with rational coefficients
+
+    - ``a`` -- element of a ring
+
+    OUTPUT:
+
+    A root of ``f`` in the parent of ``a`` or, if ``a`` is not already
+    an exact root of ``f``, in the corresponding lazy field.  The root
+    is taken to be closest to ``a`` among all roots of ``f``.
+
+    EXAMPLES::
+
+        sage: from sage.rings.number_field.number_field_morphisms import root_from_approx
+        sage: R.<x> = QQ[]
+
+        sage: root_from_approx(x^2 - 1, -1)
+        -1
+        sage: root_from_approx(x^2 - 2, 1)
+        1.414213562373095?
+        sage: root_from_approx(x^3 - x - 1, RR(1))
+        1.324717957244746?
+        sage: root_from_approx(x^3 - x - 1, CC.gen())
+        -0.6623589786223730? + 0.5622795120623013?*I
+
+        sage: root_from_approx(x^2 + 1, 0)
+        Traceback (most recent call last):
+        ...
+        ValueError: x^2 + 1 has no real roots
+        sage: root_from_approx(x^2 + 1, CC(0))
+        -1*I
+
+        sage: root_from_approx(x^2 - 2, sqrt(2))                                        # needs sage.symbolic
+        sqrt(2)
+        sage: root_from_approx(x^2 - 2, sqrt(3))                                        # needs sage.symbolic
+        Traceback (most recent call last):
+        ...
+        ValueError: sqrt(3) is not a root of x^2 - 2
+
+    """
+    P = a.parent()
+    if P.is_exact() and not f(a):
+        return a
+    elif P._is_real_numerical():
+        return LazyAlgebraic(RLF, f, a, prec=0)
+    elif P._is_numerical():
+        return LazyAlgebraic(CLF, f, a, prec=0)
+    # p-adic lazy, when implemented, would go here
+    else:
+        from sage.symbolic.relation import test_relation_maxima
+        rel = (f(a) != 0)
+        if (rel is True
+            or (not isinstance(rel, bool) and test_relation_maxima(rel))):
+            raise ValueError("{} is not a root of {}".format(a, f))
+        return a
+
 def create_embedding_from_approx(K, gen_image):
     """
-    This creates a morphism into from K into the parent
-    of gen_image, choosing as the image of the generator
-    the closest root to gen_image in its parent.
+    Return an embedding of ``K`` determined by ``gen_image``.
 
-    If gen_image is in a real or complex field, then
-    it creates an image into a lazy field.
+    The codomain of the embedding is the parent of ``gen_image`` or,
+    if ``gen_image`` is not already an exact root of the defining
+    polynomial of ``K``, the corresponding lazy field.  The embedding
+    maps the generator of ``K`` to a root of the defining polynomial
+    of ``K`` closest to ``gen_image``.
 
     EXAMPLES::
 
         sage: from sage.rings.number_field.number_field_morphisms import create_embedding_from_approx
-        sage: K.<a> = NumberField(x^3-x+1/10)
+        sage: x = polygen(ZZ, 'x')
+        sage: K.<a> = NumberField(x^3 - x + 1/10)
         sage: create_embedding_from_approx(K, 1)
         Generic morphism:
           From: Number Field in a with defining polynomial x^3 - x + 1/10
@@ -477,35 +545,20 @@ def create_embedding_from_approx(K, gen_image):
           To:   Number Field in b with defining polynomial x^6 - x^2 + 1/10
           Defn: a -> b^2
 
-    The if the embedding is exact, it must be valid::
+    If the embedding is exact, it must be valid::
 
         sage: create_embedding_from_approx(K, b)
         Traceback (most recent call last):
         ...
-        ValueError: b is not a root of the defining polynomial of Number Field in a with defining polynomial x^3 - x + 1/10
+        ValueError: b is not a root of x^3 - x + 1/10
     """
     if gen_image is None:
         return None
     elif isinstance(gen_image, Map):
         return gen_image
     elif isinstance(gen_image, Element):
-        f = K.defining_polynomial()
-        P = gen_image.parent()
-        if not P.is_exact() or f(gen_image) != 0:
-            RR = RealField(mpfr_prec_min())
-            CC = ComplexField(mpfr_prec_min())
-            if RR.has_coerce_map_from(P):
-                P = RLF
-            elif CC.has_coerce_map_from(P):
-                P = CLF
-            # padic lazy, when implemented, would go here
-            else:
-                from sage.symbolic.relation import test_relation_maxima
-                rel = (f(gen_image) != 0)
-                if (rel is True
-                or (not isinstance(rel, bool) and test_relation_maxima(rel))):
-                    raise ValueError("%s is not a root of the defining polynomial of %s" % (gen_image, K))
-        return NumberFieldEmbedding(K, P, gen_image)
+        x = root_from_approx(K.defining_polynomial(), gen_image)
+        return NumberFieldEmbedding(K, x.parent(), x)
     else:
         raise TypeError("Embedding (type %s) must be a morphism or element." % type(gen_image))
 
@@ -514,7 +567,7 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
     """
     Specialized class for converting cyclotomic field elements into a
     cyclotomic field of higher order. All the real work is done by
-    _lift_cyclotomic_element.
+    :meth:`_lift_cyclotomic_element`.
     """
 
     cdef ratio
@@ -563,7 +616,7 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
             -1
         """
         Morphism.__init__(self, K, L)
-        from number_field import NumberField_cyclotomic
+        from sage.rings.number_field.number_field import NumberField_cyclotomic
         if not isinstance(K, NumberField_cyclotomic) or not isinstance(L, NumberField_cyclotomic):
             raise TypeError("CyclotomicFieldEmbedding only valid for cyclotomic fields.")
         Kn = K._n()
@@ -573,7 +626,7 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
         self.ratio = L._log_gen(K.coerce_embedding()(K.gen()))
         self._gen_image = L.gen() ** self.ratio
 
-    cdef dict _extra_slots(self, dict _slots):
+    cdef dict _extra_slots(self) noexcept:
         """
         A helper for pickling and copying.
 
@@ -600,11 +653,11 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
             sage: g(cf6.0)
             zeta12^2
         """
-        _slots['_gen_image'] = self._gen_image
-        _slots['ratio'] = self.ratio
-        return Morphism._extra_slots(self, _slots)
+        slots = NumberFieldEmbedding._extra_slots(self)
+        slots['ratio'] = self.ratio
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         """
         A helper for unpickling and copying.
 
@@ -631,7 +684,7 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
         self._gen_image = _slots['_gen_image']
         self.ratio = _slots['ratio']
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         EXAMPLES::
 
@@ -645,3 +698,87 @@ cdef class CyclotomicFieldEmbedding(NumberFieldEmbedding):
             zeta21^6 + 3
         """
         return x._lift_cyclotomic_element(self.codomain(), False, self.ratio)
+
+    def section(self):
+        """
+        Return the section of ``self``.
+
+        EXAMPLES::
+
+            sage: from sage.rings.number_field.number_field_morphisms import CyclotomicFieldEmbedding
+            sage: K = CyclotomicField(7)
+            sage: L = CyclotomicField(21)
+            sage: f = CyclotomicFieldEmbedding(K, L)
+            sage: h = f.section()
+            sage: h(f(K.gen())) # indirect doctest
+            zeta7
+        """
+        return CyclotomicFieldConversion(self.codomain(), self.domain())
+
+cdef class CyclotomicFieldConversion(Map):
+    r"""
+    This allows one to cast one cyclotomic field in another consistently.
+
+    EXAMPLES::
+
+        sage: from sage.rings.number_field.number_field_morphisms import CyclotomicFieldConversion
+        sage: K1.<z1> = CyclotomicField(12)
+        sage: K2.<z2> = CyclotomicField(18)
+        sage: f = CyclotomicFieldConversion(K1, K2)
+        sage: f(z1^2)
+        z2^3
+        sage: f(z1)
+        Traceback (most recent call last):
+        ...
+        ValueError: Element z1 has no image in the codomain
+
+    Tests from :trac:`29511`::
+
+        sage: K.<z> = CyclotomicField(12)
+        sage: K1.<z1> = CyclotomicField(3)
+        sage: K(2) in K1 # indirect doctest
+        True
+        sage: K1(K(2)) # indirect doctest
+        2
+    """
+    cdef ambient_field
+    cdef phi
+
+    def __init__(self, K, L):
+        """
+        Construct a conversion map between cyclotomic fields.
+
+        EXAMPLES::
+
+            sage: from sage.rings.number_field.number_field_morphisms import CyclotomicFieldEmbedding
+            sage: K.<a> = CyclotomicField(7)
+            sage: L.<b> = CyclotomicField(21)
+            sage: K(b^3) # indirect doctest
+            a
+        """
+        from sage.rings.number_field.number_field import CyclotomicField
+        n1 = K._n()
+        n2 = L._n()
+        n3 = n1.lcm(n2)
+        M = CyclotomicField(n3)
+        self.ambient_field = M
+        self.phi = L.hom([M.gen()**(n3//n2)])
+        Map.__init__(self, K, L)
+
+    cpdef Element _call_(self, x) noexcept:
+        """
+        Call a conversion map between cyclotomic fields.
+
+        EXAMPLES::
+
+            sage: from sage.rings.number_field.number_field_morphisms import CyclotomicFieldEmbedding
+            sage: K.<a> = CyclotomicField(7)
+            sage: L.<b> = CyclotomicField(21)
+            sage: K(b^3) # indirect doctest
+            a
+        """
+        M = self.ambient_field
+        try:
+            return self.phi.preimage(M(x))
+        except ValueError:
+            raise ValueError('Element {} has no image in the codomain'.format(x))

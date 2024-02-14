@@ -15,9 +15,9 @@ def is_Monoid(x):
         sage: is_Monoid(0)
         False
         sage: is_Monoid(ZZ)   # The technical math meaning of monoid has
-        ...                   # no bearing whatsoever on the result: it's
-        ...                   # a typecheck which is not satisfied by ZZ
-        ...                   # since it does not inherit from Monoid_class.
+        ....:                 # no bearing whatsoever on the result: it's
+        ....:                 # a typecheck which is not satisfied by ZZ
+        ....:                 # since it does not inherit from Monoid_class.
         False
         sage: is_Monoid(sage.monoids.monoid.Monoid_class(('a','b')))
         True
@@ -34,7 +34,7 @@ class Monoid_class(Parent):
 
             sage: from sage.monoids.monoid import Monoid_class
             sage: Monoid_class(('a','b'))
-            <class 'sage.monoids.monoid.Monoid_class_with_category'>
+            <sage.monoids.monoid.Monoid_class_with_category object at ...>
 
         TESTS::
 
@@ -46,9 +46,9 @@ class Monoid_class(Parent):
         Parent.__init__(self, base=self, names=names, category=category)
 
     @cached_method
-    def gens(self):
+    def gens(self) -> tuple:
         r"""
-        Returns the generators for ``self``.
+        Return the generators for ``self``.
 
         EXAMPLES::
 
@@ -60,7 +60,7 @@ class Monoid_class(Parent):
 
     def monoid_generators(self):
         r"""
-        Returns the generators for ``self``.
+        Return the generators for ``self``.
 
         EXAMPLES::
 
@@ -70,4 +70,3 @@ class Monoid_class(Parent):
         """
         from sage.sets.family import Family
         return Family(self.gens())
-

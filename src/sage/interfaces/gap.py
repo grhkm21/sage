@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 r"""
 Interface to GAP
 
@@ -139,15 +140,31 @@ robust manner, as long as you are creating a new object.
     sage: t = '"%s"'%10^10000   # ten thousand character string.
     sage: a = gap(t)
 
-Changing which GAP is used
---------------------------
+Changing which GAP is used, and how
+-----------------------------------
 
-Use this code to change which GAP interpreter is run. E.g.,
+Set the environment variable :envvar:`SAGE_GAP_COMMAND` to specify
+how GAP executable is called. E.g.  ::
 
-::
+  $ SAGE_GAP_COMMAND = "/usr/local/bin/gap -s 4G" ./sage
 
-       import sage.interfaces.gap
-       sage.interfaces.gap.gap_cmd = "/usr/local/bin/gap"
+will use GAP installed in `/usr/local/bin`, with 4Gb RAM.
+
+
+Set the environment variable :envvar:`SAGE_GAP_MEMORY` to specify the amount
+of RAM allocated to :mod:`~sage.libs.gap.libgap` and to the GAP executable.
+If :envvar:`SAGE_GAP_COMMAND` is set, as well, then
+:envvar:`SAGE_GAP_MEMORY` is only used for `libgap`. ::
+
+    sage: gap.eval('GAPInfo.CommandLineOptions.s') # not tested
+    '"42m"'
+
+After the GAP interface initialisation, setting :envvar:`SAGE_GAP_MEMORY` has no effect::
+
+    sage: os.environ['SAGE_GAP_MEMORY'] = '24M'
+    sage: gap.eval('GAPInfo.CommandLineOptions.s') # not tested
+    '"4g"'
+
 
 AUTHORS:
 
@@ -160,7 +177,7 @@ AUTHORS:
   gap(...), x.[tab], and docs, e.g., gap.function? and x.function?
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2005 William Stein <wstein@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -172,133 +189,61 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from expect import Expect, ExpectElement, FunctionElement, ExpectFunction
-from sage.env import SAGE_LOCAL, SAGE_EXTCODE, DOT_SAGE
+from .expect import Expect, ExpectElement, FunctionElement, ExpectFunction
+from .gap_workspace import gap_workspace_file, prepare_workspace_dir
+from sage.cpython.string import bytes_to_str
+from sage.env import SAGE_EXTCODE, SAGE_GAP_COMMAND, SAGE_GAP_MEMORY, GAP_ROOT_PATHS
 from sage.misc.misc import is_in_string
-from sage.misc.superseded import deprecation
 from sage.misc.cachefunc import cached_method
+from sage.misc.instancedoc import instancedoc
 from sage.interfaces.tab_completion import ExtraTabCompletion
+from sage.structure.element import ModuleElement
+
+import sage.interfaces.abc
+
 import re
 import os
 import pexpect
 import time
 import platform
 import string
+import warnings
 
-GAP_DIR = os.path.join(DOT_SAGE, 'gap')
-
-WORKSPACE = os.path.join(GAP_DIR, 'workspace-%s'%abs(hash(SAGE_LOCAL)))
-
-GAP_BINARY = os.path.join(SAGE_LOCAL, 'bin', 'gap')
+WORKSPACE = gap_workspace_file()
 
 first_try = True
 
-gap_cmd = "gap -r"
+if SAGE_GAP_COMMAND is None:
+    # Passing -A allows us to use a minimal GAP installation without
+    # producing errors at start-up. The files sage.g and sage.gaprc are
+    # used to load any additional packages that may be available.
+    gap_cmd = f'gap -A -l "{GAP_ROOT_PATHS}"'
+    if SAGE_GAP_MEMORY is not None:
+        gap_cmd += " -s " + SAGE_GAP_MEMORY + " -o " + SAGE_GAP_MEMORY
+else:
+    gap_cmd = SAGE_GAP_COMMAND
+
+
 if platform.processor() == 'ia64' and os.path.exists('/usr/bin/prctl'):
     # suppress unaligned access to 0x..., ip=0x... warnings
     gap_cmd = 'prctl --unaligned=silent ' + gap_cmd
 
+
 def gap_command(use_workspace_cache=True, local=True):
     if use_workspace_cache:
         if local:
-            return "%s -L %s"%(gap_cmd, WORKSPACE), False
+            return "%s -L %s" % (gap_cmd, WORKSPACE), False
         else:
             # TO DO: Use remote workspace
             return gap_cmd, False
     else:
         return gap_cmd, True
 
-############ Set the GAP memory pool size
 
-# you should always use get_gap_memory_pool_size() to access this value
-gap_memory_pool_size = None
-
-def set_gap_memory_pool_size(size_in_bytes):
-    """
-    Set the desired gap memory pool size.
-
-    Subsequently started GAP/libGAP instances will use this as
-    default. Currently running instances are unchanged.
-
-    GAP will only reserve ``size_in_bytes`` address space. Unless you
-    actually start a big GAP computation, the memory will not be
-    used. However, corresponding swap space will be reserved so that
-    GAP will always be able to use the reserved address space if
-    needed. While nothing is actually written to disc as long as you
-    don't run a big GAP computation, the reserved swap space will not
-    be available for other processes.
-
-    INPUT:
-
-    - ``size_in_bytes`` -- integer. The desired memory pool size.
-
-    EXAMPLES::
-
-        sage: from sage.interfaces.gap import \
-        ...       get_gap_memory_pool_size, set_gap_memory_pool_size
-        sage: n = get_gap_memory_pool_size()
-        sage: set_gap_memory_pool_size(n)
-        sage: n == get_gap_memory_pool_size()
-        True
-        sage: n   # random output
-        1534059315
-    """
-    global gap_memory_pool_size
-    gap_memory_pool_size = size_in_bytes
-
-def get_gap_memory_pool_size():
-    """
-    Get the gap memory pool size for new GAP processes.
-
-    EXAMPLES::
-
-        sage: from sage.interfaces.gap import \
-        ...       get_gap_memory_pool_size
-        sage: get_gap_memory_pool_size()   # random output
-        1534059315
-    """
-    global gap_memory_pool_size
-    if gap_memory_pool_size is not None:
-        return gap_memory_pool_size
-    from sage.misc.memory_info import MemoryInfo
-    mem = MemoryInfo()
-    suggested_size = max(mem.available_swap() // 10,
-                         mem.available_ram()  // 50)
-    # Don't eat all address space if the user set ulimit -v
-    suggested_size = min(suggested_size, mem.virtual_memory_limit()//10)
-    # ~220MB is the minimum for long doctests
-    suggested_size = max(suggested_size, 250 * 1024**2)
-    return suggested_size
-
-def _get_gap_memory_pool_size_MB():
-    """
-    Return the gap memory pool size suitable for usage on the GAP
-    command line.
-
-    The GAP 4.5.6 command line parser had issues with large numbers, so
-    we return it in megabytes.
-
-    OUTPUT:
-
-    String.
-
-    EXAMPLES:
-
-        sage: from sage.interfaces.gap import \
-        ...       _get_gap_memory_pool_size_MB
-        sage: _get_gap_memory_pool_size_MB()   # random output
-        '1467m'
-    """
-    pool = get_gap_memory_pool_size()
-    pool = (pool // (1024**2)) + 1
-    return str(pool)+'m'
-
-
-############ Classes with methods for both the GAP3 and GAP4 interface
+# ########### Classes with methods for both the GAP3 and GAP4 interface
 
 class Gap_generic(ExtraTabCompletion, Expect):
     r"""
@@ -341,10 +286,10 @@ class Gap_generic(ExtraTabCompletion, Expect):
         E = self._expect
         from sage.misc.prandom import randrange
         rnd = randrange(2147483647)
-        cmd = str(rnd)+';'
+        cmd = str(rnd) + ';'
         try:
             E.sendline(cmd)
-            E.expect('@[nf][@J\s>]*'+str(rnd), timeout=timeout)
+            E.expect(r'@[nf][@J\s>]*' + str(rnd), timeout=timeout)
             E.send(' ')
             E.expect('@i', timeout=timeout)
         except pexpect.TIMEOUT:
@@ -366,7 +311,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
 
         EXAMPLES::
 
-            sage: gap._eval_line('while(1=1) do i:=1;; od;', wait_for_prompt=False);
+            sage: gap._eval_line('while(1=1) do i:=1;; od;', wait_for_prompt=False)
             ''
             sage: rc = gap.interrupt(timeout=1)
             sage: [ gap(i) for i in range(10) ]   # check that it is still working
@@ -396,7 +341,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
             # send a dummy command
             E.sendline('224433409;')
             # read everything up to the actual output of the command
-            E.expect('@[nf][@J\s>]*224433409', timeout=timeout)
+            E.expect(r'@[nf][@J\s>]*224433409', timeout=timeout)
             E.send(' ')
             # the following input prompt should be the current input
             # prompt but GAP might be too confused to display it
@@ -409,11 +354,11 @@ class Gap_generic(ExtraTabCompletion, Expect):
             E.sendline()
             time.sleep(0.1)
             E.sendline('224433437;')
-            E.expect('@[nf][@J\s>]*224433437', timeout=timeout)
+            E.expect(r'@[nf][@J\s>]*224433437', timeout=timeout)
             E.sendline()
             time.sleep(0.1)
             E.sendline('224433479;')
-            E.expect('@[nf][@J\s>]*224433479', timeout=timeout)
+            E.expect(r'@[nf][@J\s>]*224433479', timeout=timeout)
             E.send(' ')
             # the following input prompt is now the current input prompt
             E.expect('@i', timeout=timeout)
@@ -471,14 +416,13 @@ class Gap_generic(ExtraTabCompletion, Expect):
         ::
 
             sage: filename = tmp_filename()
-            sage: f = open(filename, 'w')
-            sage: f.write('xx := 22;\n')
-            sage: f.close()
+            sage: with open(filename, 'w') as f:
+            ....:     _ = f.write('xx := 22;\n')
             sage: gap.read(filename)
             sage: gap.get('xx').strip()
             '22'
         """
-        return 'Read("%s");'%filename
+        return 'Read("%s");' % filename
 
     def _continuation_prompt(self):
         """
@@ -495,21 +439,21 @@ class Gap_generic(ExtraTabCompletion, Expect):
         """
         Load the Gap package with the given name.
 
-        If loading fails, raise a RuntimeError exception.
+        If loading fails, raise a :class:`RuntimeError` exception.
 
         TESTS::
 
             sage: gap.load_package("chevie")
             Traceback (most recent call last):
             ...
-            RuntimeError: Error loading Gap package chevie. You may want to install the gap_packages and/or database_gap SPKGs.
+            RuntimeError: Error loading Gap package chevie. You may want to install gap_packages SPKG.
         """
         if verbose:
-            print("Loading GAP package %s" % pkg)
-        x = self.eval('LoadPackage("%s")'%pkg)
+            print("Loading GAP package {}".format(pkg))
+        x = self.eval('LoadPackage("{}")'.format(pkg))
         if x == 'fail':
-            raise RuntimeError("Error loading Gap package "+str(pkg)+". "+
-                               "You may want to install the gap_packages and/or database_gap SPKGs.")
+            raise RuntimeError("Error loading Gap package " + str(pkg) + ". " +
+                               "You may want to install gap_packages SPKG.")
 
     def eval(self, x, newlines=False, strip=True, split_lines=True, **kwds):
         r"""
@@ -552,14 +496,22 @@ class Gap_generic(ExtraTabCompletion, Expect):
             'Hi how are you?'
             sage: gap.eval('fi')
             ''
+
+        TESTS:
+
+        Whitespace is not stripped from the front of the result
+        (:trac:`28439`)::
+
+            sage: gap.eval(r'Print("  -\n\\\\-  ")')
+            '  -\n\\\\-'
         """
         # '"
-        #We remove all of the comments:  On each line, we try
-        #to find a pound sign.  If we find it, we check to see if
-        #it is occurring in a string.  If it is not in a string, we
-        #strip off the comment.
+        # We remove all of the comments:  On each line, we try
+        # to find a pound sign.  If we find it, we check to see if
+        # it is occurring in a string.  If it is not in a string, we
+        # strip off the comment.
         if not split_lines:
-            input_line=str(x)
+            input_line = str(x)
         else:
             input_line = ""
             for line in str(x).rstrip().split('\n'):
@@ -567,18 +519,17 @@ class Gap_generic(ExtraTabCompletion, Expect):
                 while pound_position != -1:
                     if not is_in_string(line, pound_position):
                         line = line[:pound_position]
-                    pound_position = line.find('#',pound_position+1)
-                input_line += " "+line
+                    pound_position = line.find('#', pound_position + 1)
+                input_line += " " + line
             if not input_line.endswith(';'):
                 input_line += ';'
         result = Expect.eval(self, input_line, **kwds)
         if not newlines:
-            result = result.replace("\\\n","")
-        return result.strip()
-
+            result = result.replace("\\\n", "")
+        return result.rstrip()
 
     def _execute_line(self, line, wait_for_prompt=True, expect_eof=False):
-        if self._expect is None: # interface is down
+        if self._expect is None:  # interface is down
             self._start()
         E = self._expect
         try:
@@ -586,11 +537,11 @@ class Gap_generic(ExtraTabCompletion, Expect):
                 raise RuntimeError("Passing commands this long to gap would hang")
             E.sendline(line)
         except OSError:
-            raise RuntimeError("Error evaluating %s in %s"%(line, self))
-        if wait_for_prompt == False:
-            return ('','')
-        if len(line)==0:
-            return ('','')
+            raise RuntimeError("Error evaluating %s in %s" % (line, self))
+        if not wait_for_prompt:
+            return (b'', b'')
+        if len(line) == 0:
+            return (b'', b'')
         try:
             terminal_echo = []   # to be discarded
             normal_outputs = []  # GAP stdout
@@ -600,45 +551,48 @@ class Gap_generic(ExtraTabCompletion, Expect):
                 x = E.expect_list(self._compiled_full_pattern)
                 current_outputs.append(E.before)
                 if x == 0:   # @p
-                    if E.after != '@p1.':
-                        print("Warning: possibly wrong version of GAP package interface\n")
-                        print("Crossing fingers and continuing\n")
-                elif x == 1: #@@
-                    current_outputs.append('@')
-                elif x == 2: #special char
-                    current_outputs.append(chr(ord(E.after[1:2])-ord('A')+1))
-                elif x == 3: # garbage collection info, ignore
+                    if E.after != b'@p1.':
+                        warnings.warn(
+                            "possibly wrong version of GAP package "
+                            "interface. Crossing fingers and continuing.")
+                elif x == 1:  # @@
+                    current_outputs.append(b'@')
+                elif x == 2:  # special char
+                    c = ord(E.after[1:2]) - ord(b'A') + 1
+                    s = bytes([c])
+                    current_outputs.append(s)
+                elif x == 3:  # garbage collection info, ignore
                     pass
-                elif x == 4: # @e -- break loop
+                elif x == 4:  # @e -- break loop
                     E.sendline("quit;")
-                elif x == 5: # @c completion, doesn't seem to happen when -p is in use
-                    print("I didn't think GAP could do this\n")
-                elif x == 6: # @f GAP error message
-                    current_outputs = error_outputs;
-                elif x == 7: # @h help text, but this stopped happening with new help
-                    print("I didn't think GAP could do this")
-                elif x == 8: # @i awaiting normal input
-                    break;
-                elif x == 9: # @m finished running a child
+                elif x == 5:  # @c completion, doesn't seem to happen when -p is in use
+                    warnings.warn("I didn't think GAP could do this")
+                elif x == 6:  # @f GAP error message
+                    current_outputs = error_outputs
+                elif x == 7:  # @h help text, but this stopped happening with new help
+                    warnings.warn("I didn't think GAP could do this")
+                elif x == 8:  # @i awaiting normal input
+                    break
+                elif x == 9:  # @m finished running a child
                     pass   # there is no need to do anything
-                elif x==10: #@n normal output line
-                    current_outputs = normal_outputs;
-                elif x==11: #@r echoing input
+                elif x == 10:  # @n normal output line
+                    current_outputs = normal_outputs
+                elif x == 11:  # @r echoing input
                     current_outputs = terminal_echo
-                elif x==12: #@sN shouldn't happen
-                    print("Warning: this should never happen")
-                elif x==13: #@w GAP is trying to send a Window command
-                    print("Warning: this should never happen")
-                elif x ==14: #@x seems to be safely ignorable
+                elif x == 12:  # @sN shouldn't happen
+                    warnings.warn("this should never happen")
+                elif x == 13:  # @w GAP is trying to send a Window command
+                    warnings.warn("this should never happen")
+                elif x == 14:  # @x seems to be safely ignorable
                     pass
-                elif x == 15:#@z GAP starting a subprocess
+                elif x == 15:  # @z GAP starting a subprocess
                     pass  # there is no need to do anything
         except pexpect.EOF:
             if not expect_eof:
-                raise RuntimeError("Unexpected EOF from %s executing %s"%(self,line))
-        except IOError:
-            raise RuntimeError("IO Error from %s executing %s"%(self,line))
-        return ("".join(normal_outputs),"".join(error_outputs))
+                raise RuntimeError("Unexpected EOF from %s executing %s" % (self, line))
+        except OSError:
+            raise RuntimeError("IO Error from %s executing %s" % (self, line))
+        return (b"".join(normal_outputs), b"".join(error_outputs))
 
     def _keyboard_interrupt(self):
         """
@@ -651,17 +605,17 @@ class Gap_generic(ExtraTabCompletion, Expect):
             2
             sage: try:
             ....:     alarm(0.5)
-            ....:     while True: SymmetricGroup(7).conjugacy_classes_subgroups()
+            ....:     gap.eval('while(1=1) do i:=1;; od;', wait_for_prompt=True)
             ....: except KeyboardInterrupt:
             ....:     pass
             sage: gap(2)
             2
         """
         self.quit()
-        raise KeyboardInterrupt("Ctrl-c pressed while running %s"%self)
+        raise KeyboardInterrupt("Ctrl-c pressed while running %s" % self)
 
     def _eval_line(self, line, allow_use_file=True, wait_for_prompt=True, restart_if_needed=True):
-        """
+        r"""
         Evaluate a line of commands.
 
         REMARK:
@@ -687,7 +641,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
         - ``restart_if_needed`` (optional bool, default ``True``) --
           If it is ``True``, the command evaluation is evaluated
           a second time after restarting the interface, if an
-          ``EOFError`` occured.
+          :class:`EOFError` occurred.
 
         TESTS::
 
@@ -719,46 +673,56 @@ class Gap_generic(ExtraTabCompletion, Expect):
             Restarting Gap and trying again
             sage: a
             3
-
         """
-        #if line.find('\n') != -1:
-        #    raise ValueError, "line must not contain any newlines"
-        E = None
+        expect_eof = self._quit_string() in line
+
         try:
             if self._expect is None:
                 self._start()
-            E = self._expect
-            #import pdb; pdb.set_trace()
             if allow_use_file and wait_for_prompt and len(line) > self._eval_using_file_cutoff:
                 return self._eval_line_using_file(line)
-            (normal, error) = self._execute_line(line, wait_for_prompt=wait_for_prompt,
-                                                 expect_eof= (self._quit_string() in line))
 
-            if len(error)> 0:
+            (normal, error) = self._execute_line(line, wait_for_prompt=wait_for_prompt,
+                                                 expect_eof=expect_eof)
+
+            # The internal method _execute_line returns bytes but the bytes it
+            # returns should contain text (any terminal commands and other
+            # garbage should be filtered out by this point); here we decode
+            # them (on Python 3), currently just using the default encoding
+            normal, error = bytes_to_str(normal), bytes_to_str(error)
+
+            if error:
                 if 'Error, Rebuild completion files!' in error:
                     error += "\nRunning gap_reset_workspace()..."
                     self.quit()
                     gap_reset_workspace()
-                error = error.replace('\r','')
-                raise RuntimeError("%s produced error output\n%s\n   executing %s"%(self, error,line))
-            if len(normal) == 0:
+                error = error.replace('\r', '')
+                raise RuntimeError("%s produced error output\n%s\n   executing %s" % (self, error, line))
+            if not normal:
                 return ''
 
             if isinstance(wait_for_prompt, str) and normal.ends_with(wait_for_prompt):
                 n = len(wait_for_prompt)
-            elif normal.endswith(self._prompt):
+            elif normal.endswith(bytes_to_str(self._prompt)):
                 n = len(self._prompt)
             elif normal.endswith(self._continuation_prompt()):
                 n = len(self._continuation_prompt())
             else:
                 n = 0
             out = normal[:-n]
-            if len(out) > 0 and out[-1] == "\n":
+            if out and out[-1] == "\n":
                 out = out[:-1]
             return out
 
-        except (RuntimeError,TypeError) as message:
-            if 'EOF' in message[0] or E is None or not E.isalive():
+        except (RuntimeError, TypeError, pexpect.ExceptionPexpect) as exc:
+            if not self._isalive():
+                # We can't distinguish just EOF from an unexpectedly killed
+                # process because pexpect catches EOF's and re-reraises them
+                # But if we *were* expecting EOF then we should just let it
+                # fail silently and return
+                if expect_eof:
+                    return ''
+
                 print("** %s crashed or quit executing '%s' **" % (self, line))
                 print("Restarting %s and trying again" % self)
                 self._start()
@@ -767,11 +731,11 @@ class Gap_generic(ExtraTabCompletion, Expect):
                 else:
                     return ''
             else:
-                raise RuntimeError(message)
+                raise RuntimeError(exc)
 
         except KeyboardInterrupt:
             self._keyboard_interrupt()
-            raise KeyboardInterrupt("Ctrl-c pressed while running %s"%self)
+            raise KeyboardInterrupt("Ctrl-c pressed while running %s" % self)
 
     def unbind(self, var):
         """
@@ -790,7 +754,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
             Error, Variable: 'x' must have a value
             ...
         """
-        self.eval('Unbind(%s)'%var)
+        self.eval('Unbind(%s)' % var)
         self.clear(var)
 
     def _contains(self, v1, v2):
@@ -807,7 +771,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
             sage: 2 in gap('Integers')
             True
         """
-        return self.eval('%s in %s'%(v1,v2)) == "true"
+        return self.eval('%s in %s' % (v1, v2)) == "true"
 
     def _true_symbol(self):
         """
@@ -857,9 +821,9 @@ class Gap_generic(ExtraTabCompletion, Expect):
         EXAMPLES::
 
             sage: print(gap.version())
-            4.8...
+            4...
         """
-        return self.eval('VERSION')[1:-1]
+        return self.eval('GAPInfo.Version')[1:-1]
 
     def function_call(self, function, args=None, kwds=None):
         """
@@ -888,36 +852,36 @@ class Gap_generic(ExtraTabCompletion, Expect):
         properly::
 
             sage: g = Gap()
-            sage: g.function_call("ConjugacyClassesSubgroups", sage.interfaces.gap.GapElement(g, 'SymmetricGroup(2)', name = 'a_variable_with_a_very_very_very_long_name'))
-            [ ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( [ () ] )), 
-              ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),SymmetricGroup( [ 1 .. 2 ] )) ]
+            sage: g.function_call("ConjugacyClassesSubgroups", sage.interfaces.gap.GapElement(g, 'SymmetricGroup(2)', name = 'a_variable_with_a_very_very_very_long_name')) # random
+            [ ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( () )),
+              ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( [ (1,2) ] )) ]
 
         When the command itself is so long that it warrants use of a temporary
         file to be communicated to GAP, this does not cause problems since
         the file will contain a single command::
 
-            sage: g.function_call("ConjugacyClassesSubgroups", sage.interfaces.gap.GapElement(g, 'SymmetricGroup(2)', name = 'a_variable_with_a_name_so_very_very_very_long_that_even_by_itself_will_make_expect_use_a_file'))
-            [ ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( [ () ] )), 
-              ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),SymmetricGroup( [ 1 .. 2 ] )) ]
-
+            sage: g.function_call("ConjugacyClassesSubgroups", sage.interfaces.gap.GapElement(g, 'SymmetricGroup(2)', name = 'a_variable_with_a_name_so_very_very_very_long_that_even_by_itself_will_make_expect_use_a_file')) # random
+            [ ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( () )),
+              ConjugacyClassSubgroups(SymmetricGroup( [ 1 .. 2 ] ),Group( [ (1,2) ] )) ]
         """
         args, kwds = self._convert_args_kwds(args, kwds)
         self._check_valid_function_name(function)
 
-        #Here we have to do some magic because not all GAP
-        #functions return a value.  If you try to store their
-        #results to a variable, then GAP will complain.  Thus, before
-        #we evaluate the function, we make it so that the marker string
-        #is in the 'last' variable in GAP.  If the function returns a
-        #value, then that value will be in 'last', otherwise it will
-        #be the marker.
+        # Here we have to do some magic because not all GAP
+        # functions return a value.  If you try to store their
+        # results to a variable, then GAP will complain.  Thus, before
+        # we evaluate the function, we make it so that the marker string
+        # is in the 'last' variable in GAP.  If the function returns a
+        # value, then that value will be in 'last', otherwise it will
+        # be the marker.
         marker = '__SAGE_LAST__:="__SAGE_LAST__";;'
-        cmd = "%s(%s);;"%(function, ",".join([s.name() for s in args]+
-                ['%s=%s'%(key,value.name()) for key, value in kwds.items()]))
+        cmd = "%s(%s);;" % (function, ",".join([s.name() for s in args] +
+                                               [f'{key}={value.name()}'
+                                                for key, value in kwds.items()]))
         if len(marker) + len(cmd) <= self._eval_using_file_cutoff:
             # We combine the two commands so we only run eval() once and the
             #   only output would be from the second command
-            res = self.eval(marker+cmd)
+            res = self.eval(marker + cmd)
         else:
             self.eval(marker)
             res = self.eval(cmd)
@@ -925,7 +889,7 @@ class Gap_generic(ExtraTabCompletion, Expect):
             return self.new('last2;')
         else:
             if res.strip():
-                from sage.interfaces.expect import AsciiArtString
+                from sage.interfaces.interface import AsciiArtString
                 return AsciiArtString(res)
 
     def get_record_element(self, record, name):
@@ -958,7 +922,11 @@ class Gap_generic(ExtraTabCompletion, Expect):
         return self('%s.%s' % (record.name(), name))
 
 
-class GapElement_generic(ExtraTabCompletion, ExpectElement):
+# We need to inherit from ModuleElement to support
+# sage.structure.coerce_actions.ModuleAction and it needs to be first
+# in the MRO because extension types should always come first.
+@instancedoc
+class GapElement_generic(ModuleElement, ExtraTabCompletion, ExpectElement):
     r"""
     Generic interface to the GAP3/GAP4 interpreters.
 
@@ -968,21 +936,21 @@ class GapElement_generic(ExtraTabCompletion, ExpectElement):
 
     - Franco Saliola (Feb 2010): refactored to separate out the generic
       code
-
     """
-    def __repr__(self):
+    def _add_(self, other):
         """
         EXAMPLES::
 
-            sage: gap(2)
+            sage: a = gap(1)
+            sage: a + a
             2
         """
-        s = ExpectElement.__repr__(self)
-        if s.find('must have a value') != -1:
-            raise RuntimeError("An error occurred creating an object in %s from:\n'%s'\n%s"%(self.parent().name(), self._create, s))
-        return s
+        # This is just a copy of ExpectElement._add_ to fix the fact
+        # that the abtract method ModuleElement._add_ comes first in
+        # the MRO.
+        return self._operation("+", other)
 
-    def bool(self):
+    def __bool__(self):
         """
         EXAMPLES::
 
@@ -995,7 +963,6 @@ class GapElement_generic(ExtraTabCompletion, ExpectElement):
         """
         P = self._check_valid()
         return self != P(0) and repr(self) != 'false'
-
 
     def __len__(self):
         """
@@ -1021,9 +988,9 @@ class GapElement_generic(ExtraTabCompletion, ExpectElement):
             it is false
         """
         P = self.parent()
-        if P.eval('%s = true'%self.name()) == 'true':
+        if P.eval('%s = true' % self.name()) == 'true':
             return 1
-        elif P.eval('%s = false'%self.name()) == 'true':
+        elif P.eval('%s = false' % self.name()) == 'true':
             return 0
         else:
             return int(self.Length())
@@ -1078,10 +1045,10 @@ class GapElement_generic(ExtraTabCompletion, ExpectElement):
 
         from sage.matrix.matrix_space import MatrixSpace
         M = MatrixSpace(R, n, m)
-        entries = [[R(self[r,c]) for c in range(1,m+1)] for r in range(1,n+1)]
+        entries = [[R(self[r, c]) for c in range(1, m + 1)]
+                   for r in range(1, n + 1)]
         return M(entries)
 
-############
 
 class Gap(Gap_generic):
     r"""
@@ -1097,7 +1064,8 @@ class Gap(Gap_generic):
                  server=None,
                  server_tmpdir=None,
                  logfile=None,
-                 seed=None):
+                 seed=None,
+                 env={}):
         """
         EXAMPLES::
 
@@ -1106,13 +1074,16 @@ class Gap(Gap_generic):
         """
         self.__use_workspace_cache = use_workspace_cache
         cmd, self.__make_workspace = gap_command(use_workspace_cache, server is None)
-        cmd += " -b -p -T"
-        if max_workspace_size is None:
-            max_workspace_size = _get_gap_memory_pool_size_MB()
-        cmd += ' -o ' + str(max_workspace_size)
-        cmd += ' -s ' + str(max_workspace_size)
+        # -b: suppress banner
+        # -p: enable "package output mode"; this confusingly named option
+        #     causes GAP to output special control characters that are normally
+        #     intended for communication with a window manager (i.e. for xgap)
+        #     but that we also use to control GAP with pexepect
+        # -T: disable interactive break loop when encountering errors
+        # -E: disable readline support
+        cmd += " -b -p -T -E"
         cmd += ' -m 64m '   # attempt at a workaround for http://tracker.gap-system.org/issues/224
-        cmd += ' ' + os.path.join(SAGE_EXTCODE,'gap','sage.g')
+        cmd += ' ' + os.path.join(SAGE_EXTCODE, 'gap', 'sage.g')
         Expect.__init__(self,
                         name='gap',
                         prompt='gap> ',
@@ -1124,13 +1095,15 @@ class Gap(Gap_generic):
                         restart_on_ctrlc=True,
                         verbose_start=False,
                         logfile=logfile,
-                        eval_using_file_cutoff=100)
+                        eval_using_file_cutoff=100,
+                        env=env)
         self.__seq = 0
         self._seed = seed
 
-    def set_seed(self,seed=None):
+    def set_seed(self, seed=None):
         """
-        Sets the seed for gap interpeter.
+        Set the seed for gap interpreter.
+
         The seed should be an integer.
 
         EXAMPLES::
@@ -1143,8 +1116,8 @@ class Gap(Gap_generic):
         """
         if seed is None:
             seed = self.rand_seed()
-        self.eval("Reset(GlobalMersenneTwister,%d)" % seed)
-        self.eval("Reset(GlobalRandomSource,%d)" % seed)
+        self.eval("Reset(GlobalMersenneTwister,%d);;" % seed)
+        self.eval("Reset(GlobalRandomSource,%d);;" % seed)
         self._seed = seed
         return seed
 
@@ -1183,7 +1156,7 @@ class Gap(Gap_generic):
             del self._available_vars[0]
             return v
         self.__seq += 1
-        return r'\$sage%s'%self.__seq
+        return r'\$sage%s' % self.__seq
 
     def _start(self):
         """
@@ -1198,12 +1171,13 @@ class Gap(Gap_generic):
             sage: g.quit()
         """
         if self.__use_workspace_cache:
+            from sage.libs.gap.saved_workspace import timestamp
             try:
                 # Check to see if we need to auto-regenerate the gap
                 # workspace, i.e., if the gap script is more recent
                 # than the saved workspace, which signals that gap has
                 # been upgraded.
-                if os.path.getmtime(WORKSPACE) < os.path.getmtime(GAP_BINARY):
+                if os.path.getmtime(WORKSPACE) < timestamp():
                     raise OSError("GAP workspace too old")
                 # Set the modification time of the workspace to the
                 # current time.  This ensures the workspace doesn't
@@ -1231,8 +1205,8 @@ class Gap(Gap_generic):
             self.save_workspace()
         # Now, as self._expect exists, we can compile some useful pattern:
         self._compiled_full_pattern = self._expect.compile_pattern_list([
-                '@p\d+\.','@@','@[A-Z]','@[123456!"#$%&][^+]*\+',
-                '@e','@c','@f','@h','@i','@m','@n','@r','@s\d','@w.*\+','@x','@z'])
+            r'@p\d+\.', '@@', '@[A-Z]', r'@[123456!"#$%&][^+]*\+',
+            '@e', '@c', '@f', '@h', '@i', '@m', '@n', '@r', r'@s\d', r'@w.*\+', '@x', '@z'])
         # read everything up to the first "ready" prompt
         self._expect.expect("@i")
 
@@ -1255,7 +1229,6 @@ class Gap(Gap_generic):
         """
         return GapFunction
 
-
     def cputime(self, t=None):
         r"""
         Returns the amount of CPU time that the GAP session has used. If
@@ -1274,10 +1247,9 @@ class Gap(Gap_generic):
         """
         if t is not None:
             return self.cputime() - t
-        else:
-            self.eval('_r_ := Runtimes();')
-            r = sum(eval(self.eval('[_r_.user_time, _r_.system_time, _r_.user_time_children, _r_.system_time_children]')))
-            return r/1000.0
+        self.eval('_r_ := Runtimes();')
+        r = sum(eval(self.eval('[_r_.user_time, _r_.system_time, _r_.user_time_children, _r_.system_time_children]')))
+        return r / 1000.0
 
     def save_workspace(self):
         r"""
@@ -1285,25 +1257,30 @@ class Gap(Gap_generic):
 
         TESTS:
 
-        We make sure that #9938 (GAP does not start if the path to the GAP
-        workspace file contains more than 82 characters) is fixed::
+        We make sure that :trac:`9938` (GAP does not start if the path
+        to the GAP workspace file contains more than 82 characters) is
+        fixed::
 
             sage: ORIGINAL_WORKSPACE = sage.interfaces.gap.WORKSPACE
-            sage: sage.interfaces.gap.WORKSPACE = os.path.join(SAGE_TMP, "gap" + "0"*(80-len(SAGE_TMP)))
-            sage: gap = Gap()
-            sage: gap('3+2')  # long time (4s on sage.math, 2013)
+            sage: import tempfile
+            sage: with tempfile.NamedTemporaryFile(prefix="0"*80) as f:    # long time (4s on sage.math, 2013)
+            ....:     sage.interfaces.gap.WORKSPACE = f.name
+            ....:     gap = Gap()
+            ....:     gap('3+2')
             5
             sage: sage.interfaces.gap.WORKSPACE = ORIGINAL_WORKSPACE
         """
+        prepare_workspace_dir()
+
         # According to the GAP Reference Manual,
-        # [http://www.gap-system.org/Manuals/doc/htm/ref/CHAP003.htm#SSEC011.1]
+        # [https://www.gap-system.org/Manuals/doc/htm/ref/CHAP003.htm#SSEC011.1]
         # SaveWorkspace can only be used at the main gap> prompt. It cannot
         # be included in the body of a loop or function, or called from a
         # break loop.
         from sage.misc.temporary_file import atomic_write
         with atomic_write(WORKSPACE) as f:
             f.close()
-            self.eval('SaveWorkspace("%s");'%(f.name), allow_use_file=False)
+            self.eval('SaveWorkspace("%s");' % (f.name), allow_use_file=False)
 
     # Todo -- this -- but there is a tricky "when does it end" issue!
     # Maybe do via a file somehow?
@@ -1311,39 +1288,56 @@ class Gap(Gap_generic):
         """
         Print help on a given topic.
 
-        EXAMPLES::
+        EXAMPLES:
 
+        Note: In order to ensure consistent unicode handling from GAP we
+        start a GAP instance with a forced UTF-8 locale::
+
+            sage: gap = Gap(env={'LC_CTYPE': 'en_US.UTF-8'})
             sage: print(gap.help('SymmetricGroup', pager=False))
             <BLANKLINE>
-            50 Group Libraries
+              50.1-... SymmetricGroup
             <BLANKLINE>
-            When you start GAP, it already knows several groups. Currently GAP initially
-            knows the following groups:
+              ‣ SymmetricGroup( [filt, ]deg ) ─────────────────────────────────── function
             ...
+            <BLANKLINE>
         """
-        tmp_to_use = self._local_tmpfile()
         if self.is_remote():
             tmp_to_use = self._remote_tmpfile()
         else:
             tmp_to_use = self._local_tmpfile()
         self.eval('SetGAPDocTextTheme("none")')
-        self.eval(r'\$SAGE.tempfile := "%s";'%tmp_to_use)
-        line = Expect.eval(self, "? %s"%s)
+        gap_encoding = str(self('GAPInfo.TermEncoding;'))
+        self.eval(r'\$SAGE.tempfile := "%s";' % tmp_to_use)
+        line = Expect.eval(self, "? %s" % s)
         Expect.eval(self, "? 1")
-        match = re.search("Page from (\d+)", line)
+        match = re.search(r"Page from (\d+)", line)
         if match is None:
             print(line)
         else:
             (sline,) = match.groups()
+            sline = int(sline) - 1
             if self.is_remote():
                 self._get_tmpfile()
-            F = open(self._local_tmpfile(),"r")
-            help = F.read()
+            with open(self._local_tmpfile(), "r",
+                      encoding=gap_encoding) as fobj:
+                help = fobj.read()
             if pager:
                 from IPython.core.page import page
-                page(help, start = int(sline)-1)
+                page(help, start=sline)
             else:
-                return help
+                # Find the n-th line and return from there
+                idx = -1
+                while sline:
+                    try:
+                        idx = help.find('\n', idx + 1)
+                        sline -= 1
+                    except ValueError:
+                        # We ran out of lines early somehow; this shouldn't
+                        # happen though
+                        break
+
+                return help[idx:]
 
     def set(self, var, value):
         """
@@ -1355,7 +1349,7 @@ class Gap(Gap_generic):
             sage: gap.get('x')
             '2'
         """
-        cmd = ('%s:=%s;;' % (var, value)).replace('\n','')
+        cmd = ('%s:=%s;;' % (var, value)).replace('\n', '')
         self._eval_line(cmd, allow_use_file=True)
 
     def get(self, var, use_file=False):
@@ -1372,13 +1366,14 @@ class Gap(Gap_generic):
             tmp = self._local_tmpfile()
             if os.path.exists(tmp):
                 os.unlink(tmp)
-            self.eval('PrintTo("%s", %s);'%(tmp,var), strip=False)
-            r = open(tmp).read()
-            r = r.strip().replace("\\\n","")
+            self.eval('PrintTo("%s", %s);' % (tmp, var), strip=False)
+            with open(tmp) as f:
+                r = f.read()
+            r = r.strip().replace("\\\n", "")
             os.unlink(tmp)
             return r
         else:
-            return self.eval('Print(%s);'%var, newlines=False)
+            return self.eval('Print(%s);' % var, newlines=False)
 
     def _pre_interact(self):
         """
@@ -1405,7 +1400,7 @@ class Gap(Gap_generic):
             if j >= 0 and j < i:
                 i = -1
         if i == -1:
-            line0 = 'Print( %s );'%line.rstrip().rstrip(';')
+            line0 = 'Print( %s );' % line.rstrip().rstrip(';')
             try:  # this is necessary, since Print requires something as input, and some functions (e.g., Read) return nothing.
                 return Expect._eval_line_using_file(self, line0)
             except RuntimeError:
@@ -1420,7 +1415,7 @@ class Gap(Gap_generic):
 
             sage: gap.console()  # not tested
             *********   GAP, Version 4.5.7 of 14-Dec-2012 (free software, GPL)
-            *  GAP  *   http://www.gap-system.org
+            *  GAP  *   https://www.gap-system.org
             *********   Architecture: x86_64-unknown-linux-gnu-gcc-default64
             Libs used:  gmp, readline
             Loading the library and packages ...
@@ -1442,6 +1437,15 @@ class Gap(Gap_generic):
             <class 'sage.interfaces.gap.GapElement'>
         """
         return GapElement
+
+    def _an_element_(self):
+        """
+        EXAMPLES::
+
+            sage: gap._an_element_()
+            0
+        """
+        return self(0)
 
     def _function_element_class(self):
         """
@@ -1476,11 +1480,9 @@ class Gap(Gap_generic):
             True
         """
         names = eval(self.eval('NamesSystemGVars()')) + \
-                eval(self.eval('NamesUserGVars()'))
+            eval(self.eval('NamesUserGVars()'))
         return [n for n in names if n[0] in string.ascii_letters]
 
-
-############
 
 def gap_reset_workspace(max_workspace_size=None, verbose=False):
     r"""
@@ -1488,101 +1490,45 @@ def gap_reset_workspace(max_workspace_size=None, verbose=False):
     default when Sage first starts GAP.
 
     The first time you start GAP from Sage, it saves the startup state
-    of GAP in a file ``$HOME/.sage/gap/workspace-HASH``, where ``HASH``
-    is a hash of the directory where Sage is installed.
-
-    This is useful, since then subsequent startup of GAP is at least 10
-    times as fast. Unfortunately, if you install any new code for GAP,
-    it won't be noticed unless you explicitly load it, e.g., with
-    gap.load_package("my_package")
-
-    The packages sonata, guava, factint, gapdoc, grape, design, toric,
-    and laguna are loaded in all cases before the workspace is saved,
-    if they are available.
+    of GAP in a file ``$HOME/.sage/gap/workspace-gap-HASH``, where
+    ``HASH`` is a hash of the directory where Sage is installed. This
+    is useful because the subsequent startup of GAP is at least ten
+    times as fast. But if you update GAP or any of its packages, those
+    changes won't take effect until the workspace is reset.
 
     TESTS:
 
-    Check that ``gap_reset_workspace`` still works when ``GAP_DIR``
-    doesn't exist, see :trac:`14171`::
-
-        sage: ORIGINAL_GAP_DIR = sage.interfaces.gap.GAP_DIR
-        sage: ORIGINAL_WORKSPACE = sage.interfaces.gap.WORKSPACE
-        sage: sage.interfaces.gap.GAP_DIR = os.path.join(tmp_dir(), "test_gap_dir")
-        sage: sage.interfaces.gap.WORKSPACE = os.path.join(sage.interfaces.gap.GAP_DIR, "test_workspace")
-        sage: os.path.isfile(sage.interfaces.gap.WORKSPACE)  # long time
-        False
-        sage: gap_reset_workspace()                          # long time
-        sage: os.path.isfile(sage.interfaces.gap.WORKSPACE)  # long time
-        True
-        sage: sage.interfaces.gap.GAP_DIR = ORIGINAL_GAP_DIR
-        sage: sage.interfaces.gap.WORKSPACE = ORIGINAL_WORKSPACE
-
     Check that the race condition from :trac:`14242` has been fixed.
-    We temporarily need to change the worksheet filename. ::
+    We temporarily need to change the worksheet filename, and to set
+    ``first_try=True`` to ensure that the new workspace is created::
 
+        sage: # long time
         sage: ORIGINAL_WORKSPACE = sage.interfaces.gap.WORKSPACE
+        sage: saved_first_try = sage.interfaces.gap.first_try
+        sage: sage.interfaces.gap.first_try = True
         sage: sage.interfaces.gap.WORKSPACE = tmp_filename()
         sage: from multiprocessing import Process
         sage: import time
-        sage: gap = Gap()  # long time (reset GAP session)
+        sage: gap = Gap()  # reset GAP session
         sage: P = [Process(target=gap, args=("14242",)) for i in range(4)]
-        sage: for p in P:  # long time, indirect doctest
+        sage: for p in P:  # indirect doctest
         ....:     p.start()
-        ....:     time.sleep(0.2)
-        sage: for p in P:  # long time
+        ....:     time.sleep(float(0.2))
+        sage: for p in P:
         ....:     p.join()
-        sage: os.unlink(sage.interfaces.gap.WORKSPACE)  # long time
+        sage: os.unlink(sage.interfaces.gap.WORKSPACE)
         sage: sage.interfaces.gap.WORKSPACE = ORIGINAL_WORKSPACE
+        sage: sage.interfaces.gap.first_try = saved_first_try
     """
-    # Make sure GAP_DIR exists
-    try:
-        os.makedirs(GAP_DIR)
-        msg = "It is OK to delete all these cache files.  They will be recreated as needed.\n"
-        open(os.path.join(GAP_DIR, 'README.txt'), 'w').write(msg)
-    except OSError:
-        if not os.path.isdir(GAP_DIR):
-            raise
-
-    # Delete all gap workspaces that haven't been used in the last
-    # week, to avoid needless cruft.  I had an install on sage.math
-    # with 90 of these, since I run a lot of different versions of
-    # Sage, and it totalled 1.3GB of wasted space!  See trac #4936.
-    # We only do this after creating a new workspace, since this cruft
-    # issue is only a problem if workspaces get created every so
-    # often.  We don't want to have to do this on every startup.
-    now = time.time()
-    for F in os.listdir(GAP_DIR):
-        if F.startswith('workspace-'):
-            W = os.path.join(GAP_DIR, F)
-            try:
-                age = now - os.path.getatime(W)
-                if age >= 604800:    # 1 week in seconds
-                    os.unlink(W)
-            except OSError:
-                # It's not a problem if W doesn't exist, everything
-                # else is an error.
-                if os.path.exists(W):
-                    raise
-
-    # Create new workspace with filename WORKSPACE
+    # The use_workspace_cache=False causes a new workspace to
+    # be created, and we save it immediately thereafter.
     g = Gap(use_workspace_cache=False, max_workspace_size=None)
-    g.eval('SetUserPreference("HistoryMaxLines", 30)')
-    for pkg in ['GAPDoc', 'ctbllib', 'sonata', 'guava', 'factint', \
-                'gapdoc', 'grape', 'design', \
-                'toric', 'laguna', 'braid']:
-        # NOTE: Do *not* autoload hap - it screws up PolynomialRing(Rationals,2)
-        try:
-            g.load_package(pkg, verbose=verbose)
-        except RuntimeError as msg:
-            if verbose:
-                print('*** %s' % msg)
-            pass
-    # end for
     g.save_workspace()
     g.quit()
 
 
-class GapElement(GapElement_generic):
+@instancedoc
+class GapElement(GapElement_generic, sage.interfaces.abc.GapElement):
     def __getitem__(self, n):
         """
         EXAMPLES::
@@ -1593,9 +1539,9 @@ class GapElement(GapElement_generic):
         """
         self._check_valid()
         if not isinstance(n, tuple):
-            return self.parent().new('%s[%s]'%(self._name, n))
-        else:
-            return self.parent().new('%s%s'%(self._name, ''.join(['[%s]'%x for x in n])))
+            return self.parent().new('%s[%s]' % (self._name, n))
+        return self.parent().new('%s%s' % (self._name,
+                                           ''.join('[%s]' % x for x in n)))
 
     def str(self, use_file=False):
         """
@@ -1620,9 +1566,9 @@ class GapElement(GapElement_generic):
         """
         P = self._check_valid()
         try:
-            s = P.eval('LaTeXObj(%s)'%self.name())
-            s = s.replace('\\\\','\\').replace('"','')
-            s = s.replace('%\\n',' ')
+            s = P.eval('LaTeXObj(%s)' % self.name())
+            s = s.replace('\\\\', '\\').replace('"', '')
+            s = s.replace('%\\n', ' ')
             return s
         except RuntimeError:
             return str(self)
@@ -1630,7 +1576,7 @@ class GapElement(GapElement_generic):
     @cached_method
     def _tab_completion(self):
         """
-        Return additional tab completion entries
+        Return additional tab completion entries.
 
         OUTPUT:
 
@@ -1642,29 +1588,28 @@ class GapElement(GapElement_generic):
             sage: 'Centralizer' in s5._tab_completion()
             True
         """
-        from sage.misc.misc import uniq
         P = self.parent()
-        v = P.eval(r'\$SAGE.OperationsAdmittingFirstArgument(%s)'%self.name())
-        v = v.replace('Tester(','').replace('Setter(','').replace(')','').replace('\n', '')
+        v = P.eval(r'\$SAGE.OperationsAdmittingFirstArgument(%s)' % self.name())
+        v = v.replace('Tester(', '').replace('Setter(', '').replace(')', '').replace('\n', '')
         v = v.split(',')
-        v = [ oper.split('"')[1] for oper in v ]
-        v = [ oper for oper in v if all(ch in string.ascii_letters for ch in oper) ]
-        v = uniq(v)
-        return v
+        v = (oper.split('"')[1] for oper in v)
+        v = [oper for oper in v
+             if all(ch in string.ascii_letters for ch in oper)]
+        return sorted(set(v))
 
 
-
+@instancedoc
 class GapFunctionElement(FunctionElement):
-    def _sage_doc_(self):
+    def _instancedoc_(self):
         """
         EXAMPLES::
 
-            sage: print(gap(4).SymmetricGroup._sage_doc_())
+            sage: gap = Gap(env={'LC_CTYPE': 'en_US.UTF-8'})
+            sage: print(gap(4).SymmetricGroup.__doc__)
             <BLANKLINE>
-            50 Group Libraries
+              50.1-... SymmetricGroup
             <BLANKLINE>
-            When you start GAP, it already knows several groups. Currently GAP initially
-            knows the following groups:
+              ‣ SymmetricGroup( [filt, ]deg ) ─────────────────────────────────── function
             ...
         """
         M = self._obj.parent()
@@ -1672,17 +1617,18 @@ class GapFunctionElement(FunctionElement):
         return help
 
 
+@instancedoc
 class GapFunction(ExpectFunction):
-    def _sage_doc_(self):
+    def _instancedoc_(self):
         """
         EXAMPLES::
 
-            sage: print(gap.SymmetricGroup._sage_doc_())
+            sage: gap = Gap(env={'LC_CTYPE': 'en_US.UTF-8'})
+            sage: print(gap.SymmetricGroup.__doc__)
             <BLANKLINE>
-            50 Group Libraries
+              50.1-... SymmetricGroup
             <BLANKLINE>
-            When you start GAP, it already knows several groups. Currently GAP initially
-            knows the following groups:
+              ‣ SymmetricGroup( [filt, ]deg ) ─────────────────────────────────── function
             ...
         """
         M = self._parent
@@ -1692,17 +1638,25 @@ class GapFunction(ExpectFunction):
 
 def is_GapElement(x):
     """
-    Returns True if x is a GapElement.
+    Return True if ``x`` is a :class:`GapElement`
+
+    This function is deprecated; use :func:`isinstance`
+    (of :class:`sage.interfaces.abc.GapElement`) instead.
 
     EXAMPLES::
 
         sage: from sage.interfaces.gap import is_GapElement
         sage: is_GapElement(gap(2))
+        doctest:...: DeprecationWarning: the function is_GapElement is deprecated; use isinstance(x, sage.interfaces.abc.GapElement) instead
+        See https://github.com/sagemath/sage/issues/34823 for details.
         True
         sage: is_GapElement(2)
         False
     """
+    from sage.misc.superseded import deprecation
+    deprecation(34823, "the function is_GapElement is deprecated; use isinstance(x, sage.interfaces.abc.GapElement) instead")
     return isinstance(x, GapElement)
+
 
 def gfq_gap_to_sage(x, F):
     """
@@ -1750,13 +1704,13 @@ def gfq_gap_to_sage(x, F):
         return F(0)
     i1 = s.index("(")
     i2 = s.index(")")
-    q  = eval(s[i1+1:i2].replace('^','**'))
+    q = eval(s[i1 + 1:i2].replace('^', '**'))
     if not F.cardinality().is_power_of(q):
         raise ValueError('%r has no subfield of size %r' % (F, q))
     if s.find(')^') == -1:
         e = 1
     else:
-        e = int(s[i2+2:])
+        e = int(s[i2 + 2:])
     if F.degree() == 1:
         g = F(gap.eval('Int(Z(%s))' % q))
     elif F.is_conway():
@@ -1765,6 +1719,7 @@ def gfq_gap_to_sage(x, F):
     else:
         raise ValueError('%r is not prime or defined by a Conway polynomial' % F)
     return g**e
+
 
 def intmod_gap_to_sage(x):
     r"""
@@ -1802,20 +1757,21 @@ def intmod_gap_to_sage(x):
         sage: b.parent()
         Ring of integers modulo 65537
     """
-    from sage.rings.finite_rings.all import FiniteField
+    from sage.rings.finite_rings.finite_field_constructor import FiniteField
     from sage.rings.finite_rings.integer_mod import Mod
+    from sage.rings.integer import Integer
     s = str(x)
     m = re.search(r'Z\(([0-9]*)\)', s)
     if m:
-        return gfq_gap_to_sage(x, FiniteField(m.group(1)))
+        return gfq_gap_to_sage(x, FiniteField(Integer(m.group(1))))
     m = re.match(r'Zmod[np]ZObj\( ([0-9]*), ([0-9]*) \)', s)
     if m:
-        return Mod(m.group(1), m.group(2))
+        return Mod(Integer(m.group(1)), Integer(m.group(2)))
     raise ValueError("Unable to convert Gap element '%s'" % s)
 
-#############
 
 gap = Gap()
+
 
 def reduce_load_GAP():
     """
@@ -1829,32 +1785,6 @@ def reduce_load_GAP():
     """
     return gap
 
-# This is only for backwards compatibility, in order to be able
-# to unpickle the invalid objects that are in the pickle jar.
-def reduce_load():
-    """
-    This is for backwards compatibility only.
-
-    To be precise, it only serves at unpickling the invalid
-    gap elements that are stored in the pickle jar.
-
-    EXAMPLES::
-
-        sage: from sage.interfaces.gap import reduce_load
-        sage: reduce_load()
-        doctest:...: DeprecationWarning: This function is only used to unpickle invalid objects
-        See http://trac.sagemath.org/18848 for details.
-        <repr(<sage.interfaces.gap.GapElement at ...>) failed:
-        ValueError: The session in which this object was defined is no longer running.>
-
-    By :trac:`18848`, pickling actually often works::
-
-        sage: loads(dumps(gap([1,2,3])))
-        [ 1, 2, 3 ]
-
-    """
-    deprecation(18848, "This function is only used to unpickle invalid objects")
-    return GapElement(None, None)
 
 def gap_console():
     """
@@ -1867,7 +1797,7 @@ def gap_console():
 
         sage: gap_console()  # not tested
         *********   GAP, Version 4.5.7 of 14-Dec-2012 (free software, GPL)
-        *  GAP  *   http://www.gap-system.org
+        *  GAP  *   https://www.gap-system.org
         *********   Architecture: x86_64-unknown-linux-gnu-gcc-default64
         Libs used:  gmp, readline
         Loading the library and packages ...
@@ -1877,11 +1807,13 @@ def gap_console():
 
     TESTS::
 
-        sage: import subprocess
+        sage: import subprocess as sp
         sage: from sage.interfaces.gap import gap_command
         sage: cmd = 'echo "quit;" | ' + gap_command(use_workspace_cache=False)[0]
-        sage: gap_startup = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-        sage: 'http://www.gap-system.org' in gap_startup
+        sage: gap_startup = sp.check_output(cmd, shell=True,
+        ....:                               stderr=sp.STDOUT,
+        ....:                               encoding='latin1')
+        sage: 'www.gap-system.org' in gap_startup
         True
         sage: 'Error' not in gap_startup
         True
@@ -1892,6 +1824,5 @@ def gap_console():
     if not get_display_manager().is_in_terminal():
         raise RuntimeError('Can use the console only in the terminal. Try %%gap magics instead.')
     cmd, _ = gap_command(use_workspace_cache=False)
-    cmd += ' ' + os.path.join(SAGE_EXTCODE,'gap','console.g')
+    cmd += ' ' + os.path.join(SAGE_EXTCODE, 'gap', 'console.g')
     os.system(cmd)
-

@@ -1,3 +1,4 @@
+# distutils: libraries = m
 r"""
 Fast decomposition of small integers into sums of squares
 
@@ -16,21 +17,18 @@ AUTHORS:
 #  the License, or (at your option) any later version.
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
 from libc.math cimport sqrt
+from cysignals.signals cimport sig_on, sig_off
 
+cimport sage.rings.integer as integer
+from sage.rings import integer
 
-include "cysignals/signals.pxi"
-
-cimport integer
-import integer
-
-cdef int two_squares_c(uint_fast32_t n, uint_fast32_t res[2]):
+cdef int two_squares_c(uint_fast32_t n, uint_fast32_t res[2]) noexcept:
     r"""
     Return ``1`` if ``n`` is a sum of two squares and ``0`` otherwise.
 
-    If ``1`` is returned, the the value of ``res[0]`` and ``res[1]`` are set to the
+    If ``1`` is returned, the value of ``res[0]`` and ``res[1]`` are set to the
     lexicographically smallest solution of `a^2 + b^2 = n`.
     """
     cdef uint_fast32_t fac,i,ii,j,jj,nn
@@ -68,7 +66,8 @@ cdef int two_squares_c(uint_fast32_t n, uint_fast32_t res[2]):
                 # j = (j+nn/j)/2
                 jj = j*j
             if jj == nn:
-                res[0] = i<<fac; res[1] = j<<fac
+                res[0] = i<<fac
+                res[1] = j<<fac
                 return 1
             i += 1
             ii = i*i
@@ -86,19 +85,22 @@ cdef int two_squares_c(uint_fast32_t n, uint_fast32_t res[2]):
                 # j = (j+nn/j)/2
                 jj = j*j
             if jj == nn:
-                res[0] = i<<fac; res[1] = j<<fac
+                res[0] = i<<fac
+                res[1] = j<<fac
                 return 1
             i += 2
             ii = i*i
 
     return 0
 
-cdef int three_squares_c(uint_fast32_t n, uint_fast32_t res[3]):
-    r"""
-    Return ``1`` if ``n`` is a sum of three squares and ``0`` otherwise.
 
-    If ``1`` is returned, the the value of ``res[0]``, ``res[1]`` and ``res[2]``
-    are set to a solution of `a^2 + b^2 + c^2 = n` such that `a \leq b \leq c`.
+cdef int three_squares_c(uint_fast32_t n, uint_fast32_t res[3]) noexcept:
+    r"""
+    Return `1` if `n` is a sum of three squares and `0` otherwise.
+
+    If `1` is returned, then the values of ``res[0]``, ``res[1]`` and
+    ``res[2]`` are set to a solution of `a^2 + b^2 + c^2 = n` such
+    that `a \leq b \leq c`.
     """
     cdef uint_fast32_t fac,i
 
@@ -138,7 +140,7 @@ def two_squares_pyx(uint32_t n):
 
     .. SEEALSO::
 
-        :func:`~sage.arith.all.two_squares` is much more suited for large inputs
+        :func:`~sage.arith.misc.two_squares` is much more suited for large inputs
 
     EXAMPLES::
 
@@ -164,11 +166,11 @@ def two_squares_pyx(uint32_t n):
     TESTS::
 
         sage: s = lambda t: sum(i^2 for i in t)
-        sage: for ij in Subsets(Subsets(45000,15).random_element(),2):
+        sage: for ij in Subsets(Subsets(45000, 15).random_element(), 2):
         ....:     if s(two_squares_pyx(s(ij))) != s(ij):
         ....:         print("hey")
 
-        sage: for n in xrange(1,65536):
+        sage: for n in range(1,65536):
         ....:     if two_squares_pyx(n^2) != (0, n):
         ....:         print("hey")
         ....:     if two_squares_pyx(n^2 + 1) != (1, n):
@@ -194,7 +196,7 @@ def is_sum_of_two_squares_pyx(uint32_t n):
     EXAMPLES::
 
         sage: from sage.rings.sum_of_squares import is_sum_of_two_squares_pyx
-        sage: filter(is_sum_of_two_squares_pyx, range(30))
+        sage: [x for x in range(30) if is_sum_of_two_squares_pyx(x)]
         [0, 1, 2, 4, 5, 8, 9, 10, 13, 16, 17, 18, 20, 25, 26, 29]
 
         sage: is_sum_of_two_squares_pyx(2**32)
@@ -276,7 +278,7 @@ def four_squares_pyx(uint32_t n):
 
     .. SEEALSO::
 
-        :func:`~sage.arith.all.four_squares` is much more suited for large input
+        :func:`~sage.arith.misc.four_squares` is much more suited for large input
 
     EXAMPLES::
 
@@ -302,10 +304,10 @@ def four_squares_pyx(uint32_t n):
         (0, 0, 0, 0)
 
         sage: s = lambda t: sum(i^2 for i in t)
-        sage: all(s(four_squares_pyx(n)) == n for n in xrange(5000,10000))
+        sage: all(s(four_squares_pyx(n)) == n for n in range(5000,10000))
         True
     """
-    cdef uint_fast32_t fac, j, nn
+    cdef uint_fast32_t fac, j
     cdef uint_fast32_t i[3]
 
     if n == 0:
@@ -313,7 +315,7 @@ def four_squares_pyx(uint32_t n):
 
     # division by power of 4
     fac = 0
-    while n%4 == 0:
+    while n % 4 == 0:
         n >>= 2
         fac += 1
 

@@ -14,9 +14,8 @@ AUTHORS:
 #  Distributed under the terms of the GNU General Public License (GPL)
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
-from sage.misc.misc import cputime
+from sage.misc.timing import cputime
 import inspect
 import sys
 
@@ -27,10 +26,11 @@ class Profiler:
 
     It's probably not a good idea to use this class in an inner loop :-)
 
-    EXAMPLE::
+    EXAMPLES::
 
+        from sage.misc.profiler import Profiler
         sage: def f():                        # not tested
-        ...       p = Profiler()              # not tested
+        ....:     p = Profiler()
 
     Calling ``p(message)`` creates a checkpoint::
 
@@ -43,11 +43,12 @@ class Profiler:
     You can create a checkpoints without a string; ``Profiler``
     will use the source code instead::
 
-        sage: p()                             # not tested
-        sage: y = factor(25)                  # not tested
-        sage: p("last step")                  # not tested
-        sage: z = factor(35)                  # not tested
-        sage: p()                             # not tested
+        sage: # not tested
+        sage: p()
+        sage: y = factor(25)
+        sage: p("last step")
+        sage: z = factor(35)
+        sage: p()
 
     This will give a nice list of timings between checkpoints::
 
@@ -60,9 +61,9 @@ class Profiler:
            15.240s -- line 17: y = factor(25)
          5000.190s -- last step
 
-    .. seealso:: :func:`runsnake`
+    .. SEEALSO:: :func:`runsnake`
 
-    .. todo::
+    .. TODO::
 
         - Add Pyrex source code inspection (I assume it doesn't
           currently do this)

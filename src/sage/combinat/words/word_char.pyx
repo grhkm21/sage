@@ -1,26 +1,27 @@
 r"""
-Fast word datatype using an array of unsigned char.
+Fast word datatype using an array of unsigned char
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2014 Vincent Delecroix <20100.delecroix@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-include "cysignals/signals.pxi"
-include "cysignals/memory.pxi"
-include "sage/data_structures/bitset.pxi"
+from cysignals.memory cimport check_allocarray, sig_free
+from cysignals.signals cimport sig_on, sig_off
+from sage.data_structures.bitset_base cimport *
 
 cimport cython
-from sage.rings.integer cimport Integer, smallInteger
+from cpython.object cimport Py_EQ, Py_NE
+from sage.rings.integer cimport smallInteger
 from sage.rings.rational cimport Rational
 from libc.string cimport memcpy, memcmp
 from sage.combinat.words.word_datatypes cimport WordDatatype
+from sage.structure.richcmp cimport rich_to_bool_sgn
 
 from cpython.number cimport PyIndex_Check, PyNumber_Check
 from cpython.sequence cimport PySequence_Check
@@ -30,6 +31,7 @@ import itertools
 
 # the maximum value of a size_t
 cdef size_t SIZE_T_MAX = -(<size_t> 1)
+
 
 def reversed_word_iterator(WordDatatype_char w):
     r"""
@@ -46,6 +48,7 @@ def reversed_word_iterator(WordDatatype_char w):
     cdef ssize_t i
     for i in range(w._length-1, -1, -1):
         yield w._data[i]
+
 
 cdef class WordDatatype_char(WordDatatype):
     r"""
@@ -95,18 +98,16 @@ cdef class WordDatatype_char(WordDatatype):
         if data:
             self._set_data(data)
 
-    @cython.boundscheck(False) # assume that indexing will not cause any IndexErrors
+    @cython.boundscheck(False)  # assume that indexing will not cause any IndexErrors
     @cython.wraparound(False)  # not check not correctly handle negative indices
-    cdef _set_data(self, data):
+    cdef _set_data(self, data) noexcept:
         r"""
         set the attribute ._data and ._length from the sequence data
         (usually data is a word, a tuple or a list)
         """
         cdef size_t i
         self._length = len(data)
-        self._data = <unsigned char *> sig_malloc(self._length * sizeof(unsigned char))
-        if self._data == NULL:
-            raise MemoryError
+        self._data = <unsigned char *>check_allocarray(self._length, sizeof(unsigned char))
 
         for i in range(self._length):
             self._data[i] = data[i]
@@ -123,7 +124,7 @@ cdef class WordDatatype_char(WordDatatype):
         if self._is_slice == 0:
             sig_free(self._data)
 
-    def __nonzero__(self):
+    def __bool__(self):
         r"""
         Test whether the word is not empty.
 
@@ -162,7 +163,7 @@ cdef class WordDatatype_char(WordDatatype):
             sage: len(w)
             7
             sage: type(len(w))
-            <type 'int'>
+            <class 'int'>
         """
         return self._length
 
@@ -177,9 +178,9 @@ cdef class WordDatatype_char(WordDatatype):
             sage: w.length()
             7
             sage: type(w.length())
-            <type 'sage.rings.integer.Integer'>
+            <class 'sage.rings.integer.Integer'>
             sage: type(len(w))
-            <type 'int'>
+            <class 'int'>
         """
         return smallInteger(self._length)
 
@@ -195,7 +196,7 @@ cdef class WordDatatype_char(WordDatatype):
             [1, 3, 2]
         """
         cdef bitset_t seen
-        bitset_init(seen, 256) # allocation + initialization to 0
+        bitset_init(seen, 256)  # allocation + initialization to 0
 
         cdef size_t i
         cdef list res = []
@@ -208,7 +209,7 @@ cdef class WordDatatype_char(WordDatatype):
         bitset_free(seen)
         return res
 
-    cdef _new_c(self, unsigned char * data, size_t length, WordDatatype_char master):
+    cdef _new_c(self, unsigned char * data, size_t length, WordDatatype_char master) noexcept:
         r"""
         TO DISCUSS: in Integer (sage.rings.integer) this method is actually an
         external function. But we might want to have several possible inheritance.
@@ -216,7 +217,7 @@ cdef class WordDatatype_char(WordDatatype):
         cdef type t = type(self)
         cdef WordDatatype_char other = t.__new__(t)
         other._data = data
-        other._master = master # can be None
+        other._master = master  # can be None
         other._is_slice = 0 if master is None else 1
         other._length = length
         other._parent = self._parent
@@ -238,22 +239,23 @@ cdef class WordDatatype_char(WordDatatype):
         cdef int res = 5381
         cdef size_t i
         if self._hash is None:
-            for i in range(min(1024,self._length)):
+            for i in range(min(<size_t>1024, self._length)):
                 res = ((res << 5) + res) + self._data[i]
             self._hash = res
         return self._hash
 
-    def __richcmp__(self, other, op):
+    def __richcmp__(self, other, int op):
         r"""
         INPUT:
 
         - ``other`` -- a word (WordDatatype_char)
+
         - ``op`` -- int, from 0 to 5
 
         TESTS::
 
             sage: W = Words(range(100))
-            sage: w = W(range(10) * 2)
+            sage: w = W(list(range(10)) * 2)
             sage: w == w
             True
             sage: w != w
@@ -264,69 +266,67 @@ cdef class WordDatatype_char(WordDatatype):
             True
             sage: w > w[1:] or w[1:] < w
             False
+
+        Testing that :trac:`21609` is fixed::
+
+            sage: w = Word([1,2], alphabet=[1,2])
+            sage: z = Word([1,1], alphabet=[1,2])
+            sage: (w<w, z<z, w<z, z<w)
+            (False, False, False, True)
+            sage: (w<=w, z<=z, w<=z, z<=w)
+            (True, True, False, True)
+            sage: (w==w, z==z, w==z, z==w)
+            (True, True, False, False)
+            sage: (w!=w, z!=z, w!=z, z!=w)
+            (False, False, True, True)
+            sage: (w>w, z>z, w>z, z>w)
+            (False, False, True, False)
+            sage: (w>=w, z>=z, w>=z, z>=w)
+            (True, True, True, False)
+
+        Testing that :trac:`22717` is fixed::
+
+            sage: w = Word([1,2], alphabet=[1,2,3])
+            sage: z = Word([1,2,3], alphabet=[1,2,3])
+            sage: (w<w, z<z, w<z, z<w)
+            (False, False, True, False)
+            sage: (w<=w, z<=z, w<=z, z<=w)
+            (True, True, True, False)
+            sage: (w==w, z==z, w==z, z==w)
+            (True, True, False, False)
+            sage: (w!=w, z!=z, w!=z, z!=w)
+            (False, False, True, True)
+            sage: (w>w, z>z, w>z, z>w)
+            (False, False, False, True)
+            sage: (w>=w, z>=z, w>=z, z>=w)
+            (True, True, False, True)
+
+        Check that :trac:`23317` is fixed::
+
+            sage: L = [Word([2,2], (1,2)), Word([], (1,2))]
+            sage: sorted(L)
+            [word: , word: 22]
         """
-        # 0: <
-        # 1: <=
-        # 2: ==
-        # 3: !=
-        # 4: >
-        # 5: >=
         if not isinstance(other, WordDatatype_char):
             return NotImplemented
 
-        # word of different lengths are not equal!
-        if (op == 2 or op == 3) and (<WordDatatype_char> self)._length != (<WordDatatype_char> other)._length:
-            return op == 3
+        cdef WordDatatype_char a = <WordDatatype_char>self
+        cdef WordDatatype_char b = <WordDatatype_char>other
 
-        cdef int test = (<WordDatatype_char> self)._lexico_cmp(other)
-        if test < 0:
-            return op < 2 or op == 3
-        elif test > 0:
-            return op > 3
-        else:
-            return op == 1 or op == 2 or op == 5
+        # Words of different lengths are not equal!
+        if (op == Py_EQ or op == Py_NE) and a._length != b._length:
+            return op == Py_NE
 
-    def __cmp__(self, other):
-        r"""
-        INPUT:
-
-        - ``other`` -- a word (WordDatatype_char)
-
-        TESTS::
-
-            sage: W = Words([0,1,2,3])
-            sage: cmp(W([0,1,0]), W([0,1,0]))
-            0
-            sage: cmp(W([0,1,0,0]), W([0,1,1]))
-            -1
-        """
-        if not isinstance(other, WordDatatype_char):
-            return NotImplemented
-
-        cdef int test = self._lexico_cmp(other)
-        if test:
-            return test
-        return (<Py_ssize_t> self._length) - (<Py_ssize_t> (<WordDatatype_char> other)._length)
-
-    cdef int _lexico_cmp(self, WordDatatype_char other) except -2:
-        r"""
-        Lexicographic comparison of self and other up to
-        the letter at position min(len(self),len(other))
-        """
-        cdef size_t l = min(self._length, other._length)
-
+        # Compare overlapping chars
+        cdef size_t l = min(a._length, b._length)
         sig_on()
-        cdef int test = memcmp(<void *> (<WordDatatype_char> self)._data,
-                      <void *> (<WordDatatype_char> other)._data,
-                      l * sizeof(unsigned char))
+        cdef int test = memcmp(a._data, b._data, l)
         sig_off()
 
         if test == 0:
-            return 0
-        if test < 0:
-            return -1
-        else:
-            return 1
+            # Equality: compare lengths
+            test = a._length - b._length
+        return rich_to_bool_sgn(op, test)
 
     def __getitem__(self, key):
         r"""
@@ -363,20 +363,20 @@ cdef class WordDatatype_char(WordDatatype):
         """
         cdef Py_ssize_t i, start, stop, step, slicelength
         cdef unsigned char * data
-        cdef size_t j,k
+        cdef size_t j, k
         if isinstance(key, slice):
             # here the key is a slice
             PySlice_GetIndicesEx(key,
-                    self._length,
-                    &start, &stop, &step,
-                    &slicelength) 
+                                 self._length,
+                                 &start, &stop, &step,
+                                 &slicelength)
             if slicelength == 0:
                 return self._new_c(NULL, 0, None)
             if step == 1:
                 return self._new_c(self._data+start, stop-start, self)
-            data = <unsigned char *> sig_malloc(slicelength * sizeof(unsigned char))
+            data = <unsigned char *>check_allocarray(slicelength, sizeof(unsigned char))
             j = 0
-            for k in range(start,stop,step):
+            for k in range(start, stop, step):
                 data[j] = self._data[k]
                 j += 1
             return self._new_c(data, slicelength, None)
@@ -385,8 +385,8 @@ cdef class WordDatatype_char(WordDatatype):
             # here the key is an int
             i = key    # cast key into a size_t
             if i < 0:
-                i += self._length;
-            if i < 0 or i >= self._length:
+                i += self._length
+            if i < 0 or <size_t>i >= self._length:
                 raise IndexError("word index out of range")
             return self._data[i]
 
@@ -394,7 +394,7 @@ cdef class WordDatatype_char(WordDatatype):
 
     def __iter__(self):
         r"""
-        Iterator over the letter of self
+        Iterator over the letters of ``self``.
 
         EXAMPLES::
 
@@ -408,7 +408,7 @@ cdef class WordDatatype_char(WordDatatype):
 
     def __reversed__(self):
         r"""
-        Reversed iterator over the letter of self
+        Reversed iterator over the letters of ``self``.
 
         EXAMPLES::
 
@@ -425,11 +425,9 @@ cdef class WordDatatype_char(WordDatatype):
         """
         return reversed_word_iterator(self)
 
-    cdef _concatenate(self, WordDatatype_char other):
+    cdef _concatenate(self, WordDatatype_char other) noexcept:
         cdef unsigned char * data
-        data = <unsigned char *> sig_malloc((self._length + other._length) * sizeof(unsigned char))
-        if data == NULL:
-            raise MemoryError
+        data = <unsigned char *>check_allocarray(self._length + other._length, sizeof(unsigned char))
 
         sig_on()
         memcpy(data, self._data, self._length * sizeof(unsigned char))
@@ -466,7 +464,40 @@ cdef class WordDatatype_char(WordDatatype):
             w._set_data(other)
             return (<WordDatatype_char> self)._concatenate(w)
 
-        raise TypeError("not able to initialize a word from {}".format(other))
+        else:
+            from sage.combinat.words.finite_word import FiniteWord_class
+            return FiniteWord_class.concatenate(self, other)
+
+    def __add__(self, other):
+        r"""
+        Concatenation (alias for ``*``).
+
+        TESTS::
+
+            sage: W = Words([0,1,2])
+            sage: type(W([0]) + W([1])) is W.finite_words()._element_classes['char']
+            True
+        """
+        return self * other
+
+    def concatenate(self, other):
+        r"""
+        Concatenation of ``self`` and ``other``.
+
+        EXAMPLES::
+
+            sage: W = Words([0,1,2])
+            sage: W([0,2,1]).concatenate([0,0,0])
+            word: 021000
+
+        TESTS::
+
+            sage: W = Words([0,1,2])
+            sage: w = W([0,2,1]).concatenate(W([0,0,0]))
+            sage: type(w) is W.finite_words()._element_classes['char']
+            True
+        """
+        return self * other
 
     def __pow__(self, exp, mod):
         r"""
@@ -501,15 +532,16 @@ cdef class WordDatatype_char(WordDatatype):
         if not PyNumber_Check(exp):
             raise ValueError("the exponent must be a number or infinity")
         if mod is not None:
-            raise ValueError("a word can not be taken modulo")
+            raise ValueError("a word cannot be taken modulo")
 
         if exp == float('inf'):
-            from sage.rings.infinity import Infinity
-            fcn = lambda n: self[n % self.length()]
+
+            def fcn(n):
+                return self[n % self.length()]
             return self._parent.shift()(fcn, datatype='callable')
 
         if exp < 0:
-            raise ValueError("can not take negative power of a word")
+            raise ValueError("cannot take negative power of a word")
 
         cdef WordDatatype_char w = self
         cdef size_t i, rest
@@ -538,10 +570,8 @@ cdef class WordDatatype_char(WordDatatype):
         # now consider non trivial powers
         if w._length > SIZE_T_MAX / (i+1):
             raise OverflowError("the length of the result is too large")
-        cdef size_t new_length = w._length * i + rest
-        cdef unsigned char * data = <unsigned char *> sig_malloc(new_length * sizeof(unsigned char))
-        if data == NULL:
-            raise MemoryError
+        cdef Py_ssize_t new_length = w._length * i + rest
+        cdef unsigned char * data = <unsigned char *>check_allocarray(new_length, sizeof(unsigned char))
 
         cdef Py_ssize_t j = w._length
         memcpy(data, w._data, j * sizeof(unsigned char))
@@ -591,7 +621,7 @@ cdef class WordDatatype_char(WordDatatype):
             sage: w.has_prefix([0,1,0])
             True
         """
-        cdef size_t i
+        cdef Py_ssize_t i
         cdef WordDatatype_char w
 
         if isinstance(other, WordDatatype_char):
@@ -616,7 +646,7 @@ cdef class WordDatatype_char(WordDatatype):
 
     def is_square(self):
         r"""
-        Returns True if self is a square, and False otherwise.
+        Return True if self is a square, and False otherwise.
 
         EXAMPLES::
 
@@ -649,12 +679,12 @@ cdef class WordDatatype_char(WordDatatype):
             True
         """
         cdef size_t l
-        if self._length % 2 != 0:
+        if self._length % 2:
             return False
         else:
             l = self._length // 2
-            return memcmp(self._data, 
-                          self._data + l, 
+            return memcmp(self._data,
+                          self._data + l,
                           l * sizeof(unsigned char)) == 0
 
     def longest_common_prefix(self, other):
@@ -686,9 +716,9 @@ cdef class WordDatatype_char(WordDatatype):
             sage: W = Words([0,1])
             sage: w = words.FibonacciWord()
             sage: w = W(list(w[:5000]))
-            sage: L = [[len(w[n:].longest_common_prefix(w[n+fibonacci(i):]))
+            sage: L = [[len(w[n:].longest_common_prefix(w[n+fibonacci(i):]))            # needs sage.libs.pari
             ....:      for i in range(5,15)] for n in range(1,1000)]
-            sage: for n,l in enumerate(L):
+            sage: for n,l in enumerate(L):                                              # needs sage.libs.pari
             ....:     if l.count(0) > 4:
             ....:         print("{} {}".format(n+1,l))
             375 [0, 13, 0, 34, 0, 89, 0, 233, 0, 233]
@@ -706,9 +736,14 @@ cdef class WordDatatype_char(WordDatatype):
             Traceback (most recent call last):
             ...
             TypeError: unsupported input 0
+
+        ::
+
+            sage: Word([2,2], (1,2)).longest_common_prefix([])
+            word:
         """
         cdef WordDatatype_char w
-        cdef size_t i
+        cdef size_t i = <size_t>(-1)
         cdef size_t m
 
         if isinstance(other, WordDatatype_char):
@@ -731,7 +766,7 @@ cdef class WordDatatype_char(WordDatatype):
         elif PySequence_Check(other):
             # Python level
             # we avoid to call len(other) since it might be an infinite word
-            for i,a in enumerate(itertools.islice(other, self._length)):
+            for i, a in enumerate(itertools.islice(other, self._length)):
                 if self._data[i] != a:
                     break
             else:
@@ -765,9 +800,14 @@ cdef class WordDatatype_char(WordDatatype):
             Traceback (most recent call last):
             ...
             TypeError: unsupported input 0
+
+        ::
+
+            sage: Word([2,2], (1,2)).longest_common_suffix([])
+            word:
         """
         cdef WordDatatype_char w
-        cdef size_t i
+        cdef size_t i = <size_t>(-1)
         cdef size_t m
         cdef size_t lo
 
@@ -804,4 +844,3 @@ cdef class WordDatatype_char(WordDatatype):
             return self._new_c(self._data+self._length-i, i, self)
 
         raise TypeError("unsupported input {}".format(other))
-

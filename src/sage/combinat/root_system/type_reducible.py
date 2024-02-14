@@ -1,24 +1,26 @@
 """
 Root system data for reducible Cartan types
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2008-2009 Daniel Bump
 #       Copyright (C) 2008-2009 Justin Walker
 #       Copyright (C) 2008-2009 Nicolas M. Thiery <nthiery at users.sf.net>,
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.misc.cachefunc import cached_method
 from sage.combinat.root_system.cartan_type import CartanType_abstract, CartanType_simple, CartanType_finite, CartanType_simply_laced, CartanType_crystallographic
 from sage.matrix.constructor import block_diagonal_matrix
 from sage.sets.family import Family
-import ambient_space
+from . import ambient_space
 import sage.combinat.root_system as root_system
 from sage.structure.sage_object import SageObject
+from sage.structure.richcmp import richcmp_method, richcmp, rich_to_bool
 
+
+@richcmp_method
 class CartanType(SageObject, CartanType_abstract):
     r"""
     A class for reducible Cartan types.
@@ -31,12 +33,12 @@ class CartanType(SageObject, CartanType_abstract):
 
     INPUT:
 
-    - ``types`` - a list of simple Cartan types
+    - ``types`` -- a list of simple Cartan types
 
     EXAMPLES::
 
-        sage: [t1,t2]=[CartanType(x) for x in ['A',1],['B',2]]
-        sage: CartanType([t1,t2])
+        sage: t1, t2 = [CartanType(x) for x in (['A',1], ['B',2])]
+        sage: CartanType([t1, t2])
         A1xB2
         sage: t = CartanType("A2xB2")
 
@@ -54,7 +56,7 @@ class CartanType(SageObject, CartanType_abstract):
     super classes (see :meth:`~sage.combinat.root_system.cartan_type.CartanType_abstract._add_abstract_superclass`)::
 
         sage: t.__class__.mro()
-        [<class 'sage.combinat.root_system.type_reducible.CartanType_with_superclass'>, <class 'sage.combinat.root_system.type_reducible.CartanType'>, <type 'sage.structure.sage_object.SageObject'>, <class 'sage.combinat.root_system.cartan_type.CartanType_finite'>, <class 'sage.combinat.root_system.cartan_type.CartanType_crystallographic'>, <class 'sage.combinat.root_system.cartan_type.CartanType_abstract'>, <type 'object'>]
+        [<class 'sage.combinat.root_system.type_reducible.CartanType_with_superclass'>, <class 'sage.combinat.root_system.type_reducible.CartanType'>, <class 'sage.structure.sage_object.SageObject'>, <class 'sage.combinat.root_system.cartan_type.CartanType_finite'>, <class 'sage.combinat.root_system.cartan_type.CartanType_crystallographic'>, <class 'sage.combinat.root_system.cartan_type.CartanType_abstract'>, <class 'object'>]
 
     The index set of the reducible Cartan type is obtained by
     relabelling successively the nodes of the Dynkin diagrams of
@@ -64,7 +66,7 @@ class CartanType(SageObject, CartanType_abstract):
         sage: t.index_set()
         (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
 
-        sage: t.dynkin_diagram()
+        sage: t.dynkin_diagram()                                                        # needs sage.graphs
         O---O---O---O
         1   2   3   4
         O=<=O---O---O---O=<=O
@@ -73,6 +75,7 @@ class CartanType(SageObject, CartanType_abstract):
         11   12   13
         A4xBC5~xC3
     """
+
     def __init__(self, types):
         """
         Initialize ``self``.
@@ -82,7 +85,7 @@ class CartanType(SageObject, CartanType_abstract):
         Internally, this relabelling is stored as a dictionary::
 
             sage: t = CartanType(["A",4], ["BC",5,2], ["C",3])
-            sage: sorted(t._index_relabelling.iteritems())
+            sage: sorted(t._index_relabelling.items())
             [((0, 1), 1), ((0, 2), 2), ((0, 3), 3), ((0, 4), 4),
              ((1, 0), 5), ((1, 1), 6), ((1, 2), 7), ((1, 3), 8), ((1, 4), 9), ((1, 5), 10),
              ((2, 1), 11), ((2, 2), 12), ((2, 3), 13)]
@@ -132,7 +135,7 @@ class CartanType(SageObject, CartanType_abstract):
                                if all(isinstance(t, cls) for t in types) )
         self._add_abstract_superclass(super_classes)
 
-    def _repr_(self, compact = True): # We should make a consistent choice here
+    def _repr_(self, compact=True):  # We should make a consistent choice here
         """
         EXAMPLES::
 
@@ -142,7 +145,7 @@ class CartanType(SageObject, CartanType_abstract):
            sage: CartanType("A2",CartanType("F4~").dual())
            A2xF4~*
         """
-        return  "x".join(t._repr_(compact = True) for t in self._types)
+        return "x".join(t._repr_(compact=True) for t in self._types)
 
     def _latex_(self):
         r"""
@@ -159,14 +162,17 @@ class CartanType(SageObject, CartanType_abstract):
         r"""
         EXAMPLES::
 
-            sage: hash(CartanType(['A',1],['B',2]))
-            1110723648           # 32-bit
-            -6896789355307447232 # 64-bit
+            sage: ct0 = CartanType(['A',1],['B',2])
+            sage: ct1 = CartanType(['A',2],['B',3])
+            sage: hash(ct0) != hash(ct1)
+            True
         """
         return hash(repr(self._types))
 
-    def __cmp__(self, other):
+    def __richcmp__(self, other, op):
         """
+        Rich comparison.
+
         EXAMPLES::
 
             sage: ct1 = CartanType(['A',1],['B',2])
@@ -188,10 +194,10 @@ class CartanType(SageObject, CartanType_abstract):
             False
         """
         if isinstance(other, CartanType_simple):
-            return 1
-        if other.__class__ != self.__class__:
-            return cmp(self.__class__, other.__class__)
-        return cmp(self._types, other._types)
+            return rich_to_bool(op, 1)
+        if not isinstance(other, CartanType):
+            return NotImplemented
+        return richcmp(self._types, other._types, op)
 
     def component_types(self):
         """
@@ -228,7 +234,7 @@ class CartanType(SageObject, CartanType_abstract):
 
     @cached_method
     def index_set(self):
-        """
+        r"""
         Implements :meth:`CartanType_abstract.index_set`.
 
         For the moment, the index set is always of the form `\{1, \ldots, n\}`.
@@ -247,28 +253,26 @@ class CartanType(SageObject, CartanType_abstract):
         reducibility but the subdivision can be suppressed with
         the option ``subdivide = False``.
 
-        .. TODO::
-
-            Currently ``subdivide`` is currently ignored.
-
         EXAMPLES::
 
             sage: ct = CartanType("A2","B2")
-            sage: ct.cartan_matrix()
+            sage: ct.cartan_matrix()                                                    # needs sage.graphs
             [ 2 -1| 0  0]
             [-1  2| 0  0]
             [-----+-----]
             [ 0  0| 2 -1]
             [ 0  0|-2  2]
-            sage: ct.cartan_matrix(subdivide=False)
+            sage: ct.cartan_matrix(subdivide=False)                                     # needs sage.graphs
             [ 2 -1  0  0]
             [-1  2  0  0]
             [ 0  0  2 -1]
             [ 0  0 -2  2]
+            sage: ct.index_set() == ct.cartan_matrix().index_set()                      # needs sage.graphs
+            True
         """
         from sage.combinat.root_system.cartan_matrix import CartanMatrix
         return CartanMatrix(block_diagonal_matrix([t.cartan_matrix() for t in self._types], subdivide=subdivide),
-                            cartan_type=self)
+                            cartan_type=self, index_set=self.index_set())
 
     def dynkin_diagram(self):
         """
@@ -276,8 +280,7 @@ class CartanType(SageObject, CartanType_abstract):
 
         EXAMPLES::
 
-            sage: dd = CartanType("A2xB2xF4").dynkin_diagram()
-            sage: dd
+            sage: dd = CartanType("A2xB2xF4").dynkin_diagram(); dd                      # needs sage.graphs
             O---O
             1   2
             O=>=O
@@ -285,10 +288,11 @@ class CartanType(SageObject, CartanType_abstract):
             O---O=>=O---O
             5   6   7   8
             A2xB2xF4
-            sage: dd.edges()
-            [(1, 2, 1), (2, 1, 1), (3, 4, 2), (4, 3, 1), (5, 6, 1), (6, 5, 1), (6, 7, 2), (7, 6, 1), (7, 8, 1), (8, 7, 1)]
+            sage: dd.edges(sort=True)                                                   # needs sage.graphs
+            [(1, 2, 1), (2, 1, 1), (3, 4, 2), (4, 3, 1), (5, 6, 1),
+             (6, 5, 1), (6, 7, 2), (7, 6, 1), (7, 8, 1), (8, 7, 1)]
 
-            sage: CartanType("F4xA2").dynkin_diagram()
+            sage: CartanType("F4xA2").dynkin_diagram()                                  # needs sage.graphs
             O---O=>=O---O
             1   2   3   4
             O---O
@@ -296,15 +300,15 @@ class CartanType(SageObject, CartanType_abstract):
             F4xA2
 
         """
-        from dynkin_diagram import DynkinDiagram_class
+        from .dynkin_diagram import DynkinDiagram_class
         relabelling = self._index_relabelling
         g = DynkinDiagram_class(self)
         for i in range(len(self._types)):
-            for [e1, e2, l] in self._types[i].dynkin_diagram().edges():
+            for [e1, e2, l] in self._types[i].dynkin_diagram().edges(sort=True):
                 g.add_edge(relabelling[i,e1], relabelling[i,e2], label=l)
         return g
 
-    def _latex_dynkin_diagram(self, label=lambda x: x, node=None, node_dist=2):
+    def _latex_dynkin_diagram(self, label=None, node=None, node_dist=2):
         r"""
         Return a latex representation of the Dynkin diagram.
 
@@ -328,6 +332,8 @@ class CartanType(SageObject, CartanType_abstract):
             \draw[fill=white] (2 cm, 0 cm) circle (.25cm) node[below=4pt]{$4$};
             }
         """
+        if label is None:
+            label = lambda x: x
         types = self.component_types()
         relabelling = self._index_relabelling
         ret = "{\n"
@@ -337,7 +343,7 @@ class CartanType(SageObject, CartanType_abstract):
         ret += "}"
         return ret
 
-    def ascii_art(self, label=lambda i: i, node=None):
+    def ascii_art(self, label=None, node=None):
         """
         Return an ascii art representation of this reducible Cartan type.
 
@@ -363,6 +369,8 @@ class CartanType(SageObject, CartanType_abstract):
             O---O=<=O
             11   12   13
         """
+        if label is None:
+            label = lambda i: i
         types = self.component_types()
         relabelling = self._index_relabelling
         return "\n".join(types[i].ascii_art(lambda x: label(relabelling[i,x]), node)
@@ -428,18 +436,17 @@ class CartanType(SageObject, CartanType_abstract):
 
         EXAMPLES::
 
-            sage: cd = CartanType("A2xB2xF4").coxeter_diagram()
-            sage: cd
+            sage: cd = CartanType("A2xB2xF4").coxeter_diagram(); cd                     # needs sage.graphs
             Graph on 8 vertices
-            sage: cd.edges()
+            sage: cd.edges(sort=True)                                                   # needs sage.graphs
             [(1, 2, 3), (3, 4, 4), (5, 6, 3), (6, 7, 4), (7, 8, 3)]
 
-            sage: CartanType("F4xA2").coxeter_diagram().edges()
+            sage: CartanType("F4xA2").coxeter_diagram().edges(sort=True)                # needs sage.graphs
             [(1, 2, 3), (2, 3, 4), (3, 4, 3), (5, 6, 3)]
 
-            sage: cd = CartanType("A1xH3").coxeter_diagram(); cd
+            sage: cd = CartanType("A1xH3").coxeter_diagram(); cd                        # needs sage.graphs
             Graph on 4 vertices
-            sage: cd.edges()
+            sage: cd.edges(sort=True)                                                   # needs sage.graphs
             [(2, 3, 3), (3, 4, 5)]
         """
         from sage.graphs.graph import Graph
@@ -447,9 +454,10 @@ class CartanType(SageObject, CartanType_abstract):
         g = Graph(multiedges=False)
         g.add_vertices(self.index_set())
         for i,t in enumerate(self._types):
-            for [e1, e2, l] in t.coxeter_diagram().edges():
+            for [e1, e2, l] in t.coxeter_diagram().edges(sort=True):
                 g.add_edge(relabelling[i,e1], relabelling[i,e2], label=l)
         return g
+
 
 class AmbientSpace(ambient_space.AmbientSpace):
     """
@@ -459,6 +467,7 @@ class AmbientSpace(ambient_space.AmbientSpace):
         Ambient space of the Root system of type A2xB2
 
     """
+
     def cartan_type(self):
         """
         EXAMPLES::
@@ -560,8 +569,8 @@ class AmbientSpace(ambient_space.AmbientSpace):
             [(1, -1, 0, 0, 0), (0, 0, 1, -1, 0), (0, 0, 1, 0, -1), (0, 0, 0, 1, -1)]
         """
         res = []
-        for i, ambient_space in enumerate(self.ambient_spaces()):
-            res.extend(self.inject_weights(i, v) for v in ambient_space.positive_roots())
+        for i, ambient_sp in enumerate(self.ambient_spaces()):
+            res.extend(self.inject_weights(i, v) for v in ambient_sp.positive_roots())
         return res
 
     def negative_roots(self):
@@ -572,8 +581,8 @@ class AmbientSpace(ambient_space.AmbientSpace):
             [(-1, 1, 0, 0, 0), (0, 0, -1, 1, 0), (0, 0, -1, 0, 1), (0, 0, 0, -1, 1)]
         """
         ret = []
-        for i, ambient_space in enumerate(self.ambient_spaces()):
-            ret.extend(self.inject_weights(i, v) for v in ambient_space.negative_roots())
+        for i, ambient_sp in enumerate(self.ambient_spaces()):
+            ret.extend(self.inject_weights(i, v) for v in ambient_sp.negative_roots())
         return ret
 
     def fundamental_weights(self):
@@ -584,8 +593,8 @@ class AmbientSpace(ambient_space.AmbientSpace):
             Finite family {1: (1, 0, 0, 0, 0), 2: (1, 1, 0, 0, 0), 3: (0, 0, 0, 1, 0), 4: (0, 0, 0, 1/2, 1/2)}
         """
         fw = []
-        for i, ambient_space in enumerate(self.ambient_spaces()):
-            fw.extend(self.inject_weights(i, v) for v in ambient_space.fundamental_weights())
+        for i, ambient_sp in enumerate(self.ambient_spaces()):
+            fw.extend(self.inject_weights(i, v) for v in ambient_sp.fundamental_weights())
         return Family(dict([i,fw[i-1]] for i in range(1,len(fw)+1)))
 
 

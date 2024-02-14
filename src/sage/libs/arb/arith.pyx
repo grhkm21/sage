@@ -12,10 +12,10 @@ Arithmetic functions using the arb library
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from ..flint.types cimport ulong
-from ..flint.fmpq cimport fmpq_t, fmpq_init, fmpq_clear, fmpq_get_mpq
-from .bernoulli cimport bernoulli_fmpq_ui
-from .acb_modular cimport acb_modular_hilbert_class_poly
+from sage.libs.flint.types cimport ulong
+from sage.libs.flint.fmpq cimport fmpq_t, fmpq_init, fmpq_clear, fmpq_get_mpq
+from sage.libs.arb.bernoulli cimport bernoulli_fmpq_ui
+from sage.libs.arb.acb_modular cimport acb_modular_hilbert_class_poly
 from sage.rings.rational cimport Rational
 from sage.rings.polynomial.polynomial_integer_dense_flint cimport Polynomial_integer_dense_flint
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
@@ -46,7 +46,7 @@ def bernoulli(n):
         sage: bernoulli(-1)
         Traceback (most recent call last):
         ...
-        OverflowError: can't convert negative value to mp_limb_t
+        OverflowError: can...t convert negative value to mp_limb_t
     """
     cdef ulong i = n
     cdef Rational q = <Rational>Rational.__new__(Rational)
@@ -56,6 +56,7 @@ def bernoulli(n):
     fmpq_get_mpq(q.value, x)
     fmpq_clear(x)
     return q
+
 
 def hilbert_class_polynomial(D):
     """
@@ -80,6 +81,5 @@ def hilbert_class_polynomial(D):
     cdef long n = D
     cdef Polynomial_integer_dense_flint poly
     poly = PolynomialRing(ZZ, "x", implementation="FLINT")()
-    acb_modular_hilbert_class_poly(poly.__poly, n)
+    acb_modular_hilbert_class_poly(poly._poly, n)
     return poly
-

@@ -1,1 +1,4 @@
-gap database_gap
+gap libsemigroups planarity | $(SAGERUNTIME)
+
+----------
+All lines of this file are ignored except the first.

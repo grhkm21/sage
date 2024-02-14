@@ -41,14 +41,11 @@ Recall an example from abelian groups::
 #  Copyright (C) 2012 Volker Braun  <vbraun.name@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
+#                  https://www.gnu.org/licenses/
 ###########################################################################
 
-
-from sage.rings.integer import Integer
-from sage.rings.infinity import infinity
-from sage.arith.all import LCM, GCD
 from sage.groups.abelian_gps.element_base import AbelianGroupElementBase
+
 
 def is_AbelianGroupElement(x):
     """
@@ -100,36 +97,26 @@ class AbelianGroupElement(AbelianGroupElementBase):
 
         EXAMPLES::
 
-            sage: G = AbelianGroup(3,[2,3,4],names="abc"); G
+            sage: G = AbelianGroup(3, [2,3,4], names="abc"); G
             Multiplicative Abelian group isomorphic to C2 x C3 x C4
-            sage: a,b,c=G.gens()
-            sage: Gp = G.permutation_group(); Gp
+            sage: a,b,c = G.gens()
+            sage: Gp = G.permutation_group(); Gp                                        # needs sage.groups
             Permutation Group with generators [(6,7,8,9), (3,4,5), (1,2)]
-            sage: a.as_permutation()
+            sage: a.as_permutation()                                                    # needs sage.libs.gap
             (1,2)
-            sage: ap = a.as_permutation(); ap
+            sage: ap = a.as_permutation(); ap                                           # needs sage.libs.gap
             (1,2)
-            sage: ap in Gp
+            sage: ap in Gp                                                              # needs sage.groups sage.libs.gap
             True
         """
-        from sage.groups.perm_gps.permgroup import PermutationGroup
-        from sage.interfaces.all import gap
+        from sage.libs.gap.libgap import libgap
         G = self.parent()
-        invs = list(G.gens_orders())
-        s1 = 'A:=AbelianGroup(%s)'%invs
-        gap.eval(s1)
-        s2 = 'phi:=IsomorphismPermGroup(A)'
-        gap.eval(s2)
-        s3 = "gens := GeneratorsOfGroup(A)"
-        gap.eval(s3)
-        L = self.list()
-        gap.eval("L1:="+str(L))
-        s4 = "L2:=List([1..%s], i->gens[i]^L1[i]);"%len(L)
-        gap.eval(s4)
-        pg = gap.eval("Image(phi,Product(L2))")
-        Gp = G.permutation_group()
-        gp = Gp(pg)
-        return gp
+        A = libgap.AbelianGroup(G.gens_orders())
+        phi = libgap.IsomorphismPermGroup(A)
+        gens = libgap.GeneratorsOfGroup(A)
+        L2 = libgap.Product([geni**Li for geni, Li in zip(gens, self.list())])
+        pg = libgap.Image(phi, L2)
+        return G.permutation_group()(pg)
 
     def word_problem(self, words):
         """
@@ -146,21 +133,22 @@ class AbelianGroupElement(AbelianGroupElementBase):
 
         .. warning::
 
-           Don't use E (or other GAP-reserved letters) as a generator
-           name.
+            Don't use E (or other GAP-reserved letters) as a generator
+            name.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: G = AbelianGroup(2,[2,3], names="xy")
+            sage: # needs sage.libs.gap
+            sage: G = AbelianGroup(2, [2,3], names="xy")
             sage: x,y = G.gens()
             sage: x.word_problem([x,y])
             [[x, 1]]
             sage: y.word_problem([x,y])
             [[y, 1]]
-            sage: v = (y*x).word_problem([x,y]); v #random
+            sage: v = (y*x).word_problem([x,y]); v  # random
             [[x, 1], [y, 1]]
             sage: prod([x^i for x,i in v]) == y*x
             True
         """
-        from sage.groups.abelian_gps.abelian_group import AbelianGroup, word_problem
-        return word_problem(words,self)
+        from sage.groups.abelian_gps.abelian_group import word_problem
+        return word_problem(words, self)

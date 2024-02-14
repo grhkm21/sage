@@ -58,22 +58,25 @@ of the given rank with conductor less than the listed maximal conductor,
 which are not included in the tables.
 
 AUTHORS:
+
 - William Stein (2007-10-07): initial version
+
 - Simon Spicer (2014-10-24): Added examples of more high-rank curves
 
-See also the functions cremona_curves() and cremona_optimal_curves()
+See also the functions :func:`cremona_curves` and :func:`cremona_optimal_curves`
 which enable easy looping through the Cremona elliptic curve database.
 
 """
 
 import os
+from ast import literal_eval
 
-from constructor import EllipticCurve
+from .constructor import EllipticCurve
 
 class EllipticCurves:
     def rank(self, rank, tors=0, n=10, labels=False):
         r"""
-        Return a list of at most `n` non-isogenous curves with given
+        Return a list of at most `n` curves with given
         rank and torsion order.
 
         INPUT:
@@ -115,32 +118,59 @@ class EllipticCurves:
             sage: e = elliptic_curves.rank(8)[0]; e.ainvs(), e.conductor()
             ((1, -1, 0, -106384, 13075804), 249649566346838)
 
+        For large conductors, the labels are not known::
+
+            sage: L = elliptic_curves.rank(6, n=3); L
+            [Elliptic Curve defined by y^2 + x*y = x^3 + x^2 - 2582*x + 48720 over Rational Field,
+             Elliptic Curve defined by y^2 + y = x^3 - 7077*x + 235516 over Rational Field,
+             Elliptic Curve defined by y^2 + x*y = x^3 - x^2 - 2326*x + 43456 over Rational Field]
+            sage: L[0].cremona_label()
+            Traceback (most recent call last):
+            ...
+            LookupError: Cremona database does not contain entry for Elliptic Curve
+            defined by y^2 + x*y = x^3 + x^2 - 2582*x + 48720 over Rational Field
+            sage: elliptic_curves.rank(6, n=3, labels=True)
+            []
         """
-        from sage.env import SAGE_SHARE
-        db = os.path.join(SAGE_SHARE,'ellcurves')
-        data = os.path.join(db,'rank%s'%rank)
-        if not os.path.exists(data):
+        from sage.features.databases import DatabaseEllcurves
+        db = DatabaseEllcurves()
+        data = os.path.join(os.path.dirname(db.absolute_filename()),
+                            f'rank{rank}')
+        try:
+            f = open(data)
+        except OSError:
             return []
         v = []
         tors = int(tors)
-        for w in open(data).readlines():
-            N,iso,num,ainvs,r,t = w.split()
-            if tors and tors != int(t):
+        for w in f.readlines():
+            N, iso, num, ainvs, r, t = w.split()
+            N = int(N)
+            t = int(t)
+            if tors and tors != t:
                 continue
-            label = '%s%s%s'%(N,iso,num)
-            if labels:
-                v.append(label)
+
+            # Labels are only known to be correct for small conductors.
+            # NOTE: only change this bound below after checking/fixing
+            # the Cremona labels in the elliptic_curves package!
+            if N <= 400000:
+                label = '%s%s%s' % (N, iso, num)
             else:
-                E = EllipticCurve(eval(ainvs))
+                label = None
+
+            if labels:
+                if label is not None:
+                    v.append(label)
+            else:
+                E = EllipticCurve(literal_eval(ainvs))
                 E._set_rank(r)
                 E._set_torsion_order(t)
                 E._set_conductor(N)
-                E._set_cremona_label(label)
+                if label is not None:
+                    E._set_cremona_label(label)
                 v.append(E)
             if len(v) >= n:
                 break
         return v
 
+
 elliptic_curves = EllipticCurves()
-
-

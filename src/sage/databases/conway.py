@@ -1,32 +1,22 @@
+# -*- coding: utf-8 -*-
+r"""
+Frank Lübeck's tables of Conway polynomials over finite fields
 """
-Frank Luebeck's tables of Conway polynomials over finite fields
-"""
+# ****************************************************************************
+#
+#       Copyright (C) 2005-2006 William Stein <wstein@gmail.com>
+#       Copyright (C) 2010      Alexandru Ghitza
+#       Copyright (C) 2013      R. Andrew Ohana <andrew.ohana@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+from collections.abc import Mapping
 
-#*****************************************************************************
-#
-#       Sage: Copyright (C) 2005 William Stein <wstein@gmail.com>
-#             Copyright (C) 2013 R. Andrew Ohana <andrew.ohana@gmail.com>
-#
-#  Distributed under the terms of the GNU General Public License (GPL)
-#
-#    This code is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    General Public License for more details.
-#
-#  The full text of the GPL is available at:
-#
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-
-import collections, os
-from sage.env import SAGE_SHARE
-
-_CONWAYDATA = os.path.join(SAGE_SHARE, 'conway_polynomials',
-        'conway_polynomials.sobj')
-_conwaydict = None
-
-class DictInMapping(collections.Mapping):
+class DictInMapping(Mapping):
     def __init__(self, dict):
         """
         Places dict into a non-mutable mapping.
@@ -89,7 +79,8 @@ class DictInMapping(collections.Mapping):
         """
         return repr(self._store)
 
-class ConwayPolynomials(collections.Mapping):
+
+class ConwayPolynomials(Mapping):
     def __init__(self):
         """
         Initialize the database.
@@ -98,16 +89,10 @@ class ConwayPolynomials(collections.Mapping):
 
             sage: c = ConwayPolynomials()
             sage: c
-            Frank Luebeck's database of Conway polynomials
+            Frank Lübeck's database of Conway polynomials
         """
-        global _conwaydict
-        if _conwaydict is None:
-            if not os.path.exists(_CONWAYDATA):
-                raise RuntimeError('In order to initialize the database, '
-                        + '%s must exist.'%_CONWAYDATA)
-            from sage.structure.sage_object import load
-            _conwaydict = load(_CONWAYDATA)
-        self._store = _conwaydict
+        import conway_polynomials
+        self._store = conway_polynomials.database()
 
     def __repr__(self):
         """
@@ -117,9 +102,9 @@ class ConwayPolynomials(collections.Mapping):
 
             sage: c = ConwayPolynomials()
             sage: c.__repr__()
-            "Frank Luebeck's database of Conway polynomials"
+            "Frank Lübeck's database of Conway polynomials"
         """
-        return "Frank Luebeck's database of Conway polynomials"
+        return "Frank Lübeck's database of Conway polynomials"
 
     def __getitem__(self, key):
         """
@@ -157,13 +142,13 @@ class ConwayPolynomials(collections.Mapping):
 
             sage: c = ConwayPolynomials()
             sage: len(c)
-            35352
+            35357
         """
         try:
             return self._len
         except AttributeError:
             pass
-        self._len = sum(len(a) for a in self._store.itervalues())
+        self._len = sum(len(a) for a in self._store.values())
         return self._len
 
     def __iter__(self):
@@ -174,19 +159,17 @@ class ConwayPolynomials(collections.Mapping):
 
             sage: c = ConwayPolynomials()
             sage: itr = iter(c)
-            sage: next(itr)
+            sage: next(itr)  # random
             (65537, 4)
-            sage: next(itr)
-            (2, 1)
         """
-        for a,b in self._store.iteritems():
+        for a, b in self._store.items():
             for c in b:
-                yield a,c
+                yield a, c
 
     def polynomial(self, p, n):
         """
         Return the Conway polynomial of degree ``n`` over ``GF(p)``,
-        or raise a RuntimeError if this polynomial is not in the
+        or raise a :class:`RuntimeError` if this polynomial is not in the
         database.
 
         .. NOTE::
@@ -216,9 +199,9 @@ class ConwayPolynomials(collections.Mapping):
             RuntimeError: Conway polynomial over F_97 of degree 128 not in database.
         """
         try:
-            return self[p,n]
+            return self[p, n]
         except KeyError:
-            raise RuntimeError("Conway polynomial over F_%s of degree %s not in database."%(p,n))
+            raise RuntimeError("Conway polynomial over F_%s of degree %s not in database." % (p, n))
 
     def has_polynomial(self, p, n):
         """
@@ -272,7 +255,7 @@ class ConwayPolynomials(collections.Mapping):
         """
         if p not in self._store:
             return []
-        return self._store[p].keys()
+        return list(self._store[p])
 
     def __reduce__(self):
         """

@@ -10,7 +10,7 @@ ECM with a primality test to compute the prime factorization of integers.
 
 Sage includes GMP-ECM, which is a highly optimized implementation of
 Lenstra's elliptic curve factorization method.  See
-http://ecm.gforge.inria.fr for more about GMP-ECM.
+https://gitlab.inria.fr/zimmerma/ecm for more about GMP-ECM.
 
 AUTHORS:
 
@@ -23,6 +23,19 @@ BUGS:
 
 Output from ecm is non-deterministic. Doctests should set the random
 seed, but currently there is no facility to do so.
+
+TESTS:
+
+Check that the issues from :trac:`27199` are fixed::
+
+    sage: n = 16262093986406371
+    sage: ecm = ECM()
+    sage: ecm.factor(n, B1=10)
+    [1009, 1009, 1733, 3023, 3049]
+
+    sage: n = 1308301 * (10^499 + 153)
+    sage: ECM(B1=600).one_curve(n, c=1, sigma=10)
+    [1308301, 100...00153]
 """
 
 ###############################################################################
@@ -33,12 +46,11 @@ seed, but currently there is no facility to do so.
 #   Distributed under the terms of the GNU General Public License (GPL)
 #   as published by the Free Software Foundation; either version 3 of
 #   the License, or (at your option) any later version.
-#                   http://www.gnu.org/licenses/
+#                   https://www.gnu.org/licenses/
 ###############################################################################
-from __future__ import print_function
 
-import os
 import re
+from subprocess import Popen, PIPE, call
 
 from sage.structure.sage_object import SageObject
 from sage.rings.integer_ring import ZZ
@@ -51,7 +63,7 @@ class ECM(SageObject):
         Create an interface to the GMP-ECM elliptic curve method
         factorization program.
 
-        See http://ecm.gforge.inria.fr
+        See https://gitlab.inria.fr/zimmerma/ecm
 
         INPUT:
 
@@ -140,9 +152,6 @@ class ECM(SageObject):
         - ``ve`` -- integer `n`. Verbosely show short (`< n`
           character) expressions on each loop
 
-        - ``cofdec`` -- boolean. Force cofactor output in decimal
-          (even if expressions are used )
-
         - ``B2scale`` -- integer. Multiplies the default B2 value
 
         - ``go`` -- integer. Preload with group order val, which can
@@ -175,7 +184,7 @@ class ECM(SageObject):
     def _make_cmd(self, B1, B2, kwds):
         ecm = ['ecm']
         options = []
-        for x, v in kwds.iteritems():
+        for x, v in kwds.items():
             if v is False:
                 continue
             options.append('-{0}'.format(x))
@@ -207,8 +216,11 @@ class ECM(SageObject):
             sage: ecm._run_ecm(['cat'], 1234)
             '1234'
         """
-        from subprocess import Popen, PIPE
-        p = Popen(cmd, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        # Under normal usage this program only returns ASCII; anything
+        # else mixed is garbage and an error
+        # So just accept latin-1 without encoding errors, and let the
+        # output parser deal with the rest
+        p = Popen(cmd, stdout=PIPE, stdin=PIPE, stderr=PIPE, encoding='latin-1')
         out, err = p.communicate(input=str(n))
         if err != '':
             raise ValueError(err)
@@ -246,8 +258,8 @@ class ECM(SageObject):
             sage: ecm.interact()    # not tested
         """
         print("Enter numbers to run ECM on them.")
-        print("Press control-C to exit.")
-        os.system(self._cmd)
+        print("Press control-D to exit.")
+        call(self._cmd)
 
     # Recommended settings from
     # http://www.mersennewiki.org/index.php/Elliptic_Curve_Method
@@ -311,19 +323,19 @@ class ECM(SageObject):
         return self._recommended_B1_list[self._B1_table_value(factor_digits)]
 
     _parse_status_re = re.compile(
-        'Using B1=(\d+), B2=(\d+), polynomial ([^,]+), sigma=(\d+)')
+        r'Using B1=(\d+), B2=(\d+), polynomial ([^,]+), sigma=(\d+)')
 
     _found_input_re = re.compile('Found input number N')
 
     _found_factor_re = re.compile(
-        'Found (?P<primality>.*) factor of [\s]*(?P<digits>\d+) digits: (?P<factor>\d+)')
+        r'Found (?P<primality>.*) factor of [\s]*(?P<digits>\d+) digits: (?P<factor>\d+)')
 
     _found_cofactor_re = re.compile(
-        '(?P<primality>.*) cofactor (?P<cofactor>\d+) has [\s]*(?P<digits>\d+) digits')
+        r'(?P<primality>.*) cofactor (?P<cofactor>\d+) has [\s]*(?P<digits>\d+) digits')
 
     def _parse_output(self, n, out):
-        """
-        Parse the ECM output
+        r"""
+        Parse the ECM output.
 
         INPUT:
 
@@ -334,10 +346,9 @@ class ECM(SageObject):
         OUTPUT:
 
         List of pairs ``(integer, bool)`` consisting of factors of the
-        ECM input and whether they are deemed to be probable
-        prime. Note that ECM is not a good primality test, and there
-        is a sizeable probability that the "probable prime" is
-        actually composite.
+        ECM input and whether they are deemed to be probable prime.
+        Note that ECM is not a good primality test, and there is a
+        sizeable probability that the "probable prime" is actually composite.
 
         EXAMPLES::
 
@@ -395,15 +406,15 @@ class ECM(SageObject):
             if m is not None:
                 factor = m.group('factor')
                 primality = m.group('primality')
-                assert primality in ['probable prime', 'composite']
-                result += [(ZZ(factor), primality == 'probable prime')]
+                assert primality in ['prime', 'composite', 'probable prime']
+                result += [(ZZ(factor), primality != 'composite')]
                 continue  # cofactor on the next line
             m = self._found_cofactor_re.match(line)
             if m is not None:
                 cofactor = m.group('cofactor')
                 primality = m.group('primality')
-                assert primality in ['Probable prime', 'Composite']
-                result += [(ZZ(cofactor), primality == 'Probable prime')]
+                assert primality in ['Prime', 'Composite', 'Probable prime']
+                result += [(ZZ(cofactor), primality != 'Composite')]
                 # assert len(result) == 2
                 return result
         raise ValueError('failed to parse ECM output')
@@ -467,8 +478,9 @@ class ECM(SageObject):
         try:
             factors = self._parse_output(n, out)
             return [factors[0][0], factors[1][0]]
-        except ValueError:
-            # output does not end in factorization
+        except (ValueError, IndexError):
+            # output does not end in factorization (ValueError)
+            # or factors has only one element above (IndexError)
             return [ZZ(1), n]
 
     def _find_factor(self, n, factor_digits, B1, **kwds):
@@ -500,7 +512,6 @@ class ECM(SageObject):
         if factor_digits is not None:
             B1 = self.recommended_B1(factor_digits)
         kwds['one'] = True
-        kwds['cofdec'] = True
         cmd = self._make_cmd(B1, None, kwds)
         out = self._run_ecm(cmd, n)
         return self._parse_output(n, out)
@@ -534,7 +545,7 @@ class ECM(SageObject):
 
             ECM is not a good primality test. Not finding a
             factorization is only weak evidence for `n` being
-            prime. You shoud run a **good** primality test before
+            prime. You should run a **good** primality test before
             calling this function.
 
         EXAMPLES::
@@ -546,7 +557,7 @@ class ECM(SageObject):
 
         Note that the input number cannot have more than 4095 digits::
 
-            sage: f=2^2^14+1
+            sage: f = 2^2^14+1
             sage: ecm.find_factor(f)
             Traceback (most recent call last):
             ...
@@ -619,7 +630,7 @@ class ECM(SageObject):
         n = self._validate(n)
         factors = [n]                 # factors that need to be factorized futher
         probable_prime_factors = []   # output prime factors
-        while len(factors) > 0:
+        while factors:
             n = factors.pop()
 
             # Step 0: Primality test
@@ -648,7 +659,7 @@ class ECM(SageObject):
             # Step 3: Call find_factor until a factorization is found
             n_factorization = [n]
             while len(n_factorization) == 1:
-                n_factorization = self.find_factor(n)
+                n_factorization = self.find_factor(n, B1=B1)
             factors.extend(n_factorization)
 
         return sorted(probable_prime_factors)
@@ -740,7 +751,7 @@ class ECM(SageObject):
             <BLANKLINE>
             Expected curves: 4911, Expected time: 32.25m
         """
-        title_curves = 'Expected number of curves to find a factor of n digits:'
+        title_curves = 'Expected number of curves to find a factor of n digits'
         title_time = 'Expected time to find a factor of n digits:'
         n = self._validate(n)
         B1 = self.recommended_B1(factor_digits)
@@ -753,7 +764,7 @@ class ECM(SageObject):
             return
 
         out_lines = iter(out.splitlines())
-        while next(out_lines) != title_curves:
+        while next(out_lines)[:len(title_curves)] != title_curves:
             pass
         header_curves = next(out_lines)
         curve_count_table = next(out_lines)
@@ -832,8 +843,8 @@ Using B1=16578, B2=16578-3162402, polynomial x^1, sigma=2617498039
 Step 1 took 12ms
 Step 2 took 17ms
 ********** Factor found in step 2: 79792266297612017
-Found probable prime factor of 17 digits: 79792266297612017
-Probable prime cofactor 6366805760909027985741435139224233 has 34 digits
+Found prime factor of 17 digits: 79792266297612017
+Prime cofactor 6366805760909027985741435139224233 has 34 digits
 """
 
 TEST_ECM_OUTPUT_2 = """
@@ -843,8 +854,8 @@ Using B1=2000, B2=147396, polynomial x^1, sigma=434130265
 Step 1 took 2ms
 Step 2 took 3ms
 ********** Factor found in step 2: 179424673
-Found probable prime factor of  9 digits: 179424673
-Probable prime cofactor 179424673 has 9 digits
+Found prime factor of  9 digits: 179424673
+Prime cofactor 179424673 has 9 digits
 """
 
 TEST_ECM_OUTPUT_3 = """
@@ -862,7 +873,7 @@ Using B1=2806, B2=2806-224406, polynomial x^1, sigma=478195111
 Step 1 took 5ms
 Step 2 took 4ms
 ********** Factor found in step 2: 197002597249
-Found probable prime factor of 12 digits: 197002597249
+Found prime factor of 12 digits: 197002597249
 Composite cofactor 339872432034468861533158743041639097889948066859 has 48 digits
 """
 
@@ -874,5 +885,5 @@ Step 1 took 4ms
 Step 2 took 2ms
 ********** Factor found in step 2: 265748496095531068869578877937
 Found composite factor of 30 digits: 265748496095531068869578877937
-Probable prime cofactor 251951573867253012259144010843 has 30 digits
+Prime cofactor 251951573867253012259144010843 has 30 digits
 """

@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Utility functions for pretty-printing 
+Utility functions for pretty-printing
 
 These utility functions are used in the implementations of ``_repr_``
 methods elsewhere.
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2014 Volker Braun <vbraun.name@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 
-class TallListFormatter(object):
+class TallListFormatter():
     """
     Special representation for lists with tall entries (e.g. matrices)
 
@@ -40,7 +39,7 @@ class TallListFormatter(object):
             sage: format_list._tall_list_row(['a   b', 'b  c', 'c'])
             ['a           b', 'b        c', 'c,', '']
         """
-        s=[]
+        s = []
         for i, line in enumerate(running_lines):
             if i + 1 != len(running_lines):
                 sep, tail = '  ', ''
@@ -75,8 +74,8 @@ class TallListFormatter(object):
         TESTS::
 
             sage: from sage.repl.display.util import format_list
-            sage: print(format_list.try_format(
-            ....:        [matrix([[1, 2, 3, 4], [5, 6, 7, 8]]) for i in xrange(7)]))
+            sage: print(format_list.try_format(                                         # needs sage.modules
+            ....:        [matrix([[1, 2, 3, 4], [5, 6, 7, 8]]) for i in range(7)]))
             [
             [1 2 3 4]  [1 2 3 4]  [1 2 3 4]  [1 2 3 4]  [1 2 3 4]  [1 2 3 4]
             [5 6 7 8], [5 6 7 8], [5 6 7 8], [5 6 7 8], [5 6 7 8], [5 6 7 8],
@@ -124,12 +123,12 @@ class TallListFormatter(object):
             # Add the lines from split_repr to the running_lines array. It may
             # be necessary to add or remove lines from either one so that the
             # number of lines matches up.
-            for i in xrange(len(running_lines), len(split_repr)):
+            for i in range(len(running_lines), len(split_repr)):
                 running_lines.insert(0, [' ' * len(x) for x in running_lines[-1]])
             line_diff = len(running_lines) - len(split_repr)
             for i, x in enumerate(split_repr):
                 running_lines[i + line_diff].append(x.ljust(width))
-            for i in xrange(line_diff):
+            for i in range(line_diff):
                 running_lines[i].append(' ' * width)
         # Output any remaining entries.
         if len(running_lines[0]) > 0:

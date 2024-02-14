@@ -1,20 +1,18 @@
+# sage.doctest: needs sage.geometry.polyhedron sage.graphs
 r"""
-Construct sheaves on toric varieties.
+Construct sheaves on toric varieties
 
 A toric vector bundle (on a toric variety) is a vector bundle that is
 equivariant with respect to the algebraic torus action.
 """
-
-
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013 Volker Braun <vbraun.name@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 from sage.schemes.toric.variety import is_ToricVariety
 from sage.modules.filtered_vector_space import FilteredVectorSpace
 
@@ -40,14 +38,14 @@ def TangentBundle(X):
     """
     if not is_ToricVariety(X):
         raise ValueError('not a toric variety')
-    base_ring = X.base_ring()
+
     fan = X.fan()
-    filtrations = dict()
+    filtrations = {}
     from sage.modules.filtered_vector_space import FilteredVectorSpace
     for i, ray in enumerate(fan.rays()):
-        F = FilteredVectorSpace(fan.rays(), {0:range(fan.nrays()), 1:[i]})
+        F = FilteredVectorSpace(fan.rays(), {0: range(fan.nrays()), 1: [i]})
         filtrations[ray] = F
-    import klyachko
+    from . import klyachko
     return klyachko.Bundle(X, filtrations, check=True)
 
 
@@ -98,11 +96,11 @@ def TrivialBundle(X, rank=1):
     """
     if not is_ToricVariety(X):
         raise ValueError('not a toric variety')
-    from sage.modules.free_module import VectorSpace
+
     base_ring = X.base_ring()
-    filtrations = dict([ray, FilteredVectorSpace(rank, 0, base_ring=base_ring)]
-                       for ray in X.fan().rays())
-    import klyachko
+    filtrations = {ray: FilteredVectorSpace(rank, 0, base_ring=base_ring)
+                   for ray in X.fan().rays()}
+    from . import klyachko
     return klyachko.Bundle(X, filtrations, check=True)
 
 
@@ -131,17 +129,16 @@ def LineBundle(X, D):
     """
     if not is_ToricVariety(X):
         raise ValueError('not a toric variety')
-    from sage.modules.free_module import VectorSpace
+
     base_ring = X.base_ring()
-    filtrations = dict([X.fan().ray(i),
-                        FilteredVectorSpace(1, D.function_value(i), base_ring=base_ring)]
-                       for i in range(X.fan().nrays()))
-    import klyachko
+    filtrations = {X.fan().ray(i): FilteredVectorSpace(1, D.function_value(i),
+                                                       base_ring=base_ring)
+                   for i in range(X.fan().nrays())}
+    from . import klyachko
     return klyachko.Bundle(X, filtrations, check=True)
 
 
-
-class SheafLibrary(object):
+class SheafLibrary():
 
     def __init__(self, toric_variety):
         """
@@ -149,7 +146,7 @@ class SheafLibrary(object):
 
         .. warning::
 
-            You should never constuct instances manually. Can be
+            You should never construct instances manually. Can be
             accessed from a toric variety via the
             :attr:`sage.schemes.toric.variety.ToricVariety_field.sheaves`
             attribute.
@@ -276,9 +273,9 @@ class SheafLibrary(object):
         EXAMPLES::
 
             sage: P1 = toric_varieties.P1()
-            sage: v1, v2, v3 = [(1,0,0),(0,1,0),(0,0,1)]
-            sage: F1 = FilteredVectorSpace({1:[v1, v2, v3], 3:[v1]})
-            sage: F2 = FilteredVectorSpace({0:[v1, v2, v3], 2:[v2, v3]})
+            sage: v1, v2, v3 = [(1,0,0), (0,1,0), (0,0,1)]
+            sage: F1 = FilteredVectorSpace({1: [v1, v2, v3], 3: [v1]})
+            sage: F2 = FilteredVectorSpace({0: [v1, v2, v3], 2: [v2, v3]})
             sage: P1 = toric_varieties.P1()
             sage: r1, r2 = P1.fan().rays()
             sage: F = MultiFilteredVectorSpace({r1:F1, r2:F2});  F
@@ -288,7 +285,7 @@ class SheafLibrary(object):
             sage: P1.sheaves.Klyachko(F)
             Rank 3 bundle on 1-d CPR-Fano toric variety covered by 2 affine patches.
         """
-        from klyachko import Bundle
+        from .klyachko import Bundle
         return Bundle(self._variety, multi_filtration, check=True)
 
     def divisor(self, *args, **kwds):

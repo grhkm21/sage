@@ -1,19 +1,14 @@
+# sage.doctest: optional - sage.modules sage.rings.finite_rings
 r"""
 Extended code
 
-Let `C` be a linear code of length `n` over `\mathbb{F}_{q}`. The extended code of `C` is the code
+Let `C` be a linear code of length `n` over `\GF{q}`. The extended code of `C` is the code
 
-.. math::
+.. MATH::
 
-    \hat{C} = \{x_{1}x_{2}\dots x_{n+1} \in \mathbb{F}_{q}^{n+1} \,\vert\,  x_{1}x_{2}\dots x_{n} \in C \text{ with } x_{1} + x_{2} + \dots + x_{n+1} = 0 \}.
+    \hat{C} = \{x_{1}x_{2}\dots x_{n+1} \in \GF{q}^{n+1} \,\vert\,  x_{1}x_{2}\dots x_{n} \in C \text{ with } x_{1} + x_{2} + \dots + x_{n+1} = 0 \}.
 
-See [HP03]_ (pp 15-16) for details.
-
-REFERENCES:
-
-    .. [HP03] W. Cary Huffman and Vera Pless, Fundamentals of Error Correcting Codes, Cambridge
-       University Press
-
+See [HP2003]_ (pp 15-16) for details.
 """
 
 #*****************************************************************************
@@ -26,12 +21,11 @@ REFERENCES:
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from linear_code import (AbstractLinearCode,\
-        LinearCodeGeneratorMatrixEncoder,\
-        LinearCodeSyndromeDecoder,\
+from .linear_code import (AbstractLinearCode,
+        LinearCodeSyndromeDecoder,
         LinearCodeNearestNeighborDecoder)
-from encoder import Encoder
-from decoder import Decoder
+from .encoder import Encoder
+from .decoder import Decoder
 from sage.misc.cachefunc import cached_method
 from sage.matrix.constructor import matrix
 from sage.modules.free_module_element import vector
@@ -47,10 +41,10 @@ class ExtendedCode(AbstractLinearCode):
 
     EXAMPLES::
 
-        sage: C = codes.RandomLinearCode(11, 5, GF(7))
+        sage: C = codes.random_linear_code(GF(7), 11, 5)
         sage: Ce = codes.ExtendedCode(C)
         sage: Ce
-        Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7
+        Extension of [11, 5] linear code over GF(7)
     """
 
     _registered_encoders = {}
@@ -70,7 +64,8 @@ class ExtendedCode(AbstractLinearCode):
         """
         if not isinstance(C, AbstractLinearCode):
             raise ValueError("Provided code must be a linear code")
-        super(ExtendedCode, self).__init__(C.base_ring(), C.length() + 1, "ExtendedMatrix", "OriginalDecoder")
+        super().__init__(C.base_ring(), C.length() + 1,
+                         "ExtendedMatrix", "OriginalDecoder")
         self._original_code = C
         self._dimension = C.dimension()
 
@@ -80,7 +75,7 @@ class ExtendedCode(AbstractLinearCode):
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: C1 = codes.ExtendedCode(C)
             sage: C2 = codes.ExtendedCode(C)
             sage: C1 == C2
@@ -91,61 +86,63 @@ class ExtendedCode(AbstractLinearCode):
 
     def _repr_(self):
         r"""
-        Returns a string representation of ``self``.
+        Return a string representation of ``self``.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: Ce
-            Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7
+            Extension of [11, 5] linear code over GF(7)
         """
-        return "Extended code coming from %s" % self.original_code()
+        return "Extension of %s" % self.original_code()
 
     def _latex_(self):
         r"""
-        Returns a latex representation of ``self``.
+        Return a latex representation of ``self``.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: latex(Ce)
-            \textnormal{Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7}
+            \textnormal{Extension of [11, 5] linear code over GF(7)}
         """
-        return "\\textnormal{Extended code coming from %s}" % self.original_code()
+        return "\\textnormal{Extension of %s}" % self.original_code()
 
     def original_code(self):
         r"""
-        Returns the code which was extended to get ``self``.
+        Return the code which was extended to get ``self``.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: Ce.original_code()
-            Linear code of length 11, dimension 5 over Finite Field of size 7
+            [11, 5] linear code over GF(7)
         """
         return self._original_code
 
     @cached_method
     def parity_check_matrix(self):
         r"""
-        Returns a parity check matrix of ``self``.
+        Return a parity check matrix of ``self``.
 
         This matrix is computed directly from :func:`original_code`.
 
         EXAMPLES::
 
-            sage: set_random_seed(42)
-            sage: C = codes.RandomLinearCode(9, 5, GF(7))
+            sage: C = LinearCode(matrix(GF(2),[[1,0,0,1,1],\
+                                               [0,1,0,1,0],\
+                                               [0,0,1,1,1]]))
+            sage: C.parity_check_matrix()
+            [1 0 1 0 1]
+            [0 1 0 1 1]
             sage: Ce = codes.ExtendedCode(C)
             sage: Ce.parity_check_matrix()
-            [1 1 1 1 1 1 1 1 1 1]
-            [1 0 0 0 2 1 6 6 4 0]
-            [0 1 0 0 6 1 6 1 0 0]
-            [0 0 1 0 3 2 6 2 1 0]
-            [0 0 0 1 4 5 4 3 5 0]
+            [1 1 1 1 1 1]
+            [1 0 1 0 1 0]
+            [0 1 0 1 1 0]
         """
         F = self.base_ring()
         zero = F.zero()
@@ -154,18 +151,20 @@ class ExtendedCode(AbstractLinearCode):
         nr, nc = H.nrows(), H.ncols()
         Hlist = H.list()
         v = matrix(F, nr + 1, 1, [one] + [zero] * nr)
-        return matrix(F, nr + 1, nc, [one] * nc + Hlist).augment(v)
+        M = matrix(F, nr + 1, nc, [one] * nc + Hlist).augment(v)
+        M.set_immutable()
+        return M
 
     def random_element(self):
         r"""
-        Returns a random element of ``self``.
+        Return a random element of ``self``.
 
         This random element is computed directly from the original code,
         and does not compute a generator matrix of ``self`` in the process.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(9, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 9, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: c = Ce.random_element() #random
             sage: c in Ce
@@ -181,14 +180,6 @@ class ExtendedCode(AbstractLinearCode):
         return vector(F, c_list)
 
 
-
-
-
-
-
-
-
-
 class ExtendedCodeExtendedMatrixEncoder(Encoder):
     r"""
     Encoder using original code's generator matrix to compute the extended code's one.
@@ -202,44 +193,44 @@ class ExtendedCodeExtendedMatrixEncoder(Encoder):
         r"""
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: E = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
             sage: E
-            Extended matrix-based encoder for Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7
+            Matrix-based Encoder for Extension of [11, 5] linear code over GF(7)
         """
         if not isinstance(code, ExtendedCode):
             raise TypeError("code has to be an instance of ExtendedCode class")
 
-        super(ExtendedCodeExtendedMatrixEncoder, self).__init__(code)
+        super().__init__(code)
 
     def _repr_(self):
         r"""
-        Returns a string representation of ``self``.
+        Return a string representation of ``self``.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: E = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
             sage: E
-            Extended matrix-based encoder for Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7
+            Matrix-based Encoder for Extension of [11, 5] linear code over GF(7)
         """
-        return "Extended matrix-based encoder for %s" % self.code()
+        return "Matrix-based Encoder for %s" % self.code()
 
     def _latex_(self):
         r"""
-        Returns a latex representation of ``self``.
+        Return a latex representation of ``self``.
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: E = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
             sage: latex(E)
-            \textnormal{Extended matrix-based encoder for }\textnormal{Extended code coming from Linear code of length 11, dimension 5 over Finite Field of size 7}
+            \textnormal{Matrix-based Encoder for }\textnormal{Extension of [11, 5] linear code over GF(7)}
         """
-        return "\\textnormal{Extended matrix-based encoder for }%s" % self.code()._latex_()
+        return "\\textnormal{Matrix-based Encoder for }%s" % self.code()._latex_()
 
     def __eq__(self, other):
         r"""
@@ -247,7 +238,7 @@ class ExtendedCodeExtendedMatrixEncoder(Encoder):
 
         EXAMPLES::
 
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = codes.random_linear_code(GF(7), 11, 5)
             sage: Ce = codes.ExtendedCode(C)
             sage: D1 = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
             sage: D2 = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
@@ -262,20 +253,19 @@ class ExtendedCodeExtendedMatrixEncoder(Encoder):
     @cached_method
     def generator_matrix(self):
         r"""
-        Returns a generator matrix of the associated code of ``self``.
+        Return a generator matrix of the associated code of ``self``.
 
         EXAMPLES::
 
-            sage: set_random_seed(42)
-            sage: C = codes.RandomLinearCode(11, 5, GF(7))
+            sage: C = LinearCode(matrix(GF(2),[[1,0,0,1,1],\
+                                               [0,1,0,1,0],\
+                                               [0,0,1,1,1]]))
             sage: Ce = codes.ExtendedCode(C)
             sage: E = codes.encoders.ExtendedCodeExtendedMatrixEncoder(Ce)
             sage: E.generator_matrix()
-            [1 0 0 0 0 5 2 6 1 2 0 4]
-            [0 1 0 0 0 5 2 2 5 3 4 6]
-            [0 0 1 0 0 2 4 6 6 3 3 3]
-            [0 0 0 1 0 3 0 6 4 2 6 6]
-            [0 0 0 0 1 5 4 5 3 0 5 5]
+            [1 0 0 1 1 1]
+            [0 1 0 1 0 0]
+            [0 0 1 1 1 1]
         """
         C = self.code()
         F = C.base_ring()
@@ -284,15 +274,9 @@ class ExtendedCodeExtendedMatrixEncoder(Encoder):
         k = C.dimension()
         extra_col = [-sum(G.rows()[i]) for i in range(k)]
         extra_col = matrix(F, k, 1, extra_col)
-        return G.augment(extra_col)
-
-
-
-
-
-
-
-
+        M = G.augment(extra_col)
+        M.set_immutable()
+        return M
 
 
 class ExtendedCodeOriginalCodeDecoder(Decoder):
@@ -315,10 +299,11 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
         sage: Ce = codes.ExtendedCode(C)
         sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce)
         sage: D
-        Decoder of Extended code coming from [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4 through Gao decoder for [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4
+        Decoder of Extension of [15, 7, 9] Reed-Solomon Code over GF(16)
+         through Gao decoder for [15, 7, 9] Reed-Solomon Code over GF(16)
     """
 
-    def __init__(self, code, original_decoder = None, **kwargs):
+    def __init__(self, code, original_decoder=None, **kwargs):
         r"""
         TESTS:
 
@@ -346,12 +331,12 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
         self._decoder_type = copy(self._decoder_type)
         self._decoder_type.remove("dynamic")
         self._decoder_type = self._original_decoder.decoder_type()
-        super(ExtendedCodeOriginalCodeDecoder, self).__init__(code, code.ambient_space(),\
-                self._original_decoder.connected_encoder())
+        super().__init__(code, code.ambient_space(),
+                         self._original_decoder.connected_encoder())
 
     def _repr_(self):
         r"""
-        Returns a string representation of ``self``.
+        Return a string representation of ``self``.
 
         EXAMPLES::
 
@@ -359,13 +344,13 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
             sage: Ce = codes.ExtendedCode(C)
             sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce)
             sage: D
-            Decoder of Extended code coming from [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4 through Gao decoder for [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4
+            Decoder of Extension of [15, 7, 9] Reed-Solomon Code over GF(16) through Gao decoder for [15, 7, 9] Reed-Solomon Code over GF(16)
         """
         return "Decoder of %s through %s" % (self.code(), self.original_decoder())
 
     def _latex_(self):
         r"""
-        Returns a latex representation of ``self``.
+        Return a latex representation of ``self``.
 
         EXAMPLES::
 
@@ -373,13 +358,13 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
             sage: Ce = codes.ExtendedCode(C)
             sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce)
             sage: latex(D)
-            \textnormal{Decoder of } Extended code coming from [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4 \textnormal{ through } Gao decoder for [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4
+            \textnormal{Decoder of } Extension of [15, 7, 9] Reed-Solomon Code over GF(16) \textnormal{ through } Gao decoder for [15, 7, 9] Reed-Solomon Code over GF(16)
         """
         return "\\textnormal{Decoder of } %s \\textnormal{ through } %s" % (self.code(), self.original_decoder())
 
     def original_decoder(self):
         r"""
-        Returns the decoder over the original code that will be used to decode words of
+        Return the decoder over the original code that will be used to decode words of
         :meth:`sage.coding.decoder.Decoder.code`.
 
         EXAMPLES::
@@ -388,13 +373,13 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
             sage: Ce = codes.ExtendedCode(C)
             sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce)
             sage: D.original_decoder()
-            Gao decoder for [15, 7, 9] Generalized Reed-Solomon Code over Finite Field in a of size 2^4
+            Gao decoder for [15, 7, 9] Reed-Solomon Code over GF(16)
         """
         return self._original_decoder
 
     def decode_to_code(self, y, **kwargs):
         r"""
-        Decodes ``y`` to an element in :meth:`sage.coding.decoder.Decoder.code`.
+        Decode ``y`` to an element in :meth:`sage.coding.decoder.Decoder.code`.
 
         EXAMPLES::
 
@@ -402,7 +387,8 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
             sage: Ce = codes.ExtendedCode(C)
             sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce)
             sage: c = Ce.random_element()
-            sage: Chan = channels.StaticErrorRateChannel(Ce.ambient_space(), D.decoding_radius())
+            sage: Chan = channels.StaticErrorRateChannel(Ce.ambient_space(),
+            ....:                                        D.decoding_radius())
             sage: y = Chan(c)
             sage: y in Ce
             False
@@ -413,10 +399,12 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
 
             sage: C = codes.GeneralizedReedSolomonCode(GF(16, 'a').list()[:15], 7)
             sage: Ce = codes.ExtendedCode(C)
-            sage: Dgrs = C.decoder('GuruswamiSudan', tau = 4)
-            sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce, original_decoder = Dgrs)
+            sage: Dgrs = C.decoder('GuruswamiSudan', tau=4)
+            sage: D = codes.decoders.ExtendedCodeOriginalCodeDecoder(Ce,
+            ....:                                                    original_decoder=Dgrs)
             sage: c = Ce.random_element()
-            sage: Chan = channels.StaticErrorRateChannel(Ce.ambient_space(), D.decoding_radius())
+            sage: Chan = channels.StaticErrorRateChannel(Ce.ambient_space(),
+            ....:                                        D.decoding_radius())
             sage: y = Chan(c)
             sage: y in Ce
             False
@@ -450,7 +438,7 @@ class ExtendedCodeOriginalCodeDecoder(Decoder):
 
     def decoding_radius(self, *args, **kwargs):
         r"""
-        Returns maximal number of errors that ``self`` can decode.
+        Return maximal number of errors that ``self`` can decode.
 
         INPUT:
 

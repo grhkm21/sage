@@ -9,9 +9,10 @@ Root system data for (untwisted) type D affine
 #  Distributed under the terms of the GNU General Public License (GPL)
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
-from cartan_type import CartanType_standard_untwisted_affine, CartanType_simply_laced
+from .cartan_type import CartanType_standard_untwisted_affine, CartanType_simply_laced
+
+
 class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
     def __init__(self, n):
         """
@@ -53,20 +54,18 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
 
         EXAMPLES::
 
-           sage: d = CartanType(['D', 6, 1]).dynkin_diagram()
-           sage: d
+           sage: d = CartanType(['D', 6, 1]).dynkin_diagram(); d                        # needs sage.graphs
               0 O       O 6
                 |       |
                 |       |
             O---O---O---O---O
             1   2   3   4   5
             D6~
-           sage: sorted(d.edges())
+           sage: d.edges(sort=True)                                                     # needs sage.graphs
            [(0, 2, 1), (1, 2, 1), (2, 0, 1), (2, 1, 1), (2, 3, 1),
             (3, 2, 1), (3, 4, 1), (4, 3, 1), (4, 5, 1), (4, 6, 1), (5, 4, 1), (6, 4, 1)]
 
-           sage: d = CartanType(['D', 4, 1]).dynkin_diagram()
-           sage: d
+           sage: d = CartanType(['D', 4, 1]).dynkin_diagram(); d                        # needs sage.graphs
                O 4
                |
                |
@@ -75,7 +74,7 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
                |
                O 0
            D4~
-           sage: sorted(d.edges())
+           sage: d.edges(sort=True)                                                     # needs sage.graphs
            [(0, 2, 1),
             (1, 2, 1),
             (2, 0, 1),
@@ -85,8 +84,7 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
             (3, 2, 1),
             (4, 2, 1)]
 
-           sage: d = CartanType(['D', 3, 1]).dynkin_diagram()
-           sage: d
+           sage: d = CartanType(['D', 3, 1]).dynkin_diagram(); d                        # needs sage.graphs
            0
            O-------+
            |       |
@@ -94,14 +92,15 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
            O---O---O
            3   1   2
            D3~
-           sage: sorted(d.edges())
-           [(0, 2, 1), (0, 3, 1), (1, 2, 1), (1, 3, 1), (2, 0, 1), (2, 1, 1), (3, 0, 1), (3, 1, 1)]
+           sage: d.edges(sort=True)                                                     # needs sage.graphs
+           [(0, 2, 1), (0, 3, 1), (1, 2, 1), (1, 3, 1),
+            (2, 0, 1), (2, 1, 1), (3, 0, 1), (3, 1, 1)]
 
         """
-        from dynkin_diagram import DynkinDiagram_class
+        from .dynkin_diagram import DynkinDiagram_class
         n = self.n
         if n == 3:
-            import cartan_type
+            from . import cartan_type
             res = cartan_type.CartanType(["A",3,1]).relabel({0:0, 1:3, 2:1, 3: 2}).dynkin_diagram()
             res._cartan_type = self
             return res
@@ -112,7 +111,7 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
         g.add_edge(0,2)
         return g
 
-    def _latex_dynkin_diagram(self, label=lambda i: i, node=None, node_dist=2, dual=False):
+    def _latex_dynkin_diagram(self, label=None, node=None, node_dist=2, dual=False):
         r"""
         Return a latex representation of the Dynkin diagram.
 
@@ -131,24 +130,22 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
             \draw[fill=white] (4 cm, -0.7 cm) circle (.25cm) node[right=3pt]{$3$};
             <BLANKLINE>
         """
+        if label is None:
+            label = lambda i: i
         if node is None:
             node = self._latex_draw_node
         n = self.n
         if n == 3:
-            import cartan_type
+            from . import cartan_type
             relabel = {0:label(0), 1:label(3), 2:label(1), 3:label(2)}
             return cartan_type.CartanType(["A",3,1]).relabel(relabel)._latex_dynkin_diagram(node_dist=node_dist)
-        if self.global_options('mark_special_node') in ['latex', 'both']:
-            special_fill = 'black'
-        else:
-            special_fill = 'white'
-        rt_most = (n-2)*node_dist
+        rt_most = (n - 2) * node_dist
         center_point = rt_most - node_dist
-        ret = "\\draw (0,0.7 cm) -- (%s cm,0);\n"%node_dist
-        ret += "\\draw (0,-0.7 cm) -- (%s cm,0);\n"%node_dist
-        ret += "\\draw (%s cm,0) -- (%s cm,0);\n"%(node_dist, center_point)
-        ret += "\\draw (%s cm,0) -- (%s cm,0.7 cm);\n"%(center_point, rt_most)
-        ret += "\\draw (%s cm,0) -- (%s cm,-0.7 cm);\n"%(center_point, rt_most)
+        ret = "\\draw (0,0.7 cm) -- (%s cm,0);\n" % node_dist
+        ret += "\\draw (0,-0.7 cm) -- (%s cm,0);\n" % node_dist
+        ret += "\\draw (%s cm,0) -- (%s cm,0);\n" % (node_dist, center_point)
+        ret += "\\draw (%s cm,0) -- (%s cm,0.7 cm);\n" % (center_point, rt_most)
+        ret += "\\draw (%s cm,0) -- (%s cm,-0.7 cm);\n" % (center_point, rt_most)
         ret += node(0, 0.7, label(0), "left=3pt")
         ret += node(0, -0.7, label(1), "left=3pt")
         for i in range(1, self.n-2):
@@ -157,7 +154,7 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
         ret += node(rt_most, -0.7, label(n-1), "right=3pt")
         return ret
 
-    def ascii_art(self, label=lambda i: i, node=None):
+    def ascii_art(self, label=None, node=None):
         """
         Return an ascii art representation of the extended Dynkin diagram.
 
@@ -187,11 +184,13 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
             O---O---O
             5   3   4
         """
+        if label is None:
+            label = lambda i: i
         if node is None:
             node = self._ascii_art_node
         n = self.n
         if n == 3:
-            import cartan_type
+            from . import cartan_type
             return cartan_type.CartanType(["A",3,1]).relabel({0:0, 1:3, 2:1, 3: 2}).ascii_art(label, node)
         if n == 4:
             ret = "    {} {}\n".format(node(label(4)), label(4)) + "    |\n    |\n"
@@ -207,4 +206,3 @@ class CartanType(CartanType_standard_untwisted_affine, CartanType_simply_laced):
         ret += "---".join(node(label(i)) for i in range(1, n))
         ret += '\n' + "".join("{!s:4}".format(label(i)) for i in range(1,n))
         return ret
-

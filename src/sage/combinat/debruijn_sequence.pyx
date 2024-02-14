@@ -35,8 +35,7 @@ This sequence is of length `k^n`, which is best possible as it is the number of
 of parameters `k` and `n` as a cyclic sequence of length `k^n` in which all
 substring of length `n` are different.
 
-See also the `Wikipedia article on De Bruijn sequences
-<http://en.wikipedia.org/wiki/De_Bruijn_sequence>`_.
+See also :wikipedia:`De_Bruijn_sequence`.
 
 TESTS:
 
@@ -58,14 +57,15 @@ AUTHOR:
 
 """
 
-#*******************************************************************************
+# ******************************************************************************
 #         Copyright (C) 2011 Eviatar Bach <eviatarbach@gmail.com>
 #
 # Distributed  under  the  terms  of  the  GNU  General  Public  License (GPL)
-#                         http://www.gnu.org/licenses/
-#*******************************************************************************
+#                         https://www.gnu.org/licenses/
+# ******************************************************************************
 
-include "sage/data_structures/bitset.pxi"
+from sage.data_structures.bitset_base cimport *
+
 
 def debruijn_sequence(int k, int n):
     """
@@ -94,7 +94,8 @@ def debruijn_sequence(int k, int n):
     gen(1, 1, k, n)
     return sequence
 
-cdef gen(int t, int p, k, n):
+
+cdef gen(int t, int p, k, n) noexcept:
     """
     The internal generation function. This should not be accessed by the
     user.
@@ -102,13 +103,15 @@ cdef gen(int t, int p, k, n):
     cdef int j
     if t > n:
         if n % p == 0:
-            for j in range(1, p + 1): sequence.append(a[j])
+            for j in range(1, p + 1):
+                sequence.append(a[j])
     else:
         a[t] = a[t - p]
         gen(t + 1, p, k, n)
         for j in range((a[t - p] + 1), (k)):
             a[t] = j
             gen(t + 1, t, k, n)
+
 
 def is_debruijn_sequence(seq, k, n):
     r"""
@@ -121,7 +124,7 @@ def is_debruijn_sequence(seq, k, n):
 
     - ``n,k`` -- Integers.
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: from sage.combinat.debruijn_sequence import is_debruijn_sequence
         sage: s = DeBruijnSequences(2, 3).an_element()
@@ -182,12 +185,14 @@ def is_debruijn_sequence(seq, k, n):
 
     return answer
 
+
 from sage.categories.finite_sets import FiniteSets
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.parent import Parent
 
 from sage.rings.integer cimport Integer
 from sage.rings.integer_ring import ZZ
+
 
 class DeBruijnSequences(UniqueRepresentation, Parent):
     """
@@ -226,7 +231,7 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
         sage: DeBruijnSequences(2, 3).cardinality()
         2
 
-    .. note::
+    .. NOTE::
 
        This function only generates one De Bruijn sequence (the smallest
        lexicographically). Support for generating all possible ones may be
@@ -241,53 +246,46 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
         sage: DeBruijnSequences(1, 3).an_element()
         [0]
 
-    Setting ``n`` to 1 will return the alphabet:
-
-    ::
+    Setting ``n`` to 1 will return the alphabet::
 
         sage: DeBruijnSequences(3, 1).an_element()
         [0, 1, 2]
 
-    The test suite:
+    The test suite::
 
-    ::
-
-        sage: d=DeBruijnSequences(2, 3)
+        sage: d = DeBruijnSequences(2, 3)
         sage: TestSuite(d).run()
     """
     def __init__(self, k, n):
         """
         Constructor.
 
-        Checks the consistency of the given arguments.
+        This checks the consistency of the given arguments.
 
         TESTS:
 
-        Setting ``n`` orr ``k`` to anything under 1 will return a ValueError:
-
-        ::
+        Setting ``n`` or ``k`` to anything under 1 will return
+        a :class:`ValueError`::
 
             sage: DeBruijnSequences(3, 0).an_element()
             Traceback (most recent call last):
             ...
-            ValueError: k and n cannot be under 1.
+            ValueError: k and n cannot be under 1
 
         Setting ``n`` or ``k`` to any type except an integer will return a
-        TypeError:
-
-        ::
+        :class:`TypeError`::
 
             sage: DeBruijnSequences(2.5, 3).an_element()
             Traceback (most recent call last):
             ...
-            TypeError: k and n must be integers.
+            TypeError: k and n must be integers
         """
         Parent.__init__(self, category=FiniteSets())
         if n < 1 or k < 1:
-            raise ValueError('k and n cannot be under 1.')
+            raise ValueError('k and n cannot be under 1')
         if (not isinstance(n, (Integer, int)) or
-            not isinstance(k, (Integer,int))):
-            raise TypeError('k and n must be integers.')
+                not isinstance(k, (Integer, int))):
+            raise TypeError('k and n must be integers')
 
         self.k = k
         self.n = n
@@ -296,7 +294,7 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
         """
         Provides a string representation of the object's parameter.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: repr(DeBruijnSequences(4, 50))
             'De Bruijn sequences with arity 4 and substring length 50'
@@ -315,7 +313,7 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
         Frank Ruskey. This program is based on a Ruby implementation by Jonas
         Elfström, which is based on the C program by Joe Sadawa.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: DeBruijnSequences(2, 3).an_element()
             [0, 0, 0, 1, 0, 1, 1, 1]
@@ -331,7 +329,7 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
 
         - ``seq`` -- A sequence of integers.
 
-        EXAMPLE:
+        EXAMPLES::
 
            sage: Sequences =  DeBruijnSequences(2, 3)
            sage: Sequences.an_element() in Sequences
@@ -344,19 +342,14 @@ class DeBruijnSequences(UniqueRepresentation, Parent):
         Returns the number of distinct De Bruijn sequences for the object's
         parameters.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: DeBruijnSequences(2, 5).cardinality()
             2048
 
         ALGORITHM:
 
-        The formula for cardinality is `k!^{k^{n-1}}/k^n` [1]_.
-
-        REFERENCES:
-
-        .. [1] Rosenfeld, Vladimir Raphael, 2002: Enumerating De Bruijn
-          Sequences. *Communications in Math. and in Computer Chem.*
+        The formula for cardinality is `k!^{k^{n-1}}/k^n` [Ros2002]_.
         """
         k = ZZ(self.k)
         n = ZZ(self.n)

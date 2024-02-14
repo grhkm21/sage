@@ -45,6 +45,8 @@ class SimplicialComplexes(Category_singleton):
     @cached_method
     def super_categories(self):
         """
+        Return the super categories of ``self``.
+
         EXAMPLES::
 
             sage: from sage.categories.simplicial_complexes import SimplicialComplexes
@@ -65,8 +67,8 @@ class SimplicialComplexes(Category_singleton):
 
                 EXAMPLES::
 
-                    sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])
-                    sage: S.dimension()
+                    sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])           # needs sage.graphs
+                    sage: S.dimension()                                                 # needs sage.graphs
                     2
                 """
                 return max(c.dimension() for c in self.facets())
@@ -79,9 +81,9 @@ class SimplicialComplexes(Category_singleton):
 
             EXAMPLES::
 
-                sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])
-                sage: S.facets()
-                {(1, 2), (1, 3, 4), (2, 5), (4, 5)}
+                sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])               # needs sage.graphs
+                sage: sorted(S.facets())                                                # needs sage.graphs
+                [(1, 2), (1, 3, 4), (2, 5), (4, 5)]
             """
 
         @abstract_method
@@ -91,11 +93,40 @@ class SimplicialComplexes(Category_singleton):
 
             EXAMPLES::
 
-                sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])
-                sage: S.faces()
+                sage: S = SimplicialComplex([[1,3,4], [1,2],[2,5],[4,5]])               # needs sage.graphs
+                sage: S.faces()                                                         # needs sage.graphs
                 {-1: {()},
                  0: {(1,), (2,), (3,), (4,), (5,)},
                  1: {(1, 2), (1, 3), (1, 4), (2, 5), (3, 4), (4, 5)},
                  2: {(1, 3, 4)}}
             """
 
+    class SubcategoryMethods:
+        @cached_method
+        def Connected(self):
+            """
+            Return the full subcategory of the connected objects of ``self``.
+
+            EXAMPLES::
+
+                sage: from sage.categories.simplicial_complexes import SimplicialComplexes
+                sage: SimplicialComplexes().Connected()
+                Category of connected simplicial complexes
+
+            TESTS::
+
+                sage: SimplicialComplexes().Connected.__module__
+                'sage.categories.simplicial_complexes'
+            """
+            return self._with_axiom('Connected')
+
+    class Connected(CategoryWithAxiom):
+        """
+        The category of connected simplicial complexes.
+
+        EXAMPLES::
+
+            sage: from sage.categories.simplicial_complexes import SimplicialComplexes
+            sage: C = SimplicialComplexes().Connected()
+            sage: TestSuite(C).run()
+        """

@@ -1,3 +1,5 @@
+.. sage-doctest: needs sage.plot sage.symbolic
+
 .. _section-plot:
 
 プロットする
@@ -11,7 +13,7 @@ Sageを使って2次元および3次元のグラフを作成することがで�
 
 Sageの2次元プロット機能を使うと，円，直線，多辺形の描画はもちろん，
 直交座標系における関数のプロット，極座標プロット、等高線プロット，ベクトル場プロットを行うことができる．
-以下では、その具体例を見ていくことにしよう．さらにSageによるプロットの具体例を見たければ， :ref:`section-systems` 節と :ref:`section-maxima` 節，および `Sage Constructions <http://www.sagemath.org/doc/constructions/>`_ を参照してほしい．
+以下では、その具体例を見ていくことにしよう．さらにSageによるプロットの具体例を見たければ， :ref:`section-systems` 節と :ref:`section-maxima` 節，および `Sage Constructions <http://doc.sagemath.org/html/en/constructions/>`_ を参照してほしい．
 
 次のコマンドは原点を中心とした半径1の黄色い円を描く:
 ::
@@ -147,7 +149,7 @@ Sageでは、(対象となる関数は限られるが)極座標プロット、�
 -----------------------
 
 Sageでは3次元プロットも作成することができる．
-ノートブック上でもREPL(コマンドライン)上でも，3次元プロットの表示はデフォルトでオープンソースパッケージ [Jmol]_ によって行なわれる．
+ノートブック上でもREPL(コマンドライン)上でも，3次元プロットの表示はデフォルトでオープンソースパッケージ [ThreeJS]_ によって行なわれる．
 Jmolではマウスによる描画の回転と拡大縮小が可能だ．
 
 ``plot3d`` を使って `f(x, y) = z` 形式の関数をプロットしてみよう:

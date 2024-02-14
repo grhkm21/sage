@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 r"""
 Kyoto Path Model for Affine Highest Weight Crystals
 """
@@ -22,7 +23,7 @@ from sage.categories.infinite_enumerated_sets import InfiniteEnumeratedSets
 from sage.categories.highest_weight_crystals import HighestWeightCrystals
 from sage.combinat.crystals.tensor_product import TensorProductOfCrystals, \
     TensorProductOfRegularCrystalsElement
-from sage.combinat.root_system.root_system import RootSystem
+
 
 class KyotoPathModel(TensorProductOfCrystals):
     r"""
@@ -64,7 +65,7 @@ class KyotoPathModel(TensorProductOfCrystals):
         \Phi_n : B(\lambda) \to B^{(0)} \otimes B^{(1)} \otimes \cdots
         \otimes B^{(N)} \otimes B(\lambda_{N+1}).
 
-    We note by Lemma 10.6.2 in [HK02]_ that for any `b \in B(\lambda)` there
+    We note by Lemma 10.6.2 in [HK2002]_ that for any `b \in B(\lambda)` there
     exists a finite `N` such that
 
     .. MATH::
@@ -121,12 +122,6 @@ class KyotoPathModel(TensorProductOfCrystals):
     the :class:`affinization
     <sage.combinat.crystals.affinization.AffinizationOfCrystal>` of the
     of crystals `B^{(i)}` for all `i`.
-
-    REFERENCES:
-
-    .. [HK02] *Introduction to Quantum Groups and Crystal Bases.*
-       Jin Hong and Seok-Jin Kang. 2002. Volume 42.
-       Graduate Studies in Mathematics. American Mathematical Society.
 
     INPUT:
 
@@ -233,7 +228,7 @@ class KyotoPathModel(TensorProductOfCrystals):
                 enumerate(P.simple_coroots()) ) != level:
             raise ValueError( "{} is not a level {} weight".format(weight, level) )
 
-        return super(KyotoPathModel, cls).__classcall__(cls, crystals, weight, P)
+        return super().__classcall__(cls, crystals, weight, P)
 
     def __init__(self, crystals, weight, P):
         """
@@ -327,6 +322,7 @@ class KyotoPathModel(TensorProductOfCrystals):
         An element in the Kyoto path model.
         """
         # For simplicity (and safety), we use the regular crystals implementation
+
         def epsilon(self, i):
             r"""
             Return `\varepsilon_i` of ``self``.
@@ -397,18 +393,17 @@ class KyotoPathModel(TensorProductOfCrystals):
                 sage: mg.f(0).e(0) == mg
                 True
             """
-            position = self.positions_of_unmatched_plus(i)
-            if not position:
+            k = self.position_of_first_unmatched_plus(i)
+            if k is None:
                 return None
-            k = position[0]
             if k == len(self)-1:
                 return None
             crystal = self[k].e(i)
-            if k == len(self)-2 and crystal.Epsilon() == self._list[-1].Phi():
-                l = self._list[:-1]
+            if k == len(self)-2 and crystal.Epsilon() == self[-1].Phi():
+                l = self[:-1]
                 l[-1] = crystal
                 return self.__class__(self.parent(), l)
-            return self.set_index(k, crystal)
+            return self._set_index(k, crystal)
 
         def f(self, i):
             """
@@ -426,17 +421,16 @@ class KyotoPathModel(TensorProductOfCrystals):
                 sage: mg.f_string([0,1,2])
                 [[[2]], [[3]], [[1]]]
             """
-            position = self.positions_of_unmatched_minus(i)
-            if not position:
+            k = self.position_of_last_unmatched_minus(i)
+            if k is None:
                 return None
-            k = position[len(position)-1]
             if k == len(self)-1:
-                l = self._list[:]
+                l = list(self)
                 k = len(l) % len(self.parent().crystals)
                 l.append(self.parent()._phi_dicts[k][ l[-1].Epsilon() ])
                 l[-2] = l[-2].f(i)
                 return self.__class__(self.parent(), l)
-            return self.set_index(k, self[k].f(i))
+            return self._set_index(k, self[k].f(i))
 
         def weight(self):
             """
@@ -455,7 +449,7 @@ class KyotoPathModel(TensorProductOfCrystals):
                 Lambda[0] - delta
             """
             wt = TensorProductOfRegularCrystalsElement.weight(self)
-            return wt + self._list[-1].Epsilon()
+            return wt + self[-1].Epsilon()
 
         def truncate(self, k=None):
             r"""
@@ -488,16 +482,15 @@ class KyotoPathModel(TensorProductOfCrystals):
                  [[2]], [[1]], [[2], [3]], [[1]], [[3]]]
             """
             if k is None:
-                k = len(self._list)
+                k = len(self)
 
             P = self.parent().finite_tensor_product(k)
-            if k <= len(self._list):
-                l = self._list[:k]
+            if k <= len(self):
+                l = self[:k]
             else:
-                l = self._list[:]
+                l = list(self)
                 N = len(self.parent().crystals)
                 while len(l) < k:
                     i = len(l) % N
                     l.append(self.parent()._phi_dicts[i][ l[-1].Epsilon() ])
             return P(*l)
-

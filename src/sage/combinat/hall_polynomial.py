@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 r"""
 Hall Polynomials
 """
@@ -16,10 +17,11 @@ Hall Polynomials
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from sage.misc.all import prod
-from sage.rings.all import ZZ
+from sage.misc.misc_c import prod
+from sage.rings.integer_ring import ZZ
 from sage.combinat.partition import Partition
 from sage.combinat.q_analogues import q_binomial
+
 
 def hall_polynomial(nu, mu, la, q=None):
     r"""
@@ -63,7 +65,7 @@ def hall_polynomial(nu, mu, la, q=None):
     If `\lambda = (1^r)` and
     `\lvert \nu \rvert = \lvert \mu \rvert + \lvert \lambda \rvert`,
     then we compute `P^{\nu}_{\mu,\lambda}` as follows (cf. Example 2.4
-    in [Schiffmann]_):
+    in [Sch2006]_):
 
     First, write `\nu = (1^{l_1}, 2^{l_2}, \ldots, n^{l_n})`, and
     define a sequence `r = r_0 \geq r_1 \geq \cdots \geq r_n` such that
@@ -143,6 +145,11 @@ def hall_polynomial(nu, mu, la, q=None):
         2*q^3 + q^2 - q - 1
         sage: hall_polynomial([4,2], [2,1], [2,1], 0)
         1
+
+    TESTS::
+
+        sage: hall_polynomial([3], [1], [1], 0)
+        0
     """
     if q is None:
         q = ZZ['q'].gen()
@@ -178,4 +185,3 @@ def hall_polynomial(nu, mu, la, q=None):
     from sage.algebras.hall_algebra import HallAlgebra
     H = HallAlgebra(R, q)
     return (H[mu]*H[la]).coefficient(nu)
-

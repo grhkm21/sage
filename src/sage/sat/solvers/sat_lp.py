@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.numerical.mip
 r"""
 Solve SAT problems Integer Linear Programming
 
@@ -6,38 +7,46 @@ solves its instance using :class:`MixedIntegerLinearProgram`. Its performance
 can be expected to be slower than when using
 :class:`~sage.sat.solvers.cryptominisat.cryptominisat.CryptoMiniSat`.
 """
-from satsolver import SatSolver
+from .satsolver import SatSolver
 from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
 
 class SatLP(SatSolver):
-    def __init__(self, solver=None):
+    def __init__(self, solver=None, verbose=0, *, integrality_tolerance=1e-3):
         r"""
         Initializes the instance
 
         INPUT:
 
-        - ``solver`` -- (default: ``None``) Specify a Linear Program (LP)
-          solver to be used. If set to ``None``, the default one is used. For
-          more information on LP solvers and which default solver is used, see
+        - ``solver`` -- (default: ``None``) Specify a Mixed Integer Linear Programming
+          (MILP) solver to be used. If set to ``None``, the default one is used. For
+          more information on MILP solvers and which default solver is used, see
           the method
           :meth:`solve <sage.numerical.mip.MixedIntegerLinearProgram.solve>`
           of the class
           :class:`MixedIntegerLinearProgram <sage.numerical.mip.MixedIntegerLinearProgram>`.
 
-        EXAMPLE::
+        - ``verbose`` -- integer (default: ``0``). Sets the level of verbosity
+          of the LP solver. Set to 0 by default, which means quiet.
+
+        - ``integrality_tolerance`` -- parameter for use with MILP solvers over an
+          inexact base ring; see :meth:`MixedIntegerLinearProgram.get_values`.
+
+        EXAMPLES::
 
             sage: S=SAT(solver="LP"); S
             an ILP-based SAT Solver
         """
         SatSolver.__init__(self)
-        self._LP = MixedIntegerLinearProgram()
+        self._LP = MixedIntegerLinearProgram(solver=solver)
+        self._LP_verbose = verbose
         self._vars = self._LP.new_variable(binary=True)
+        self._integrality_tolerance = integrality_tolerance
 
     def var(self):
         """
         Return a *new* variable.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: S=SAT(solver="LP"); S
             an ILP-based SAT Solver
@@ -45,7 +54,7 @@ class SatLP(SatSolver):
             1
         """
         nvars = n = self._LP.number_of_variables()
-        while nvars==self._LP.number_of_variables():
+        while nvars == self._LP.number_of_variables():
             n += 1
             self._vars[n] # creates the variable if needed
         return n
@@ -54,7 +63,7 @@ class SatLP(SatSolver):
         """
         Return the number of variables.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: S=SAT(solver="LP"); S
             an ILP-based SAT Solver
@@ -81,11 +90,11 @@ class SatLP(SatSolver):
             than the number of variables generated so far, then new
             variables are created automatically.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: S=SAT(solver="LP"); S
             an ILP-based SAT Solver
-            sage: for u,v in graphs.CycleGraph(6).edges(labels=False):
+            sage: for u,v in graphs.CycleGraph(6).edges(sort=False, labels=False):
             ....:     u,v = u+1,v+1
             ....:     S.add_clause((u,v))
             ....:     S.add_clause((-u,-v))
@@ -93,8 +102,8 @@ class SatLP(SatSolver):
         if 0 in lits:
             raise ValueError("0 should not appear in the clause: {}".format(lits))
         p = self._LP
-        p.add_constraint(p.sum(self._vars[x] if x>0 else 1-self._vars[-x] for x in lits)
-                         >=1)
+        p.add_constraint(p.sum(self._vars[x] if x > 0 else 1-self._vars[-x] for x in lits)
+                         >= 1)
 
     def __call__(self):
         """
@@ -108,11 +117,11 @@ class SatLP(SatSolver):
 
         - If this instance is UNSAT: ``False``
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: def is_bipartite_SAT(G):
             ....:     S=SAT(solver="LP"); S
-            ....:     for u,v in G.edges(labels=False):
+            ....:     for u,v in G.edges(sort=False, labels=False):
             ....:         u,v = u+1,v+1
             ....:         S.add_clause((u,v))
             ....:         S.add_clause((-u,-v))
@@ -127,13 +136,13 @@ class SatLP(SatSolver):
             False
         """
         try:
-            self._LP.solve()
+            self._LP.solve(log=self._LP_verbose)
         except MIPSolverException:
             return False
 
-        b = self._LP.get_values(self._vars)
+        b = self._LP.get_values(self._vars, convert=bool, tolerance=self._integrality_tolerance)
         n = max(b)
-        return [None]+[bool(b.get(i,0)) for i in range(1,n+1)]
+        return [None]+[b.get(i, False) for i in range(1,n+1)]
 
     def __repr__(self):
         """

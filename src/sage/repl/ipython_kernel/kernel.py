@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 The Sage ZMQ Kernel
 
@@ -5,23 +6,35 @@ Version of the Jupyter kernel when running Sage inside the Jupyter
 notebook or remote Jupyter sessions.
 """
 
-#*****************************************************************************
+# ***************************************************************************
 #       Copyright (C) 2015 Volker Braun <vbraun.name@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ***************************************************************************
 
 import sys
-from ipykernel.ipkernel import IPythonKernel
+import warnings
+with warnings.catch_warnings():
+    # When upstream pydevd (as opposed to the bundled version) is used
+    # with debugpy, a PEP 420 warning is emitted. Debugpy and/or
+    # pydevd will eventually work around this, but as of September
+    # 2023, hiding the warning gives us more flexibility in the
+    # versions of those packages that we can accept.
+    warnings.filterwarnings("ignore",
+                            message=r".*pkg_resources\.declare_namespace",
+                            category=DeprecationWarning)
+    from ipykernel.ipkernel import IPythonKernel
+
 from ipykernel.zmqshell import ZMQInteractiveShell
 from traitlets import Type
 
-from sage.env import SAGE_VERSION, SAGE_EXTCODE, SAGE_DOC
+from sage.env import SAGE_VERSION
 from sage.repl.interpreter import SageNotebookInteractiveShell
-from sage.repl.ipython_extension import SageCustomizations
+from sage.repl.ipython_extension import SageJupyterCustomizations
+
 
 class SageZMQInteractiveShell(SageNotebookInteractiveShell, ZMQInteractiveShell):
     pass
@@ -47,8 +60,8 @@ class SageKernel(IPythonKernel):
             sage: SageKernel.__new__(SageKernel)
             <sage.repl.ipython_kernel.kernel.SageKernel object at 0x...>
         """
-        super(SageKernel, self).__init__(**kwds)
-        SageCustomizations(self.shell)
+        super().__init__(**kwds)
+        SageJupyterCustomizations(self.shell)
 
     @property
     def banner(self):
@@ -66,8 +79,8 @@ class SageKernel(IPythonKernel):
 
             sage: from sage.repl.ipython_kernel.kernel import SageKernel
             sage: sk = SageKernel.__new__(SageKernel)
-            sage: sk.banner
-            '\xe2\x94\x8c\xe2...SageMath version...'
+            sage: print(sk.banner)
+            ┌...SageMath version...
         """
         from sage.misc.banner import banner_text
         return banner_text()
@@ -81,51 +94,68 @@ class SageKernel(IPythonKernel):
 
         See the Jupyter documentation.
 
-        .. NOTE::
-
-            Urls starting with "kernelspecs" are prepended by the
-            browser with the appropriate path.
-
         EXAMPLES::
 
             sage: from sage.repl.ipython_kernel.kernel import SageKernel
             sage: sk = SageKernel.__new__(SageKernel)
             sage: sk.help_links
             [{'text': 'Sage Documentation',
-              'url': 'kernelspecs/sagemath/doc/index.html'},
+              'url': 'https://doc.sagemath.org/html/en/index.html'},
              ...]
         """
+        # DEPRECATED: The URLs in the form 'kernelspecs/...' were used for
+        # classical Jupyter notebooks. For instance,
+        #
+        #  'kernelspecs/sagemath/doc/html/en/index.html'
+        #
+        # is constructed by kernel_url('doc/html/en/index.html'), but these
+        # URLs of local files don't work for JupyterLab. Hence all URLs here
+        # have been replaced with URLs of online documents.
+
         from sage.repl.ipython_kernel.install import SageKernelSpec
         identifier = SageKernelSpec.identifier()
-        kernel_url = lambda x: 'kernelspecs/{0}/{1}'.format(identifier, x)
+
+        def kernel_url(x):
+            # URLs starting with 'kernelspecs' are prepended by the
+            # browser with the appropriate path
+            return 'kernelspecs/{0}/{1}'.format(identifier, x)
+
         return [
             {
                 'text': 'Sage Documentation',
-                'url': kernel_url('doc/index.html'),
+                'url': "https://doc.sagemath.org/html/en/index.html",
             },
             {
-                'text': 'Sage Tutorial',
-                'url': kernel_url('doc/tutorial/index.html'),
+                'text': 'A Tour of Sage',
+                'url': "https://doc.sagemath.org/html/en/a_tour_of_sage/index.html",
+            },
+            {
+                'text': 'Tutorial',
+                'url': "https://doc.sagemath.org/html/en/tutorial/index.html",
             },
             {
                 'text': 'Thematic Tutorials',
-                'url': kernel_url('doc/thematic_tutorials/index.html'),
-            },
-            {
-                'text': 'FAQs',
-                'url': kernel_url('doc/faq/index.html'),
+                'url': "https://doc.sagemath.org/html/en/thematic_tutorials/index.html",
             },
             {
                 'text': 'PREP Tutorials',
-                'url': kernel_url('doc/prep/index.html'),
+                'url': "https://doc.sagemath.org/html/en/prep/index.html",
             },
             {
-                'text': 'Sage Reference',
-                'url': kernel_url('doc/reference/index.html'),
+                'text': 'Constructions',
+                'url': "https://doc.sagemath.org/html/en/constructions/index.html",
+            },
+            {
+                'text': 'FAQ',
+                'url': "https://doc.sagemath.org/html/en/faq/index.html",
+            },
+            {
+                'text': 'Reference',
+                'url': "https://doc.sagemath.org/html/en/reference/index.html",
             },
             {
                 'text': "Developer's Guide",
-                'url': kernel_url('doc/developer/index.html'),
+                'url': "https://doc.sagemath.org/html/en/developer/index.html",
             },
             {
                 'text': "Python",
@@ -157,7 +187,7 @@ class SageKernel(IPythonKernel):
             },
             {
                 'text': "Matplotlib",
-                'url': "http://matplotlib.org/contents.html",
+                'url': "https://matplotlib.org/contents.html",
             },
             {
                 'text': "Markdown",
@@ -166,5 +196,21 @@ class SageKernel(IPythonKernel):
         ]
 
     def pre_handler_hook(self):
+        """
+        Restore the signal handlers to their default values at Sage
+        startup, saving the old handler at the ``saved_sigint_handler``
+        attribute. This is needed because Jupyter needs to change the
+        ``SIGINT`` handler.
+
+        See :trac:`19135`.
+
+        TESTS::
+
+            sage: from sage.repl.ipython_kernel.kernel import SageKernel
+            sage: k = SageKernel.__new__(SageKernel)
+            sage: k.pre_handler_hook()
+            sage: k.saved_sigint_handler
+            <cyfunction python_check_interrupt at ...>
+        """
         from cysignals import init_cysignals
         self.saved_sigint_handler = init_cysignals()

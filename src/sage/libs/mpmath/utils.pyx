@@ -3,25 +3,20 @@ Utilities for Sage-mpmath interaction
 
 Also patches some mpmath functions for speed
 """
-from __future__ import print_function
 
 from sage.ext.stdsage cimport PY_NEW
 
 from sage.rings.integer cimport Integer
 from sage.rings.real_mpfr cimport RealNumber
-from sage.rings.complex_number cimport ComplexNumber
+from sage.rings.complex_mpfr cimport ComplexNumber
 from sage.structure.element cimport Element
-
-import sage.all
 
 from sage.libs.mpfr cimport *
 from sage.libs.gmp.all cimport *
 
-from sage.misc.lazy_import import lazy_import
-from sage.rings.complex_field import ComplexField
 from sage.rings.real_mpfr cimport RealField
 
-cpdef int bitcount(n):
+cpdef int bitcount(n) noexcept:
     """
     Bitcount of a Sage Integer or Python int/long.
 
@@ -51,7 +46,7 @@ cpdef int bitcount(n):
         return 0
     return mpz_sizeinbase(m.value, 2)
 
-cpdef isqrt(n):
+cpdef isqrt(n) noexcept:
     """
     Square root (rounded to floor) of a Sage Integer or Python int/long.
     The result is a Sage Integer.
@@ -82,7 +77,7 @@ cpdef isqrt(n):
     mpz_sqrt(y.value, m.value)
     return y
 
-cpdef from_man_exp(man, exp, long prec = 0, str rnd = 'd'):
+cpdef from_man_exp(man, exp, long prec = 0, str rnd = 'd') noexcept:
     """
     Create normalized mpf value tuple from mantissa and exponent.
 
@@ -111,7 +106,7 @@ cpdef from_man_exp(man, exp, long prec = 0, str rnd = 'd'):
     else:
         return normalize(0, res, exp, bc, prec, rnd)
 
-cpdef normalize(long sign, Integer man, exp, long bc, long prec, str rnd):
+cpdef normalize(long sign, Integer man, exp, long bc, long prec, str rnd) noexcept:
     """
     Create normalized mpf value tuple from full list of components.
 
@@ -133,7 +128,7 @@ cpdef normalize(long sign, Integer man, exp, long bc, long prec, str rnd):
     res = PY_NEW(Integer)
     if shift > 0:
         if rnd == 'n':
-            if mpz_tstbit(man.value, shift-1) and (mpz_tstbit(man.value, shift)\
+            if mpz_tstbit(man.value, shift-1) and (mpz_tstbit(man.value, shift)
                 or (mpz_scan1(man.value, 0) < (shift-1))):
                 mpz_cdiv_q_2exp(res.value, man.value, shift)
             else:
@@ -159,7 +154,7 @@ cpdef normalize(long sign, Integer man, exp, long bc, long prec, str rnd):
     bc = mpz_sizeinbase(res.value, 2)
     return (sign, res, int(exp), bc)
 
-cdef mpfr_from_mpfval(mpfr_t res, tuple x):
+cdef mpfr_from_mpfval(mpfr_t res, tuple x) noexcept:
     """
     Set value of an MPFR number (in place) to that of a given mpmath mpf
     data tuple.
@@ -185,7 +180,7 @@ cdef mpfr_from_mpfval(mpfr_t res, tuple x):
     else:
         mpfr_set_nan(res)
 
-cdef mpfr_to_mpfval(mpfr_t value):
+cdef mpfr_to_mpfval(mpfr_t value) noexcept:
     """
     Given an MPFR value, return an mpmath mpf data tuple representing
     the same number.
@@ -276,6 +271,7 @@ def mpmath_to_sage(x, prec):
         mpfr_from_mpfval(y.value, x._mpf_)
         return y
     elif hasattr(x, "_mpc_"):
+        from sage.rings.complex_mpfr import ComplexField
         z = ComplexField(prec)(0)
         re, im = x._mpc_
         mpfr_from_mpfval(z.__re, re)
@@ -335,9 +331,10 @@ def sage_to_mpmath(x, prec):
             if isinstance(x, ComplexNumber):
                 return x._mpmath_()
             else:
+                from sage.rings.complex_mpfr import ComplexField
                 x = ComplexField(prec)(x)
                 return x._mpmath_()
-    if isinstance(x, tuple) or isinstance(x, list):
+    if isinstance(x, (tuple, list)):
         return type(x)([sage_to_mpmath(v, prec) for v in x])
     if isinstance(x, dict):
         return dict([(k, sage_to_mpmath(v, prec)) for (k, v) in x.items()])
@@ -406,11 +403,11 @@ def call(func, *args, **kwargs):
         sage: a.call(a.polylog, 2, 1/2, parent=CC)
         0.582240526465012
         sage: type(_)
-        <type 'sage.rings.complex_number.ComplexNumber'>
+        <class 'sage.rings.complex_mpfr.ComplexNumber'>
         sage: a.call(a.polylog, 2, 1/2, parent=RDF)
         0.5822405264650125
         sage: type(_)
-        <type 'sage.rings.real_double.RealDoubleElement'>
+        <class 'sage.rings.real_double...RealDoubleElement...'>
 
     Check that :trac:`11885` is fixed::
 
@@ -445,7 +442,7 @@ def call(func, *args, **kwargs):
         return y
     try:
         return parent(y)
-    except TypeError, error:
+    except TypeError as error:
         try:
             return parent.complex_field()(y)
         except AttributeError:

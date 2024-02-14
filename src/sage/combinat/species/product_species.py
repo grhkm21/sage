@@ -1,7 +1,7 @@
 """
-Sum species
+Product species
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2008 Mike Hansen <mhansen@gmail.com>,
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -13,19 +13,19 @@ Sum species
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from species import GenericCombinatorialSpecies
-from structure import GenericSpeciesStructure
-from subset_species import SubsetSpecies
-from sage.misc.cachefunc import cached_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+from .species import GenericCombinatorialSpecies
+from .structure import GenericSpeciesStructure
+from .subset_species import SubsetSpecies
 from sage.structure.unique_representation import UniqueRepresentation
 
-class ProductSpeciesStructure(GenericSpeciesStructure):   
+
+class ProductSpeciesStructure(GenericSpeciesStructure):
     def __init__(self, parent, labels, subset, left, right):
         """
         TESTS::
-        
+
             sage: S = species.SetSpecies()
             sage: F = S * S
             sage: a = F.structures(['a','b','c']).random_element()
@@ -37,27 +37,28 @@ class ProductSpeciesStructure(GenericSpeciesStructure):
 
     def __repr__(self):
         """
-        Returns the string representation of this object.
+        Return the string representation of this object.
 
         EXAMPLES::
 
             sage: S = species.SetSpecies()
-            sage: (S*S).structures(['a','b','c']).random_element()
+            sage: (S*S).structures(['a','b','c'])[0]
             {}*{'a', 'b', 'c'}
-            sage: (S*S*S).structures(['a','b','c']).random_element()
+            sage: (S*S*S).structures(['a','b','c'])[13]
             ({'c'}*{'a'})*{'b'}
         """
         left, right = map(repr, self._list)
         if "*" in left:
-            left = "(%s)"%left
+            left = "(%s)" % left
         if "*" in right:
-            right = "(%s)"%right
-        return "%s*%s"%(left, right)
+            right = "(%s)" % right
+        return "%s*%s" % (left, right)
 
     def transport(self, perm):
         """
         EXAMPLES::
 
+            sage: # needs sage.groups
             sage: p = PermutationGroupElement((2,3))
             sage: S = species.SetSpecies()
             sage: F = S * S
@@ -133,7 +134,7 @@ class ProductSpeciesStructure(GenericSpeciesStructure):
 
             sage: S = species.SetSpecies()
             sage: F = S * S
-            sage: a = F.structures(['a','b','c']).random_element(); a
+            sage: a = F.structures(['a','b','c'])[0]; a
             {}*{'a', 'b', 'c'}
             sage: a.change_labels([1,2,3])
             {}*{1, 2, 3}
@@ -151,17 +152,18 @@ class ProductSpeciesStructure(GenericSpeciesStructure):
         """
         EXAMPLES::
 
+            sage: # needs sage.groups
             sage: p = PermutationGroupElement((2,3))
             sage: S = species.SetSpecies()
             sage: F = S * S
-            sage: a = F.structures([1,2,3,4]).random_element(); a
+            sage: a = F.structures([1,2,3,4])[1]; a
             {1}*{2, 3, 4}
             sage: a.automorphism_group()
             Permutation Group with generators [(2,3), (2,3,4)]
 
         ::
 
-            sage: [a.transport(g) for g in a.automorphism_group()]
+            sage: [a.transport(g) for g in a.automorphism_group()]                      # needs sage.groups
             [{1}*{2, 3, 4},
              {1}*{2, 3, 4},
              {1}*{2, 3, 4},
@@ -171,25 +173,24 @@ class ProductSpeciesStructure(GenericSpeciesStructure):
 
         ::
 
-            sage: a = F.structures([1,2,3,4]).random_element(); a
+            sage: a = F.structures([1,2,3,4])[8]; a                                     # needs sage.groups
             {2, 3}*{1, 4}
-            sage: [a.transport(g) for g in a.automorphism_group()]
+            sage: [a.transport(g) for g in a.automorphism_group()]                      # needs sage.groups
             [{2, 3}*{1, 4}, {2, 3}*{1, 4}, {2, 3}*{1, 4}, {2, 3}*{1, 4}]
         """
-        from sage.groups.all import PermutationGroupElement, PermutationGroup, SymmetricGroup
-        from sage.misc.misc import uniq
+        from sage.groups.perm_gps.constructor import PermutationGroupElement
+        from sage.groups.perm_gps.permgroup import PermutationGroup
         from sage.combinat.species.misc import change_support
 
         left, right = self._list
-        n = len(self._labels)
 
-        #Get the supports for each of the sides
+        # Get the supports for each of the sides
         l_support = self._subset._list
         r_support = self._subset.complement()._list
 
-        #Get the automorphism group for the left object and
-        #make it have the correct support. Do the same to the
-        #right side.
+        # Get the automorphism group for the left object and
+        # make it have the correct support. Do the same to the
+        # right side.
         l_aut = change_support(left.automorphism_group(), l_support)
         r_aut = change_support(right.automorphism_group(), r_support)
 
@@ -197,8 +198,9 @@ class ProductSpeciesStructure(GenericSpeciesStructure):
 
         gens = l_aut.gens() + r_aut.gens()
         gens = [g for g in gens if g != identity]
-        gens = uniq(gens) if len(gens) > 0 else [[]]
+        gens = sorted(set(gens)) if gens else [[]]
         return PermutationGroup(gens)
+
 
 class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
     def __init__(self, F, G, min=None, max=None, weight=None):
@@ -207,7 +209,7 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
 
             sage: X = species.SingletonSpecies()
             sage: A = X*X
-            sage: A.generating_series().coefficients(4)
+            sage: A.generating_series()[0:4]
             [0, 0, 1, 0]
 
             sage: P = species.PermutationSpecies()
@@ -215,7 +217,7 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
             Product of (Permutation species) and (Permutation species)
             sage: F == loads(dumps(F))
             True
-            sage: F._check()
+            sage: F._check()                                                            # needs sage.libs.flint
             True
 
         TESTS::
@@ -229,13 +231,12 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
         self._state_info = [F, G]
         GenericCombinatorialSpecies.__init__(self, min=None, max=None, weight=weight)
 
-
     _default_structure_class = ProductSpeciesStructure
 
     def left_factor(self):
         """
         Returns the left factor of this product.
-        
+
         EXAMPLES::
 
             sage: P = species.PermutationSpecies()
@@ -249,7 +250,7 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
     def right_factor(self):
         """
         Returns the right factor of this product.
-        
+
         EXAMPLES::
 
             sage: P = species.PermutationSpecies()
@@ -274,7 +275,7 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
             sage: F._name()
             'Product of (Permutation species) and (Permutation species)'
         """
-        return "Product of (%s) and (%s)"%(self.left_factor(), self.right_factor())
+        return "Product of (%s) and (%s)" % (self.left_factor(), self.right_factor())
 
     def _structures(self, structure_class, labels):
         """
@@ -307,7 +308,8 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
             sage: list(F._times_gen(F._default_structure_class, 'structures',[1,2]))
             [{}*{1, 2}, {1}*{2}, {2}*{1}, {1, 2}*{}]
         """
-        c = lambda F,n: F.generating_series().coefficient(n)
+        def c(F, n):
+            return F.generating_series().coefficient(n)
         S = SubsetSpecies()
 
         for u in getattr(S, attr)(labels):
@@ -325,7 +327,7 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
 
             sage: P = species.PermutationSpecies()
             sage: F = P * P
-            sage: F.generating_series().coefficients(5)
+            sage: F.generating_series()[0:5]
             [1, 2, 3, 4, 5]
         """
         res = (self.left_factor().generating_series(base_ring) *
@@ -334,18 +336,17 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
             res = self._weight * res
         return res
 
-
     def _itgs(self, series_ring, base_ring):
         """
         EXAMPLES::
 
             sage: P = species.PermutationSpecies()
             sage: F = P * P
-            sage: F.isotype_generating_series().coefficients(5)
+            sage: F.isotype_generating_series()[0:5]                                    # needs sage.libs.flint
             [1, 2, 5, 10, 20]
         """
-        res =  (self.left_factor().isotype_generating_series(base_ring) *
-                self.right_factor().isotype_generating_series(base_ring))
+        res = (self.left_factor().isotype_generating_series(base_ring) *
+               self.right_factor().isotype_generating_series(base_ring))
         if self.is_weighted():
             res = self._weight * res
         return res
@@ -356,15 +357,15 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
 
             sage: P = species.PermutationSpecies()
             sage: F = P * P
-            sage: F.cycle_index_series().coefficients(5)
+            sage: F.cycle_index_series()[0:5]                                           # needs sage.modules
             [p[],
              2*p[1],
              3*p[1, 1] + 2*p[2],
              4*p[1, 1, 1] + 4*p[2, 1] + 2*p[3],
              5*p[1, 1, 1, 1] + 6*p[2, 1, 1] + 3*p[2, 2] + 4*p[3, 1] + 2*p[4]]
         """
-        res =  (self.left_factor().cycle_index_series(base_ring) *
-                self.right_factor().cycle_index_series(base_ring))
+        res = (self.left_factor().cycle_index_series(base_ring) *
+               self.right_factor().cycle_index_series(base_ring))
         if self.is_weighted():
             res = self._weight * res
         return res
@@ -410,12 +411,12 @@ class ProductSpecies(GenericCombinatorialSpecies, UniqueRepresentation):
 
             sage: X = species.SingletonSpecies()
             sage: S = X * X
-            sage: S.algebraic_equation_system()
-            [node0 - z^2]
+            sage: S.algebraic_equation_system()                                         # needs sage.graphs
+            [node0 + (-z^2)]
         """
-        from sage.misc.all import prod
+        from sage.misc.misc_c import prod
         return prod(var_mapping[operand] for operand in self._state_info)
 
 
-#Backward compatibility
+# Backward compatibility
 ProductSpecies_class = ProductSpecies

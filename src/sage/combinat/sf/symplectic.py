@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 """
 Symplectic Symmetric Functions
 
@@ -5,7 +6,7 @@ AUTHORS:
 
 - Travis Scrimshaw (2013-11-10): Initial version
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013 Travis Scrimshaw <tscrim at ucdavis.edu>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -17,14 +18,14 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-import sfa
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+
+from . import sfa
 import sage.libs.lrcalc.lrcalc as lrcalc
 from sage.combinat.partition import Partitions
 from sage.misc.cachefunc import cached_method
-from sage.rings.all import ZZ, QQ, Integer
-from sage.matrix.all import matrix
+
 
 class SymmetricFunctionAlgebra_symplectic(sfa.SymmetricFunctionAlgebra_generic):
     r"""
@@ -57,7 +58,7 @@ class SymmetricFunctionAlgebra_symplectic(sfa.SymmetricFunctionAlgebra_generic):
 
     .. [ChariKleber2000] Vyjayanthi Chari and Michael Kleber.
        *Symmetric functions and representations of quantum affine algebras*.
-       :arXiv:`math/0011161v1`
+       :arxiv:`math/0011161v1`
 
     .. [KoikeTerada1987] \K. Koike, I. Terada, *Young-diagrammatic methods for
        the representation theory of the classical groups of type Bn, Cn, Dn*.
@@ -165,6 +166,7 @@ class SymmetricFunctionAlgebra_symplectic(sfa.SymmetricFunctionAlgebra_generic):
         sage: sp.one().counit()
         1
     """
+
     def __init__(self, Sym):
         """
         Initialize ``self``.
@@ -249,4 +251,3 @@ class SymmetricFunctionAlgebra_symplectic(sfa.SymmetricFunctionAlgebra_generic):
                                             for nu in Partitions(j) )
                                  for j in range(n//2+1) # // 2 for vertical dominoes
                                  for mu in Partitions(n-2*j) })
-

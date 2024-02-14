@@ -4,7 +4,7 @@ Plane curves
 
 #*****************************************************************************
 #
-#   Sage: System for Algebra and Geometry Experimentation
+#   Sage: Open Source Mathematical Software
 #
 #       Copyright (C) 2005 William Stein <was@math.harvard.edu>
 #
@@ -20,7 +20,6 @@ Plane curves
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from constructor import Curve
+from .constructor import Curve
 
-from projective_curve import Hasse_bounds
-
+from .projective_curve import Hasse_bounds

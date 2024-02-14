@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.graphs
 r"""
 Quiver mutation types
 
@@ -7,26 +8,31 @@ AUTHORS:
 - Christian Stump (2012, initial version)
 - Hugh Thomas (2012, initial version)
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2011 Gregg Musiker <gmusiker@gmail.com>
 #                          Christian Stump <christian.stump@gmail.com>
 #                          Hugh Thomas <hugh@math.unb.ca>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-# python3
-from __future__ import division, print_function
+#                  https://www.gnu.org/licenses/
+# ***************************************************************************
+from __future__ import annotations
+from pathlib import Path
+import pickle
 
 from sage.structure.sage_object import SageObject
 from copy import copy
 from sage.structure.unique_representation import UniqueRepresentation
-from sage.misc.all import cached_method
-from sage.rings.all import ZZ, infinity
-from sage.graphs.all import Graph, DiGraph
-from sage.arith.all import binomial, Euler_Phi
-from sage.all import prod
-from sage.matrix.all import matrix
+from sage.misc.cachefunc import cached_method
+from sage.misc.lazy_import import lazy_import
+from sage.rings.integer_ring import ZZ
+from sage.rings.infinity import infinity
+from sage.graphs.digraph import DiGraph
+from sage.graphs.graph import Graph
+from sage.arith.misc import binomial, euler_phi
+from sage.misc.misc_c import prod
+
+lazy_import('sage.matrix.constructor', 'matrix')
 
 
 class QuiverMutationTypeFactory(SageObject):
@@ -41,7 +47,7 @@ class QuiverMutationTypeFactory(SageObject):
             QuiverMutationType
         """
         # get data as arguments or as list/tuple
-        if len( args ) == 1:
+        if len(args) == 1:
             data = args[0]
         else:
             data = args
@@ -53,148 +59,155 @@ class QuiverMutationTypeFactory(SageObject):
             return data
 
         # check that data is a tuple or list
-        if isinstance(data, tuple) and len( data ) > 0:
+        if isinstance(data, tuple) and data:
             pass
-        elif isinstance(data, list) and len( data ) > 0:
-            data = tuple( data )
+        elif isinstance(data, list) and data:
+            data = tuple(data)
         else:
-            _mutation_type_error( data )
+            _mutation_type_error(data)
 
         # check for reducible types
-        if all( type( data_component ) in [list,tuple,QuiverMutationType_Irreducible] for data_component in data ):
-            if len( data ) == 1: return QuiverMutationType( data[0] )
+        if all(type(data_component) in [list, tuple, QuiverMutationType_Irreducible] for data_component in data):
+            if len(data) == 1:
+                return QuiverMutationType(data[0])
             else:
-                data = tuple( QuiverMutationType(comp) for comp in data )
-                return QuiverMutationType_Reducible( *data )
+                data = tuple(QuiverMutationType(comp) for comp in data)
+                return QuiverMutationType_Reducible(*data)
 
         # check for irreducible types
-        if len(data) == 2: data = (data[0],data[1],None)
-        elif len(data) == 3: pass
-        else: _mutation_type_error(data)
+        if len(data) == 2:
+            data = (data[0], data[1], None)
+        elif len(data) == 3:
+            pass
+        else:
+            _mutation_type_error(data)
 
-        if isinstance(data[2], list): data = (data[0],data[1],tuple(data[2]))
-        if isinstance(data[1], list): data = (data[0],tuple(data[1]),data[2])
+        if isinstance(data[2], list):
+            data = (data[0], data[1], tuple(data[2]))
+        if isinstance(data[1], list):
+            data = (data[0], tuple(data[1]), data[2])
 
         # mutation type casting
-        if True:
-            if data == ('D',2,None):
-                return QuiverMutationType( ('A',1,None), ('A',1,None) )
-            elif data == ('D',3,None):
-                data = ('A',3,None)
-            elif data == ('C',2,None):
-                data = ('B',2,None)
-            elif data == ('E',9,None):
-                data = ('E',8,1)
-            elif data[0] == 'A' and data[2] == 1 and isinstance(data[1], tuple) and len(data[1]) == 2 and min(data[1]) == 0:
-                if max(data[1]) == 0:
-                    pass
-                elif max(data[1]) == 1:
-                    data = ('A', 1,None)
-                elif max(data[1]) == 2:
-                    return QuiverMutationType( ('A',1,None), ('A',1,None) )
-                elif max(data[1]) == 3:
-                    data = ('A',3,None)
+        if data == ('D', 2, None):
+            return QuiverMutationType(('A', 1, None), ('A', 1, None))
+        elif data == ('D', 3, None):
+            data = ('A', 3, None)
+        elif data == ('C', 2, None):
+            data = ('B', 2, None)
+        elif data == ('E', 9, None):
+            data = ('E', 8, 1)
+        elif data[0] == 'A' and data[2] == 1 and isinstance(data[1], tuple) and len(data[1]) == 2 and min(data[1]) == 0:
+            if max(data[1]) == 0:
+                pass
+            elif max(data[1]) == 1:
+                data = ('A', 1, None)
+            elif max(data[1]) == 2:
+                return QuiverMutationType(('A', 1, None), ('A', 1, None))
+            elif max(data[1]) == 3:
+                data = ('A', 3, None)
+            else:
+                data = ('D', max(data[1]), None)
+        elif data[0] == 'GR' and data[2] is None and isinstance(data[1], tuple) and len(data[1]) == 2 and data[1][1] > data[1][0]:
+            if min(data[1]) > max(data[1]) / 2 and max(data[1]) != min(data[1]) + 1:
+                data = (data[0], (max(data[1]) - min(data[1]), max(data[1])), data[2])
+            if min(data[1]) == 2 and max(data[1]) > 3:
+                data = ('A', max(data[1]) - 3, None)
+            elif data[1] == (3, 6):
+                data = ('D', 4, None)
+            elif data[1] == (3, 7):
+                data = ('E', 6, None)
+            elif data[1] == (3, 8):
+                data = ('E', 8, None)
+            elif data[1] == (3, 9):
+                data = ('E', 8, [1, 1])
+            elif data[1] == (4, 8):
+                data = ('E', 7, [1, 1])
+        elif data == ('TR', 1, None):
+            data = ('A', 1, None)
+        elif data == ('TR', 2, None):
+            data = ('A', 3, None)
+        elif data == ('TR', 3, None):
+            data = ('D', 6, None)
+        elif data == ('TR', 4, None):
+            data = ('E', 8, (1, 1))
+        # mutation type casting from Kac conventions
+        elif data == ('A', 1, 1):
+            data = ('A', (1, 1), 1)
+        elif data[0] == 'B' and data[2] == 1:
+            if data[1] == 2:
+                data = ('CC', 2, 1)
+            elif data[1] > 2:
+                data = ('BD', data[1], 1)
+        elif data[0] == 'B' and data[2] == -1:
+            if data[1] == 2:
+                data = ('BB', 2, 1)
+            elif data[1] > 2:
+                data = ('CD', data[1], 1)
+        elif data[0] == 'C' and data[1] > 1 and data[2] == 1:
+            data = ('CC', data[1], 1)
+        elif data[0] == 'C' and data[1] > 1 and data[2] == -1:
+            data = ('BB', data[1], 1)
+        elif data == ('A', 2, 2):
+            data = ('BC', 1, 1)
+        elif data[0] == 'A' and data[1] in ZZ and data[1] > 1 and data[1] % 2 == 0 and data[2] == 2:
+            data = ('BC', data[1] // 2, 1)
+        elif data[0] == 'A' and data[1] in ZZ and data[1] > 3 and data[1] % 2 and data[2] == 2:
+            data = ('CD', (data[1] + 1) // 2, 1)
+        # We think of ('A',3, 2) as ('D',3, 2)
+        elif data == ('A', 3, 2):
+            data = ('BB', 2, 1)
+        elif data[0] == 'D' and data[1] in ZZ and data[1] > 2 and data[2] == 2:
+            data = ('BB', data[1] - 1, 1)
+        elif data == ('E', 6, 2):
+            data = ('F', 4, -1)
+        elif data == ('D', 4, 3):
+            data = ('G', 2, -1)
+        elif data == ('F', 4, (2, 1)):
+            data = ('F', 4, (1, 2))
+        elif data == ('G', 2, (3, 1)):
+            data = ('G', 2, (1, 3))
+        elif data[0] == 'T' and data[2] is None:
+            data = (data[0], tuple(sorted(data[1])), data[2])
+            r, p, q = data[1]
+            if r == 1:
+                data = ('A', p + q - 1, None)
+            elif r == p == 2:
+                data = ('D', q + 2, None)
+            elif r == 2 and p == 3:
+                if q in (3, 4, 5):
+                    data = ('E', q + 3, None)
+                elif q == 6:
+                    data = ('E', 8, 1)
                 else:
-                    data = ('D',max(data[1]),None)
-            elif data[0] == 'GR' and data[2] is None and isinstance(data[1], tuple) and len(data[1]) == 2 and data[1][1] > data[1][0]:
-                if min(data[1]) > max(data[1])/2 and max(data[1]) != min(data[1])+1:
-                    data = (data[0],(max(data[1])-min(data[1]),max(data[1])),data[2])
-                if min(data[1]) == 2 and max(data[1]) > 3:
-                    data = ('A',max(data[1])-3,None)
-                elif data[1] == (3,6):
-                    data = ('D',4,None)
-                elif data[1] == (3,7):
-                    data = ('E',6,None)
-                elif data[1] == (3,8):
-                    data = ('E',8,None)
-                elif data[1] == (3,9):
-                    data = ('E',8,[1,1])
-                elif data[1] == (4,8):
-                    data = ('E',7,[1,1])
-            elif data == ('TR',1,None):
-                data = ('A',1,None)
-            elif data == ('TR',2,None):
-                data = ('A',3,None)
-            elif data == ('TR',3,None):
-                data = ('D',6,None)
-            elif data == ('TR',4,None):
-                data = ('E',8,(1,1))
-            # mutation type casting from Kac conventions
-            elif data == ('A',1,1):
-                data = ('A',(1,1),1)
-            elif data[0] == 'B' and data[2] == 1:
-                if data[1] == 2:
-                    data = ('CC',2,1)
-                elif data[1] > 2:
-                    data = ('BD',data[1],1)
-            elif data[0] == 'B' and data[2] == -1:
-                if data[1] == 2:
-                    data = ('BB',2,1)
-                elif data[1] > 2:
-                    data= ('CD',data[1],1)
-            elif data[0] == 'C' and data[1] > 1 and data[2] == 1:
-                data = ('CC',data[1],1)
-            elif data[0] == 'C' and data[1] > 1 and data[2] == -1:
-                data = ('BB',data[1],1)
-            elif data == ('A',2,2):
-                data = ('BC',1,1)
-            elif data[0] == 'A' and data[1] in ZZ and data[1] > 1 and data[1]%2 == 0 and data[2] == 2:
-                data = ('BC',data[1]//2,1)
-            elif data[0] == 'A' and data[1] in ZZ and data[1] > 3 and data[1]%2 == 1 and data[2] == 2:
-                data = ('CD',(data[1]+1)//2,1)
-            # We think of ('A',3,2) as ('D',3,2)
-            elif data == ('A',3,2):
-                data = ('BB',2,1)
-            elif data[0] == 'D' and data[1] in ZZ and data[1] > 2 and data[2] == 2:
-                data = ('BB',data[1]-1,1)
-            elif data == ('E',6,2):
-                data = ('F',4,-1)
-            elif data == ('D',4,3):
-                data = ('G',2,-1)
-            elif data == ('F',4,(2,1)):
-                data = ('F',4,(1,2))
-            elif data == ('G',2,(3,1)):
-                data = ('G',2,(1,3))
-            elif data[0] == 'T' and data[2] is None:
-                data = (data[0],tuple(sorted(data[1])),data[2])
-                r,p,q = data[1]
-                if r == 1:
-                    data = ('A',p+q-1,None)
-                elif r == p == 2:
-                    data = ('D',q+2,None)
-                elif r == 2 and p == 3:
-                    if q in (3,4,5): data = ('E',q+3,None)
-                    elif q == 6: data = ('E',8,1)
-                    else: data = ('E',q+3,None)
-                elif r== 2 and p == q == 4:
-                    data = ('E',7,1)
-                elif r == p == q == 3:
-                    data = ('E',6,1)
-            elif data[0] == 'R2' and data[2] is None and all(data[1][i] in ZZ and data[1][i] > 0 for i in [0,1]):
-                data = (data[0],tuple(sorted(data[1])),data[2])
-                b,c = data[1]
-                if data[1] == (1,1):
-                    data = ('A',2,None)
-                elif data[1] == (1,2):
-                    data = ('B',2,None)
-                elif data[1] == (1,3):
-                    data = ('G',2,None)
-                elif data[1] == (1,4):
-                    data = ('BC',1,1)
-                elif data[1] == (2,2):
-                    data = ('A',(1,1),1)
+                    data = ('E', q + 3, None)
+            elif r == 2 and p == q == 4:
+                data = ('E', 7, 1)
+            elif r == p == q == 3:
+                data = ('E', 6, 1)
+        elif data[0] == 'R2' and data[2] is None and all(data[1][i] in ZZ and data[1][i] > 0 for i in [0, 1]):
+            data = (data[0], tuple(sorted(data[1])), data[2])
+            if data[1] == (1, 1):
+                data = ('A', 2, None)
+            elif data[1] == (1, 2):
+                data = ('B', 2, None)
+            elif data[1] == (1, 3):
+                data = ('G', 2, None)
+            elif data[1] == (1, 4):
+                data = ('BC', 1, 1)
+            elif data[1] == (2, 2):
+                data = ('A', (1, 1), 1)
 
         # setting the parameters and returning the mutation type
-        letter,rank,twist = data
+        letter, rank, twist = data
         if not isinstance(letter, str):
             _mutation_type_error(data)
         if isinstance(rank, list):
             rank = tuple(rank)
         if isinstance(twist, list):
             twist = tuple(twist)
-        return QuiverMutationType_Irreducible(letter,rank,twist)
+        return QuiverMutationType_Irreducible(letter, rank, twist)
 
-    def _repr_(self):
+    def _repr_(self) -> str:
         """
         Return the string representation of ``self``.
 
@@ -276,19 +289,22 @@ class QuiverMutationTypeFactory(SageObject):
                                              ["E", 6], ["E", 7], ["E", 8], ["F", 4],
                                              ["G", 2]]]
         affine_types = \
-            [QuiverMutationType(t) for t in [['A', [1,1], 1], ['A', [4,5], 1], ['D', 4, 1], ['BB', 5, 1]]]
+            [QuiverMutationType(t) for t in [['A', [1, 1], 1], ['A', [4, 5], 1], ['D', 4, 1], ['BB', 5, 1]]]
         elliptic_types = \
-            [QuiverMutationType(t) for t in [['E', 6, [1,1]], ['E', 7, [1,1]]]]
+            [QuiverMutationType(t) for t in [['E', 6, [1, 1]], ['E', 7, [1, 1]]]]
         mutation_finite_types = \
-            [QuiverMutationType(t) for t in [['R2',(1,5)], ['R2',(3,5)]]]
+            [QuiverMutationType(t) for t in [['R2', (1, 5)], ['R2', (3, 5)]]]
         mutation_infinite_types = \
-            [QuiverMutationType(t) for t in [['E',10], ['BE',5], ['GR',(3,10)], ['T',(3,3,4)]]]
+            [QuiverMutationType(t) for t in [['E', 10], ['BE', 5], ['GR', (3, 10)], ['T', (3, 3, 4)]]]
 
         return finite_types + affine_types + elliptic_types + mutation_finite_types + mutation_infinite_types
 
+
 QuiverMutationType = QuiverMutationTypeFactory()
+
+
 QuiverMutationType.__doc__ = \
-r"""
+    r"""
 
 *Quiver mutation types* can be seen as a slight generalization of
  *generalized Cartan types*.
@@ -297,9 +313,7 @@ Background on generalized Cartan types can be found at
 
         :wikipedia:`Generalized_Cartan_matrix`
 
-For the compendium on the cluster algebra and quiver package in Sage see
-
-        :arxiv:`1102.4844`
+For the compendium on the cluster algebra and quiver package in Sage see [MS2011]_
 
 A `B`-matrix is a skew-symmetrizable `( n \times n )`-matrix `M`.
 I.e., there exists an invertible diagonal matrix `D` such that `DM` is
@@ -313,7 +327,7 @@ by sending `M` to the generalized Cartan matrix `C(M)` obtained by
 replacing all positive entries by their negatives and adding `2`'s on
 the main diagonal.
 
-``QuiverMutationType`` constructs a quiver mutation type object. For
+:class:`QuiverMutationType` constructs a quiver mutation type object. For
 more detail on the possible different types, please see the
 compendium.
 
@@ -349,7 +363,7 @@ mutation types.
       ``BC`` and ``rank=1``.
 
     * Macdonald notation: for the dual of an untwisted affine type
-      (such as ['C', 6,1]), we accept a twist of -1 (i.e.,
+      (such as ['C', 6, 1]), we accept a twist of -1 (i.e.,
       ['C',6,-1]).
 
 - Elliptic type -- ``letter`` is a Dynkin type, ``rank`` is the rank
@@ -371,7 +385,7 @@ mutation types.
 
     * Grassmannian: This defines the cluster algebra (without
       coefficients) corresponding to the cluster algebra with
-      coefficients which is the co-ordinate ring of a Grassmannian.
+      coefficients which is the coordinate ring of a Grassmannian.
       ``letter`` is 'GR'.  ``rank`` is a pair of integers (`k`, `n`)
       with 'k' < 'n' specifying the Grassmannian of `k`-planes in
       `n`-space.  This defines a quiver given by a (k-1) x (n-k-1)
@@ -402,28 +416,28 @@ REFERENCES:
 
 - A good reference for the skew-symmetrizable elliptic diagrams is
   "Cluster algebras of finite mutation type via unfolding" by
-  A. Felikson, M. Shapiro, and P. Tumarkin, :arxiv:`1006.4276v4`.
+  A. Felikson, M. Shapiro, and P. Tumarkin, [FST2012]_.
 
 EXAMPLES:
 
 Finite types::
 
-    sage: QuiverMutationType('A',1)
+    sage: QuiverMutationType('A', 1)
     ['A', 1]
     sage: QuiverMutationType('A',5)
     ['A', 5]
 
-    sage: QuiverMutationType('B',2)
+    sage: QuiverMutationType('B', 2)
     ['B', 2]
     sage: QuiverMutationType('B',5)
     ['B', 5]
 
-    sage: QuiverMutationType('C',2)
+    sage: QuiverMutationType('C', 2)
     ['B', 2]
     sage: QuiverMutationType('C',5)
     ['C', 5]
 
-    sage: QuiverMutationType('D',2)
+    sage: QuiverMutationType('D', 2)
     [ ['A', 1], ['A', 1] ]
     sage: QuiverMutationType('D',3)
     ['A', 3]
@@ -433,201 +447,201 @@ Finite types::
     sage: QuiverMutationType('E',6)
     ['E', 6]
 
-    sage: QuiverMutationType('G',2)
+    sage: QuiverMutationType('G', 2)
     ['G', 2]
 
-    sage: QuiverMutationType('A',(1,0),1)
+    sage: QuiverMutationType('A',(1,0), 1)
     ['A', 1]
 
-    sage: QuiverMutationType('A',(2,0),1)
+    sage: QuiverMutationType('A',(2,0), 1)
     [ ['A', 1], ['A', 1] ]
 
-    sage: QuiverMutationType('A',(7,0),1)
+    sage: QuiverMutationType('A',(7,0), 1)
     ['D', 7]
 
 Affine types::
 
-    sage: QuiverMutationType('A',(1,1),1)
+    sage: QuiverMutationType('A',(1, 1), 1)
     ['A', [1, 1], 1]
-    sage: QuiverMutationType('A',(2,4),1)
+    sage: QuiverMutationType('A',(2,4), 1)
     ['A', [2, 4], 1]
 
-    sage: QuiverMutationType('BB',2,1)
+    sage: QuiverMutationType('BB', 2, 1)
     ['BB', 2, 1]
-    sage: QuiverMutationType('BB',4,1)
+    sage: QuiverMutationType('BB',4, 1)
     ['BB', 4, 1]
 
-    sage: QuiverMutationType('CC',2,1)
+    sage: QuiverMutationType('CC', 2, 1)
     ['CC', 2, 1]
-    sage: QuiverMutationType('CC',4,1)
+    sage: QuiverMutationType('CC',4, 1)
     ['CC', 4, 1]
 
-    sage: QuiverMutationType('BC',1,1)
+    sage: QuiverMutationType('BC', 1, 1)
     ['BC', 1, 1]
-    sage: QuiverMutationType('BC',5,1)
+    sage: QuiverMutationType('BC',5, 1)
     ['BC', 5, 1]
 
-    sage: QuiverMutationType('BD',3,1)
+    sage: QuiverMutationType('BD',3, 1)
     ['BD', 3, 1]
-    sage: QuiverMutationType('BD',5,1)
+    sage: QuiverMutationType('BD',5, 1)
     ['BD', 5, 1]
 
-    sage: QuiverMutationType('CD',3,1)
+    sage: QuiverMutationType('CD',3, 1)
     ['CD', 3, 1]
-    sage: QuiverMutationType('CD',5,1)
+    sage: QuiverMutationType('CD',5, 1)
     ['CD', 5, 1]
 
-    sage: QuiverMutationType('D',4,1)
+    sage: QuiverMutationType('D',4, 1)
     ['D', 4, 1]
-    sage: QuiverMutationType('D',6,1)
+    sage: QuiverMutationType('D',6, 1)
     ['D', 6, 1]
 
-    sage: QuiverMutationType('E',6,1)
+    sage: QuiverMutationType('E',6, 1)
     ['E', 6, 1]
-    sage: QuiverMutationType('E',7,1)
+    sage: QuiverMutationType('E',7, 1)
     ['E', 7, 1]
-    sage: QuiverMutationType('E',8,1)
+    sage: QuiverMutationType('E',8, 1)
     ['E', 8, 1]
 
-    sage: QuiverMutationType('F',4,1)
+    sage: QuiverMutationType('F',4, 1)
     ['F', 4, 1]
     sage: QuiverMutationType('F',4,-1)
     ['F', 4, -1]
 
-    sage: QuiverMutationType('G',2,1)
+    sage: QuiverMutationType('G', 2, 1)
     ['G', 2, 1]
-    sage: QuiverMutationType('G',2,-1)
+    sage: QuiverMutationType('G', 2,-1)
     ['G', 2, -1]
-    sage: QuiverMutationType('A',3,2) == QuiverMutationType('D',3,2)
+    sage: QuiverMutationType('A',3, 2) == QuiverMutationType('D',3, 2)
     True
 
 Affine types using Kac's Notation::
 
-    sage: QuiverMutationType('A',1,1)
+    sage: QuiverMutationType('A', 1, 1)
     ['A', [1, 1], 1]
-    sage: QuiverMutationType('B',5,1)
+    sage: QuiverMutationType('B',5, 1)
     ['BD', 5, 1]
-    sage: QuiverMutationType('C',5,1)
+    sage: QuiverMutationType('C',5, 1)
     ['CC', 5, 1]
-    sage: QuiverMutationType('A',2,2)
+    sage: QuiverMutationType('A', 2, 2)
     ['BC', 1, 1]
-    sage: QuiverMutationType('A',7,2)
+    sage: QuiverMutationType('A',7, 2)
     ['CD', 4, 1]
-    sage: QuiverMutationType('A',8,2)
+    sage: QuiverMutationType('A',8, 2)
     ['BC', 4, 1]
-    sage: QuiverMutationType('D',6,2)
+    sage: QuiverMutationType('D',6, 2)
     ['BB', 5, 1]
-    sage: QuiverMutationType('E',6,2)
+    sage: QuiverMutationType('E',6, 2)
     ['F', 4, -1]
     sage: QuiverMutationType('D',4,3)
     ['G', 2, -1]
 
 Elliptic types::
 
-    sage: QuiverMutationType('E',6,[1,1])
+    sage: QuiverMutationType('E',6,[1, 1])
     ['E', 6, [1, 1]]
-    sage: QuiverMutationType('F',4,[2,1])
+    sage: QuiverMutationType('F',4,[2, 1])
     ['F', 4, [1, 2]]
-    sage: QuiverMutationType('G',2,[3,3])
+    sage: QuiverMutationType('G', 2,[3,3])
     ['G', 2, [3, 3]]
 
 Mutation finite types:
 
-    rank 2 cases::
+Rank 2 cases::
 
-        sage: QuiverMutationType('R2',(1,1))
-        ['A', 2]
-        sage: QuiverMutationType('R2',(1,2))
-        ['B', 2]
-        sage: QuiverMutationType('R2',(1,3))
-        ['G', 2]
-        sage: QuiverMutationType('R2',(1,4))
-        ['BC', 1, 1]
-        sage: QuiverMutationType('R2',(1,5))
-        ['R2', [1, 5]]
-        sage: QuiverMutationType('R2',(2,2))
-        ['A', [1, 1], 1]
-        sage: QuiverMutationType('R2',(3,5))
-        ['R2', [3, 5]]
+    sage: QuiverMutationType('R2',(1, 1))
+    ['A', 2]
+    sage: QuiverMutationType('R2',(1, 2))
+    ['B', 2]
+    sage: QuiverMutationType('R2',(1,3))
+    ['G', 2]
+    sage: QuiverMutationType('R2',(1,4))
+    ['BC', 1, 1]
+    sage: QuiverMutationType('R2',(1,5))
+    ['R2', [1, 5]]
+    sage: QuiverMutationType('R2',(2, 2))
+    ['A', [1, 1], 1]
+    sage: QuiverMutationType('R2',(3,5))
+    ['R2', [3, 5]]
 
-    Exceptional Derksen-Owen quivers::
+Exceptional Derksen-Owen quivers::
 
-        sage: QuiverMutationType('X',6)
-        ['X', 6]
+    sage: QuiverMutationType('X',6)
+    ['X', 6]
 
 
 (Mainly) mutation infinite types:
 
-    Infinite type E::
+Infinite type E::
 
-        sage: QuiverMutationType('E',9)
-        ['E', 8, 1]
-        sage: QuiverMutationType('E',10)
-        ['E', 10]
-        sage: QuiverMutationType('E',12)
-        ['E', 12]
+    sage: QuiverMutationType('E',9)
+    ['E', 8, 1]
+    sage: QuiverMutationType('E', 10)
+    ['E', 10]
+    sage: QuiverMutationType('E', 12)
+    ['E', 12]
 
-        sage: QuiverMutationType('AE',(2,3))
-        ['AE', [2, 3]]
-        sage: QuiverMutationType('BE',5)
-        ['BE', 5]
-        sage: QuiverMutationType('CE',5)
-        ['CE', 5]
-        sage: QuiverMutationType('DE',6)
-        ['DE', 6]
+    sage: QuiverMutationType('AE',(2,3))
+    ['AE', [2, 3]]
+    sage: QuiverMutationType('BE',5)
+    ['BE', 5]
+    sage: QuiverMutationType('CE',5)
+    ['CE', 5]
+    sage: QuiverMutationType('DE',6)
+    ['DE', 6]
 
-    Grassmannian types::
+Grassmannian types::
 
-        sage: QuiverMutationType('GR',(2,4))
-        ['A', 1]
-        sage: QuiverMutationType('GR',(2,6))
-        ['A', 3]
-        sage: QuiverMutationType('GR',(3,6))
-        ['D', 4]
-        sage: QuiverMutationType('GR',(3,7))
-        ['E', 6]
-        sage: QuiverMutationType('GR',(3,8))
-        ['E', 8]
-        sage: QuiverMutationType('GR',(3,10))
-        ['GR', [3, 10]]
+    sage: QuiverMutationType('GR',(2,4))
+    ['A', 1]
+    sage: QuiverMutationType('GR',(2,6))
+    ['A', 3]
+    sage: QuiverMutationType('GR',(3,6))
+    ['D', 4]
+    sage: QuiverMutationType('GR',(3,7))
+    ['E', 6]
+    sage: QuiverMutationType('GR',(3,8))
+    ['E', 8]
+    sage: QuiverMutationType('GR',(3, 10))
+    ['GR', [3, 10]]
 
-    Triangular types::
+Triangular types::
 
-        sage: QuiverMutationType('TR',2)
-        ['A', 3]
-        sage: QuiverMutationType('TR',3)
-        ['D', 6]
-        sage: QuiverMutationType('TR',4)
-        ['E', 8, [1, 1]]
-        sage: QuiverMutationType('TR',5)
-        ['TR', 5]
+    sage: QuiverMutationType('TR', 2)
+    ['A', 3]
+    sage: QuiverMutationType('TR',3)
+    ['D', 6]
+    sage: QuiverMutationType('TR',4)
+    ['E', 8, [1, 1]]
+    sage: QuiverMutationType('TR',5)
+    ['TR', 5]
 
-    T types::
+T types::
 
-        sage: QuiverMutationType('T',(1,1,1))
-        ['A', 1]
-        sage: QuiverMutationType('T',(1,1,4))
-        ['A', 4]
-        sage: QuiverMutationType('T',(1,4,4))
-        ['A', 7]
-        sage: QuiverMutationType('T',(2,2,2))
-        ['D', 4]
-        sage: QuiverMutationType('T',(2,2,4))
-        ['D', 6]
-        sage: QuiverMutationType('T',(2,3,3))
-        ['E', 6]
-        sage: QuiverMutationType('T',(2,3,4))
-        ['E', 7]
-        sage: QuiverMutationType('T',(2,3,5))
-        ['E', 8]
-        sage: QuiverMutationType('T',(2,3,6))
-        ['E', 8, 1]
-        sage: QuiverMutationType('T',(2,3,7))
-        ['E', 10]
-        sage: QuiverMutationType('T',(3,3,3))
-        ['E', 6, 1]
-        sage: QuiverMutationType('T',(3,3,4))
-        ['T', [3, 3, 4]]
+    sage: QuiverMutationType('T',(1, 1, 1))
+    ['A', 1]
+    sage: QuiverMutationType('T',(1, 1,4))
+    ['A', 4]
+    sage: QuiverMutationType('T',(1,4,4))
+    ['A', 7]
+    sage: QuiverMutationType('T',(2, 2, 2))
+    ['D', 4]
+    sage: QuiverMutationType('T',(2, 2,4))
+    ['D', 6]
+    sage: QuiverMutationType('T',(2,3,3))
+    ['E', 6]
+    sage: QuiverMutationType('T',(2,3,4))
+    ['E', 7]
+    sage: QuiverMutationType('T',(2,3,5))
+    ['E', 8]
+    sage: QuiverMutationType('T',(2,3,6))
+    ['E', 8, 1]
+    sage: QuiverMutationType('T',(2,3,7))
+    ['E', 10]
+    sage: QuiverMutationType('T',(3,3,3))
+    ['E', 6, 1]
+    sage: QuiverMutationType('T',(3,3,4))
+    ['T', [3, 3, 4]]
 
 Reducible types::
 
@@ -636,23 +650,18 @@ Reducible types::
 """
 
 
-class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
-    def __eq__(self,other):
-        """
-        Return ``True`` iff ``self`` and ``other`` represent the same quiver
-        mutation type.
+class QuiverMutationType_abstract(UniqueRepresentation, SageObject):
+    """
+    EXAMPLES::
 
-        EXAMPLES::
-
-            sage: mut_type1 = QuiverMutationType('A',5)
-            sage: mut_type2 = QuiverMutationType('A',5)
-            sage: mut_type3 = QuiverMutationType('A',6)
-            sage: mut_type1.__eq__( mut_type2 )
-            True
-            sage: mut_type1.__eq__( mut_type3 )
-            False
-        """
-        return self is other
+        sage: mut_type1 = QuiverMutationType('A',5)
+        sage: mut_type2 = QuiverMutationType('A',5)
+        sage: mut_type3 = QuiverMutationType('A',6)
+        sage: mut_type1 == mut_type2
+        True
+        sage: mut_type1 == mut_type3
+        False
+    """
 
     def _repr_(self):
         """
@@ -660,7 +669,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: QuiverMutationType(['A',2]) # indirect doctest
+            sage: QuiverMutationType(['A', 2])  # indirect doctest
             ['A', 2]
         """
         return self._description
@@ -671,7 +680,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         INPUT:
 
-        - ``circular`` -- (default:``False``) if ``True``, the
+        - ``circular`` -- (default: ``False``) if ``True``, the
           circular plot is chosen, otherwise >>spring<< is used.
 
         - ``directed`` -- (default: ``True``) if ``True``, the
@@ -680,8 +689,8 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
         EXAMPLES::
 
             sage: QMT = QuiverMutationType(['A',5])
-            sage: pl = QMT.plot()
-            sage: pl = QMT.plot(circular=True)
+            sage: pl = QMT.plot()                                                       # needs sage.plot sage.symbolic
+            sage: pl = QMT.plot(circular=True)                                          # needs sage.plot sage.symbolic
         """
         return self.standard_quiver().plot(circular=circular, directed=directed)
 
@@ -700,9 +709,9 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
         TESTS::
 
             sage: QMT = QuiverMutationType(['A',5])
-            sage: QMT.show() # long time
+            sage: QMT.show()                    # long time                             # needs sage.plot sage.symbolic
         """
-        self.plot( circular=circular, directed=directed ).show()
+        self.plot(circular=circular, directed=directed).show()
 
     def letter(self):
         """
@@ -715,7 +724,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
             sage: mut_type.letter()
             'A'
 
-            sage: mut_type = QuiverMutationType( ['BC',5,1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['BC',5, 1] ); mut_type
             ['BC', 5, 1]
             sage: mut_type.letter()
             'BC'
@@ -745,12 +754,12 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
             sage: mut_type.rank()
             5
 
-            sage: mut_type = QuiverMutationType( ['A',[4,5],1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['A',[4,5], 1] ); mut_type
             ['A', [4, 5], 1]
             sage: mut_type.rank()
             9
 
-            sage: mut_type = QuiverMutationType( ['BC',5,1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['BC',5, 1] ); mut_type
             ['BC', 5, 1]
             sage: mut_type.rank()
             6
@@ -777,9 +786,9 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mut_type = QuiverMutationType( ['A',5] ); mut_type
+            sage: mut_type = QuiverMutationType(['A',5]); mut_type
             ['A', 5]
-            sage: mut_type.b_matrix()
+            sage: mut_type.b_matrix()                                                   # needs sage.modules
             [ 0  1  0  0  0]
             [-1  0 -1  0  0]
             [ 0  1  0  1  0]
@@ -788,7 +797,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
             sage: mut_type = QuiverMutationType(['A',3],['B',3]); mut_type
             [ ['A', 3], ['B', 3] ]
-            sage: mut_type.b_matrix()
+            sage: mut_type.b_matrix()                                                   # needs sage.modules
             [ 0  1  0  0  0  0]
             [-1  0 -1  0  0  0]
             [ 0  1  0  0  0  0]
@@ -796,7 +805,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
             [ 0  0  0 -1  0 -1]
             [ 0  0  0  0  2  0]
         """
-        return _edge_list_to_matrix(self._digraph.edges(), self._rank, 0)
+        return _edge_list_to_matrix(self._digraph.edges(sort=True), list(range(self._rank)), [])
 
     @cached_method
     def standard_quiver(self):
@@ -807,25 +816,25 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
             sage: mut_type = QuiverMutationType( ['A',5] ); mut_type
             ['A', 5]
-            sage: mut_type.standard_quiver()
+            sage: mut_type.standard_quiver()                                            # needs sage.modules
             Quiver on 5 vertices of type ['A', 5]
 
-            sage: mut_type = QuiverMutationType( ['A',[5,3],1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['A',[5,3], 1] ); mut_type
             ['A', [3, 5], 1]
-            sage: mut_type.standard_quiver()
+            sage: mut_type.standard_quiver()                                            # needs sage.modules
             Quiver on 8 vertices of type ['A', [3, 5], 1]
 
             sage: mut_type = QuiverMutationType(['A',3],['B',3]); mut_type
             [ ['A', 3], ['B', 3] ]
-            sage: mut_type.standard_quiver()
+            sage: mut_type.standard_quiver()                                            # needs sage.modules
             Quiver on 6 vertices of type [ ['A', 3], ['B', 3] ]
 
             sage: mut_type = QuiverMutationType(['A',3],['B',3],['X',6]); mut_type
             [ ['A', 3], ['B', 3], ['X', 6] ]
-            sage: mut_type.standard_quiver()
+            sage: mut_type.standard_quiver()                                            # needs sage.modules
             Quiver on 12 vertices of type [ ['A', 3], ['B', 3], ['X', 6] ]
         """
-        from quiver import ClusterQuiver
+        from .quiver import ClusterQuiver
         Q = ClusterQuiver(self._digraph)
         Q._mutation_type = self
         return Q
@@ -845,7 +854,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
             sage: mut_type = QuiverMutationType(['A',5]); mut_type
             ['A', 5]
-            sage: mut_type.cartan_matrix()
+            sage: mut_type.cartan_matrix()                                              # needs sage.modules
             [ 2 -1  0  0  0]
             [-1  2 -1  0  0]
             [ 0 -1  2 -1  0]
@@ -854,7 +863,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
             sage: mut_type = QuiverMutationType(['A',3],['B',3]); mut_type
             [ ['A', 3], ['B', 3] ]
-            sage: mut_type.cartan_matrix()
+            sage: mut_type.cartan_matrix()                                              # needs sage.modules
             [ 2 -1  0  0  0  0]
             [-1  2 -1  0  0  0]
             [ 0 -1  2  0  0  0]
@@ -865,11 +874,12 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
         # as soon as CartanMatrix is implemented we should use it here:
         # from sage.combinat.root_system.cartan_matrix import CartanMatrix
         cmat = copy(self.b_matrix())
-        for i,j in cmat.nonzero_positions():
-            a = cmat[i,j]
-            if a > 0: cmat[i,j] = -a
+        for i, j in cmat.nonzero_positions():
+            a = cmat[i, j]
+            if a > 0:
+                cmat[i, j] = -a
         for i in range(self._rank):
-            cmat[i,i] = 2
+            cmat[i, i] = 2
         # return CartanMatrix(cmat)
         return cmat
 
@@ -879,7 +889,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_irreducible()
             True
         """
@@ -894,7 +904,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['D',5,1])
+            sage: mt = QuiverMutationType(['D',5, 1])
             sage: mt.is_mutation_finite()
             True
         """
@@ -909,15 +919,15 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_simply_laced()
             True
 
-            sage: mt = QuiverMutationType(['B',2])
+            sage: mt = QuiverMutationType(['B', 2])
             sage: mt.is_simply_laced()
             False
 
-            sage: mt = QuiverMutationType(['A',(1,1),1])
+            sage: mt = QuiverMutationType(['A',(1, 1), 1])
             sage: mt.is_simply_laced()
             False
         """
@@ -929,15 +939,15 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_skew_symmetric()
             True
 
-            sage: mt = QuiverMutationType(['B',2])
+            sage: mt = QuiverMutationType(['B', 2])
             sage: mt.is_skew_symmetric()
             False
 
-            sage: mt = QuiverMutationType(['A',(1,1),1])
+            sage: mt = QuiverMutationType(['A',(1, 1), 1])
             sage: mt.is_skew_symmetric()
             True
         """
@@ -952,11 +962,11 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_finite()
             True
 
-            sage: mt = QuiverMutationType(['A',[4,2],1])
+            sage: mt = QuiverMutationType(['A',[4, 2], 1])
             sage: mt.is_finite()
             False
         """
@@ -968,11 +978,11 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_affine()
             False
 
-            sage: mt = QuiverMutationType(['A',[4,2],1])
+            sage: mt = QuiverMutationType(['A',[4, 2], 1])
             sage: mt.is_affine()
             True
         """
@@ -987,11 +997,11 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 
         EXAMPLES::
 
-            sage: mt = QuiverMutationType(['A',2])
+            sage: mt = QuiverMutationType(['A', 2])
             sage: mt.is_elliptic()
             False
 
-            sage: mt = QuiverMutationType(['E',6,[1,1]])
+            sage: mt = QuiverMutationType(['E',6,[1, 1]])
             sage: mt.is_elliptic()
             True
         """
@@ -1034,7 +1044,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
                 - affine:            False
                 - elliptic:          False
 
-            sage: mut_type = QuiverMutationType(['B',3,1]); mut_type
+            sage: mut_type = QuiverMutationType(['B',3, 1]); mut_type
             ['BD', 3, 1]
             sage: mut_type.properties()
             ['BD', 3, 1] has rank 4 and the following properties:
@@ -1046,7 +1056,7 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
                 - affine:            True
                 - elliptic:          False
 
-            sage: mut_type = QuiverMutationType(['E',6,[1,1]]); mut_type
+            sage: mut_type = QuiverMutationType(['E',6,[1, 1]]); mut_type
             ['E', 6, [1, 1]]
             sage: mut_type.properties()
             ['E', 6, [1, 1]] has rank 8 and the following properties:
@@ -1096,8 +1106,9 @@ class QuiverMutationType_abstract(UniqueRepresentation,SageObject):
 class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
     """
     The mutation type for a cluster algebra or a quiver. Should not be
-    called directly, but through QuiverMutationType.
+    called directly, but through :class:`QuiverMutationType`.
     """
+
     def __init__(self, letter, rank, twist=None):
         """
         Should not be called directly but through QuiverMutationType.
@@ -1113,10 +1124,10 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             sage: QuiverMutationType('A',5)
             ['A', 5]
 
-            sage: QuiverMutationType('A',[4,5],1)
+            sage: QuiverMutationType('A',[4,5], 1)
             ['A', [4, 5], 1]
 
-            sage: QuiverMutationType('BB',5,1)
+            sage: QuiverMutationType('BB',5, 1)
             ['BB', 5, 1]
 
             sage: QuiverMutationType('X',6)
@@ -1126,7 +1137,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
         self._rank = None
         self._bi_rank = None
 
-        # _graph and _digraph are initalized
+        # _graph and _digraph are initialized
         self._graph = Graph()
         self._digraph = DiGraph()
 
@@ -1150,7 +1161,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
         self._letter = letter
         self._twist = twist
 
-        data = [letter,rank,twist]
+        data = [letter, rank, twist]
 
         # type A (finite and affine)
         if letter == 'A':
@@ -1160,40 +1171,41 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 self._info['finite'] = True
-            elif twist==1 and isinstance(rank, list) and len(rank) == 2 and all( rank[i] in ZZ and rank[i] >= 0 for i in [0,1] ) and rank != [0,0]:
+            elif twist == 1 and isinstance(rank, list) and len(rank) == 2 and all(ri in ZZ and ri >= 0 for ri in rank) and rank != [0, 0]:
                 if isinstance(rank, tuple):
-                    rank = list( rank )
+                    rank = list(rank)
                     data[1] = rank
                 rank = sorted(rank)
                 self._bi_rank = rank
-                self._rank = sum( self._bi_rank )
+                self._rank = sum(self._bi_rank)
                 self._info['mutation_finite'] = True
-                if self._rank > 2: self._info['simply_laced'] = True
+                if self._rank > 2:
+                    self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 if rank[0] > 0:
                     self._info['affine'] = True
                 elif rank[0] == 0:
                     self._info['finite'] = True
             else:
-                _mutation_type_error( data )
-            # types ['A',1] and ['A',[0,1],1] need to be treated on
+                _mutation_type_error(data)
+            # types ['A', 1] and ['A',[0, 1], 1] need to be treated on
             # itself (as there is no edge)
             if twist is None and self._rank == 1 or twist == 1 and self._rank == 1:
-                self._graph.add_vertex( 0 )
-            # type ['A',[1,1],1] needs to be treated on itself as well
+                self._graph.add_vertex(0)
+            # type ['A',[1, 1], 1] needs to be treated on itself as well
             # (as there is a double edge)
             elif twist == 1 and self._bi_rank[0] == 1 and self._bi_rank[1] == 1:
-                self._graph.add_edge( 0,1,2 )
+                self._graph.add_edge(0, 1, 2)
             else:
-                for i in range( self._rank - 1 ):
-                    self._graph.add_edge( i, i+1, 1 )
+                for i in range(self._rank - 1):
+                    self._graph.add_edge(i, i + 1, 1)
                 if twist == 1:
-                    self._digraph.add_edge( self._rank - 1, 0, 1 )
-                    for i in range( self._rank - 1 ):
-                        if i < ( 2 * self._bi_rank[0] ) and i%2 == 0:
-                            self._digraph.add_edge( i+1, i, 1 )
+                    self._digraph.add_edge(self._rank - 1, 0, 1)
+                    for i in range(self._rank - 1):
+                        if i < (2 * self._bi_rank[0]) and i % 2 == 0:
+                            self._digraph.add_edge(i + 1, i, 1)
                         else:
-                            self._digraph.add_edge( i, i+1, 1 )
+                            self._digraph.add_edge(i, i + 1, 1)
 
         # type B (finite)
         elif letter == 'B':
@@ -1202,13 +1214,13 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['finite'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if (rank % 2 == 0):
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
             else:
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
 
         # type C (finite)
         elif letter == 'C':
@@ -1217,13 +1229,13 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['finite'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if (rank % 2 == 0):
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
             else:
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
 
         # type BB (affine)
         elif letter == 'BB':
@@ -1232,14 +1244,14 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if rank % 2 == 0:
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
             else:
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
-            self._graph.add_edge( rank, 0 , (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
+            self._graph.add_edge(rank, 0, (1, -2))
 
         # type CC (affine)
         elif letter == 'CC':
@@ -1248,14 +1260,14 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if rank % 2 == 0:
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
             else:
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
-            self._graph.add_edge( rank, 0 , (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
+            self._graph.add_edge(rank, 0, (2, -1))
 
         # type BC (affine)
         elif letter == 'BC':
@@ -1264,18 +1276,18 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
             if rank == 1:
-                self._graph.add_edge( 0,1,(1,-4) )
+                self._graph.add_edge(0, 1, (1, -4))
             else:
-                for i in range( rank - 2 ):
-                    self._graph.add_edge( i, i+1, 1 )
+                for i in range(rank - 2):
+                    self._graph.add_edge(i, i+1, 1)
                 if (rank % 2 == 0):
-                    self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                    self._graph.add_edge(rank-2, rank-1, (2, -1))
                 else:
-                    self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                    self._graph.add_edge(rank-2, rank-1, (1, -2))
                 if twist == 1:
-                    self._graph.add_edge( rank, 0 , (1,-2) )
+                    self._graph.add_edge(rank, 0, (1, -2))
 
         # type BD (affine)
         elif letter == 'BD':
@@ -1284,15 +1296,15 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if (rank % 2 == 0):
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
             else:
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
             if twist == 1:
-                self._graph.add_edge( rank, 1 , 1 )
+                self._graph.add_edge(rank, 1, 1)
 
         # type CD (affine)
         elif letter == 'CD':
@@ -1301,15 +1313,15 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
             if (rank % 2 == 0):
-                self._graph.add_edge( rank-2, rank-1, (2,-1) )
+                self._graph.add_edge(rank-2, rank-1, (2, -1))
             else:
-                self._graph.add_edge( rank-2, rank-1, (1,-2) )
+                self._graph.add_edge(rank-2, rank-1, (1, -2))
             if twist == 1:
-                self._graph.add_edge( rank, 1 , 1 )
+                self._graph.add_edge(rank, 1, 1)
 
         # type D (finite and affine)
         elif letter == 'D':
@@ -1326,130 +1338,131 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._info['skew_symmetric'] = True
                 self._info['affine'] = True
             else:
-                _mutation_type_error( data )
-            for i in range( rank - 2 ):
-                self._graph.add_edge( i, i+1, 1 )
+                _mutation_type_error(data)
+            for i in range(rank - 2):
+                self._graph.add_edge(i, i+1, 1)
 
-            self._graph.add_edge( rank-3, rank-1, 1 )
+            self._graph.add_edge(rank-3, rank-1, 1)
             if twist is not None:
-                self._graph.add_edge( rank, 1 ,1 )
+                self._graph.add_edge(rank, 1, 1)
 
         # type E (finite, affine and elliptic)
         elif letter == 'E':
-            if rank in [6,7,8] and twist is None:
+            if rank in [6, 7, 8] and twist is None:
                 self._rank = rank
                 self._info['mutation_finite'] = True
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 self._info['finite'] = True
                 if rank == 6:
-                    self._graph.add_edges( [ (0,1),(1,2),(2,3),(3,4),(2,5) ] )
+                    self._graph.add_edges([(0, 1), (1, 2), (2, 3), (3, 4), (2, 5)])
                 elif rank == 7:
                     self._graph.add_edges([(0, 1), (1, 2), (2, 3),
                                            (3, 4), (4, 5), (2, 6)])
                 elif rank == 8:
                     self._graph.add_edges([(0, 1), (1, 2), (2, 3),
-                                           (3, 4), (4, 5), (5, 6),(2, 7)])
-            elif rank in [6,7,8] and twist == 1:
+                                           (3, 4), (4, 5), (5, 6), (2, 7)])
+            elif rank in [6, 7, 8] and twist == 1:
                 self._rank = rank + 1
                 self._info['mutation_finite'] = True
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 self._info['affine'] = True
                 if rank == 6:
-                    self._graph.add_edges( [ (0,1),(1,2),(2,3),(3,4),(2,5),(5,6) ] )
+                    self._graph.add_edges([(0, 1), (1, 2), (2, 3), (3, 4), (2, 5), (5, 6)])
                 elif rank == 7:
-                    self._graph.add_edges( [ (0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(3,7) ] )
+                    self._graph.add_edges([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (3, 7)])
                 elif rank == 8:
-                    self._graph.add_edges( [ (0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(2,8) ] )
-            elif rank in [6,7,8] and twist == [1,1]:
+                    self._graph.add_edges([(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (2, 8)])
+            elif rank in [6, 7, 8] and twist == [1, 1]:
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['skew_symmetric'] = True
                 self._info['elliptic'] = True
                 if rank == 6:
-                    self._digraph.add_edges( [ (0,1,1),(1,2,1),(3,2,1),(3,4,1),(5,6,1),(6,7,1),(5,1,1),(2,5,2),(5,3,1),(6,2,1) ] )
+                    self._digraph.add_edges([(0, 1, 1), (1, 2, 1), (3, 2, 1), (3, 4, 1), (5, 6, 1), (6, 7, 1), (5, 1, 1), (2, 5, 2), (5, 3, 1), (6, 2, 1)])
                 elif rank == 7:
-                    self._digraph.add_edges( [ (1,0,1),(1,2,1),(2,3,1),(4,3,1),(4,5,1),(6,5,1),(7,8,1),(3,7,2),(7,2,1),(7,4,1),(8,3,1) ] )
+                    self._digraph.add_edges([(1, 0, 1), (1, 2, 1), (2, 3, 1), (4, 3, 1), (4, 5, 1),
+                                             (6, 5, 1), (7, 8, 1), (3, 7, 2), (7, 2, 1), (7, 4, 1), (8, 3, 1)])
                 elif rank == 8:
-                    self._digraph.add_edges( [ (0,1,1),(1,9,1),(3,9,1),(3,4,1),(2,8,1),(2,1,1),(9,2,2),(2,3,1),(8,9,1),(5,4,1),(5,6,1),(7,6,1) ] )
+                    self._digraph.add_edges([(0, 1, 1), (1, 9, 1), (3, 9, 1), (3, 4, 1), (2, 8, 1), (2, 1, 1),
+                                             (9, 2, 2), (2, 3, 1), (8, 9, 1), (5, 4, 1), (5, 6, 1), (7, 6, 1)])
             # type E (mutation infinite)
             elif rank > 9 and twist is None:
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 self._rank = rank
                 for i in range(rank-2):
-                    self._graph.add_edge( i, i+1, 1 )
-                self._graph.add_edge( 2, rank-1 )
+                    self._graph.add_edge(i, i+1, 1)
+                self._graph.add_edge(2, rank-1)
             else:
                 _mutation_type_error(data)
 
         # type AE (mutation infinite)
         elif letter == 'AE':
-            if isinstance(rank, list) and len(rank) == 2 and all( rank[i] in ZZ and rank[i] > 0 for i in [0,1] ) and twist is None:
+            if isinstance(rank, list) and len(rank) == 2 and all(rank[i] in ZZ and rank[i] > 0 for i in [0, 1]) and twist is None:
                 if isinstance(rank, tuple):
-                    rank = list( rank )
+                    rank = list(rank)
                     data[1] = rank
                 rank = sorted(rank)
                 self._bi_rank = rank
-                self._rank = sum( self._bi_rank ) + 1
-                if self._rank > 3: self._info['simply_laced'] = True
+                self._rank = sum(self._bi_rank) + 1
+                if self._rank > 3:
+                    self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
-                if self._bi_rank == [1,1]:
-                    self._graph.add_edges( [(0,1,2),(1,2,None)] )
+                if self._bi_rank == [1, 1]:
+                    self._graph.add_edges([(0, 1, 2), (1, 2, None)])
                 else:
-                    self._digraph.add_edge( self._rank - 2, 0 )
-                    for i in xrange(self._rank-2):
-                        if i < ( 2 * self._bi_rank[0] ) and i%2 == 0:
-                            self._digraph.add_edge(i+1,i)
+                    self._digraph.add_edge(self._rank - 2, 0)
+                    for i in range(self._rank-2):
+                        if i < (2 * self._bi_rank[0]) and i % 2 == 0:
+                            self._digraph.add_edge(i + 1, i)
                         else:
-                            self._digraph.add_edge(i,i+1)
-                    self._digraph.add_edge(self._rank-2,self._rank-1)
+                            self._digraph.add_edge(i, i + 1)
+                    self._digraph.add_edge(self._rank-2, self._rank-1)
             else:
-                _mutation_type_error( data )
-
-
+                _mutation_type_error(data)
 
         # type BE (mutation infinite)
         elif letter == 'BE':
-            if rank >4 and twist is None:
+            if rank > 4 and twist is None:
                 self._rank = rank
                 for i in range(rank-3):
-                    self._graph.add_edge( i, i+1 )
-                self._graph.add_edge( 2, rank-1 )
-                if rank%2 == 0:
-                    self._graph.add_edge( rank-3,rank-2,(2,-1) )
+                    self._graph.add_edge(i, i+1)
+                self._graph.add_edge(2, rank-1)
+                if rank % 2 == 0:
+                    self._graph.add_edge(rank-3, rank-2, (2, -1))
                 else:
-                    self._graph.add_edge( rank-3,rank-2,(1,-2) )
+                    self._graph.add_edge(rank-3, rank-2, (1, -2))
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type CE (mutation infinite)
         elif letter == 'CE':
-            if rank >4 and twist is None:
+            if rank > 4 and twist is None:
                 self._rank = rank
                 for i in range(rank-3):
-                    self._graph.add_edge( i, i+1 )
-                self._graph.add_edge( 2, rank-1 )
-                if rank%2 == 0:
-                    self._graph.add_edge( rank-3,rank-2,(1,-2) )
+                    self._graph.add_edge(i, i+1)
+                self._graph.add_edge(2, rank-1)
+                if rank % 2 == 0:
+                    self._graph.add_edge(rank-3, rank-2, (1, -2))
                 else:
-                    self._graph.add_edge( rank-3,rank-2,(2,-1) )
+                    self._graph.add_edge(rank-3, rank-2, (2, -1))
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type DE (mutation infinite)
         elif letter == 'DE':
-            if rank >5 and twist is None:
+            if rank > 5 and twist is None:
                 self._rank = rank
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
                 for i in range(rank-3):
-                    self._graph.add_edge( i, i+1 )
-                self._graph.add_edge( 2, rank-2 )
-                self._graph.add_edge( rank-4, rank-1 )
+                    self._graph.add_edge(i, i+1)
+                self._graph.add_edge(2, rank-2)
+                self._graph.add_edge(rank-4, rank-1)
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type F (finite, affine, and elliptic)
         elif letter == 'F':
@@ -1457,50 +1470,50 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._rank = rank
                 self._info['mutation_finite'] = True
                 self._info['finite'] = True
-                self._graph.add_edges( [ (0,1,None),(1,2,(2,-1)),(2,3,None) ] )
+                self._graph.add_edges([(0, 1, None), (1, 2, (2, -1)), (2, 3, None)])
             elif rank == 4 and twist == 1:
                 self._rank = rank + 1
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
-                self._graph.add_edges( [ (0,1,None), (1,2,None),
-                                         (2,3,(1,-2)),(3,4,None) ] )
+                self._graph.add_edges([(0, 1, None), (1, 2, None),
+                                       (2, 3, (1, -2)), (3, 4, None)])
             elif rank == 4 and twist == -1:
                 self._rank = rank + 1
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
-                self._graph.add_edges( [ (0,1,None), (1,2,None),
-                                         (2,3,(2,-1)),(3,4,None) ] )
-            elif rank == 4 and (twist == [1,2]):
+                self._graph.add_edges([(0, 1, None), (1, 2, None),
+                                       (2, 3, (2, -1)), (3, 4, None)])
+            elif rank == 4 and (twist == [1, 2]):
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,None),
-                                           (2,3,(2,-1)), (4,2,(1,-2)),
-                                           (3,4,2), (4,5,None), (5,3,None) ])
-            elif rank == 4 and (twist == [2,1]):
+                self._digraph.add_edges([(0, 1, None), (1, 2, None),
+                                         (2, 3, (2, -1)), (4, 2, (1, -2)),
+                                         (3, 4, 2), (4, 5, None), (5, 3, None)])
+            elif rank == 4 and (twist == [2, 1]):
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,None),
-                                           (2,3,(1,-2)), (4,2,(2,-1)),
-                                           (3,4,2), (4,5,None), (5,3,None) ])
-            elif rank == 4 and twist == [2,2]:
+                self._digraph.add_edges([(0, 1, None), (1, 2, None),
+                                         (2, 3, (1, -2)), (4, 2, (2, -1)),
+                                         (3, 4, 2), (4, 5, None), (5, 3, None)])
+            elif rank == 4 and twist == [2, 2]:
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,None),
-                                           (3,1,None), (2,3,2),
-                                           (4,2,(2,-1)), (3,4,(1,-2)),
-                                           (5,4,None) ] )
-            elif rank == 4 and twist == [1,1]:
+                self._digraph.add_edges([(0, 1, None), (1, 2, None),
+                                         (3, 1, None), (2, 3, 2),
+                                         (4, 2, (2, -1)), (3, 4, (1, -2)),
+                                         (5, 4, None)])
+            elif rank == 4 and twist == [1, 1]:
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,None),
-                                           (3,1,None), (2,3,2), (4,2,(1,-2)),
-                                           (3,4,(2,-1)), (5,4,None) ] )
+                self._digraph.add_edges([(0, 1, None), (1, 2, None),
+                                         (3, 1, None), (2, 3, 2), (4, 2, (1, -2)),
+                                         (3, 4, (2, -1)), (5, 4, None)])
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type G (finite, affine, and elliptic)
         elif letter == 'G':
@@ -1508,108 +1521,109 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 self._rank = rank
                 self._info['mutation_finite'] = True
                 self._info['finite'] = True
-                self._graph.add_edges( [ (0,1,(1,-3)) ] )
+                self._graph.add_edges([(0, 1, (1, -3))])
             elif rank == 2 and twist == -1:
                 self._rank = rank + 1
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
-                self._graph.add_edges( [ (0,1,None),(1,2,(1,-3)) ] )
+                self._graph.add_edges([(0, 1, None), (1, 2, (1, -3))])
             elif rank == 2 and twist == 1:
                 self._rank = rank + 1
                 self._info['mutation_finite'] = True
                 self._info['affine'] = True
-                self._graph.add_edges( [ (0,1,None),(1,2,(3,-1)) ] )
-            elif rank == 2 and (twist == [1,3]):
+                self._graph.add_edges([(0, 1, None), (1, 2, (3, -1))])
+            elif rank == 2 and (twist == [1, 3]):
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,(3,-1)),
-                                           (3,1,(1,-3)), (2,3,2)] )
-            elif rank == 2 and (twist == [3,1]):
+                self._digraph.add_edges([(0, 1, None), (1, 2, (3, -1)),
+                                         (3, 1, (1, -3)), (2, 3, 2)])
+            elif rank == 2 and (twist == [3, 1]):
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (0,1,None), (1,2,(1,-3)),
-                                           (3,1,(3,-1)), (2,3,2)] )
-            elif rank == 2 and twist == [3,3]:
+                self._digraph.add_edges([(0, 1, None), (1, 2, (1, -3)),
+                                         (3, 1, (3, -1)), (2, 3, 2)])
+            elif rank == 2 and twist == [3, 3]:
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (1,0,None), (0,2,2), (3,0,(3,-1)),
-                                           (2,1,None), (2,3, (1,-3))])
-            elif rank == 2 and twist == [1,1]:
+                self._digraph.add_edges([(1, 0, None), (0, 2, 2), (3, 0, (3, -1)),
+                                         (2, 1, None), (2, 3, (1, -3))])
+            elif rank == 2 and twist == [1, 1]:
                 self._rank = rank + 2
                 self._info['mutation_finite'] = True
                 self._info['elliptic'] = True
-                self._digraph.add_edges( [ (1,0,None), (0,2,2), (3,0,(1,-3)),
-                                           (2,1,None), (2,3,(3,-1)) ] )
+                self._digraph.add_edges([(1, 0, None), (0, 2, 2), (3, 0, (1, -3)),
+                                         (2, 1, None), (2, 3, (3, -1))])
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type GR (mutation infinite)
         elif letter == 'GR':
-            if twist is None and isinstance(rank, list) and len(rank) == 2 and all( rank[i] in ZZ and rank[i] > 0 for i in [0,1] ) and rank[1] - 1 > rank[0] > 1:
-                gr_rank = (rank[0]-1,rank[1]-rank[0]-1)
+            if twist is None and isinstance(rank, list) and len(rank) == 2 and all(rank[i] in ZZ and rank[i] > 0 for i in [0, 1]) and rank[1] - 1 > rank[0] > 1:
+                gr_rank = (rank[0]-1, rank[1]-rank[0]-1)
                 self._rank = prod(gr_rank)
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
-                a,b = gr_rank
+                a, b = gr_rank
                 for i in range(a):
                     for j in range(b):
                         if i < a-1:
                             if (i+j) % 2 == 0:
-                                self._digraph.add_edge(i*b+j,(i+1)*b+j)
+                                self._digraph.add_edge(i*b+j, (i+1)*b+j)
                             else:
-                                self._digraph.add_edge((i+1)*b+j,i*b+j)
+                                self._digraph.add_edge((i+1)*b+j, i*b+j)
                         if j < b-1:
                             if (i+j) % 2 == 0:
-                                self._digraph.add_edge(i*b+j+1,i*b+j)
+                                self._digraph.add_edge(i*b+j+1, i*b+j)
                             else:
-                                self._digraph.add_edge(i*b+j,i*b+j+1)
+                                self._digraph.add_edge(i*b+j, i*b+j+1)
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type R2 (rank 2 finite mutation types)
         elif letter == 'R2':
-            if twist is None and isinstance(rank, list) and len(rank) == 2 and all( rank[i] in ZZ and rank[i] > 0 for i in [0,1] ):
+            if twist is None and isinstance(rank, list) and len(rank) == 2 and all(rank[i] in ZZ and rank[i] > 0 for i in [0, 1]):
                 rank = sorted(rank)
-                b,c = rank
+                b, c = rank
                 self._rank = 2
-                if b == c: self._info['skew_symmetric'] = True
-                self._graph.add_edge(0,1,(b,-c))
+                if b == c:
+                    self._info['skew_symmetric'] = True
+                self._graph.add_edge(0, 1, (b, -c))
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type T
         elif letter == 'T':
-            if twist is None and isinstance(rank, list) and len(rank) == 3 and all( rank[i] in ZZ and rank[i] > 0 for i in [0,1,2] ):
+            if twist is None and isinstance(rank, list) and len(rank) == 3 and all(rank[i] in ZZ and rank[i] > 0 for i in [0, 1, 2]):
                 if isinstance(rank, tuple):
-                    rank = list( rank )
+                    rank = list(rank)
                     data[1] = rank
-                rank = sorted( rank )
-                self._rank = sum( rank ) - 2
+                rank = sorted(rank)
+                self._rank = sum(rank) - 2
                 self._info['simply_laced'] = True
                 self._info['skew_symmetric'] = True
-                r,p,q = rank
-                for i in xrange(q-1):
+                r, p, q = rank
+                for i in range(q-1):
                     if i == 0:
-                        self._graph.add_edge(0,1)
-                        self._graph.add_edge(0,r)
-                        self._graph.add_edge(0,r+p-1)
+                        self._graph.add_edge(0, 1)
+                        self._graph.add_edge(0, r)
+                        self._graph.add_edge(0, r+p-1)
                     else:
                         if i < r-1:
-                            self._graph.add_edge(i,i+1)
+                            self._graph.add_edge(i, i+1)
                         if i < p-1:
-                            self._graph.add_edge(i+r-1,i+r)
-                        self._graph.add_edge(i+r+p-2,i+r+p-1)
+                            self._graph.add_edge(i+r-1, i+r)
+                        self._graph.add_edge(i+r+p-2, i+r+p-1)
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type TR (mutation infinite if rank > 2)
         elif letter == 'TR':
-            # type ['TR',1] needs to be treated on itself (as there is no edge)
+            # type ['TR', 1] needs to be treated on itself (as there is no edge)
             if twist is None and rank == 1:
-                self._graph.add_vertex( 0 )
+                self._graph.add_vertex(0)
             elif twist is None and rank > 1:
                 self._rank = rank*(rank+1)//2
                 self._info['simply_laced'] = True
@@ -1617,36 +1631,36 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 level = 0
                 while level < rank:
                     nr = rank*level-sum(range(level))
-                    for i in xrange(nr,nr+rank-level-1):
-                        self._digraph.add_edge(i,i+1)
-                        self._digraph.add_edge(i+rank-level,i)
-                        self._digraph.add_edge(i+1,i+rank-level)
+                    for i in range(nr, nr+rank-level-1):
+                        self._digraph.add_edge(i, i+1)
+                        self._digraph.add_edge(i+rank-level, i)
+                        self._digraph.add_edge(i+1, i+rank-level)
                     level += 1
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # type X
         elif letter == 'X':
-            if rank in [6,7] and twist is None:
+            if rank in [6, 7] and twist is None:
                 self._rank = rank
                 self._info['mutation_finite'] = True
                 self._info['skew_symmetric'] = True
-                self._digraph.add_edges( [ (0,1,2),(1,2,None),(2,0,None),
-                                           (2,3,None),(3,4,2),(4,2,None),
-                                           (2,5,None) ] )
+                self._digraph.add_edges([(0, 1, 2), (1, 2, None), (2, 0, None),
+                                         (2, 3, None), (3, 4, 2), (4, 2, None),
+                                         (2, 5, None)])
                 if rank == 7:
-                    self._digraph.add_edges( [ (5,6,2),(6,2,None) ] )
+                    self._digraph.add_edges([(5, 6, 2), (6, 2, None)])
             else:
-                _mutation_type_error( data )
+                _mutation_type_error(data)
 
         # otherwise, an error is raised
         else:
-            _mutation_type_error( data )
+            _mutation_type_error(data)
 
         # in the bipartite case, the digraph is constructed from the graph
         if not self._digraph:
             if self._graph.is_bipartite():
-                self._digraph = _bipartite_graph_to_digraph( self._graph )
+                self._digraph = _bipartite_graph_to_digraph(self._graph)
             else:
                 raise ValueError('The QuiverMutationType does not have '
                                  'a Coxeter diagram.')
@@ -1656,10 +1670,12 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             self._graph = self._digraph.to_undirected()
 
         # _description is as for CartanType
-        if twist: self._description = str( [letter,rank,twist] )
-        else: self._description = str( [letter,rank] )
+        if twist:
+            self._description = str([letter, rank, twist])
+        else:
+            self._description = str([letter, rank])
 
-    def irreducible_components( self ):
+    def irreducible_components(self):
         """
         Return a list of all irreducible components of ``self``.
 
@@ -1674,12 +1690,12 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
 
     @cached_method
     def class_size(self):
-        """
+        r"""
         If it is known, the size of the mutation class of all quivers
         which are mutation equivalent to the standard quiver of
         ``self`` (up to isomorphism) is returned.
 
-        Otherwise, ``NotImplemented`` is returned.
+        Otherwise, :obj:`NotImplemented` is returned.
 
         Formula for finite type A is taken from Torkildsen - Counting
         cluster-tilted algebras of type `A_n`.
@@ -1700,7 +1716,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             sage: mut_type.class_size()
             19
 
-            sage: mut_type = QuiverMutationType( ['A',[10,3],1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['A',[10,3], 1] ); mut_type
             ['A', [3, 10], 1]
             sage: mut_type.class_size()
             142120
@@ -1710,7 +1726,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             sage: mut_type.class_size()
             132
 
-            sage: mut_type = QuiverMutationType( ['BD',6,1] ); mut_type
+            sage: mut_type = QuiverMutationType( ['BD',6, 1] ); mut_type
             ['BD', 6, 1]
             sage: mut_type.class_size()
             Warning: This method uses a formula which has not been proved correct.
@@ -1718,7 +1734,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
 
         Check that :trac:`14048` is fixed::
 
-            sage: mut_type = QuiverMutationType( ['F',4,(2,1)] )
+            sage: mut_type = QuiverMutationType( ['F',4,(2, 1)] )
             sage: mut_type.class_size()
             90
         """
@@ -1731,29 +1747,29 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             # cluster-tilted algebras of type A
             if self.is_finite():
                 n = self._rank
-                a = binomial( 2*(n+1), n+1 ) // (n+2)
+                a = binomial(2*(n+1), n+1) // (n+2)
                 if n % 2 == 1:
-                    a += binomial( n+1, (n+1)//2 )
+                    a += binomial(n+1, (n+1)//2)
                 if n % 3 == 0:
-                    a += 2 * binomial( 2*n//3, n//3 )
+                    a += 2 * binomial(2*n//3, n//3)
                 return a // (n+3)
             # the formula is taken from Bastian, Prellberg, Rubey, Stump
             elif self.is_affine():
-                i,j = self._bi_rank
+                i, j = self._bi_rank
                 i = ZZ(i)
                 j = ZZ(j)
                 n = i+j
-                f = Euler_Phi()
+                f = euler_phi
                 if i == j:
-                    return ( binomial( 2*i,i ) +
-                             sum( f(k) * binomial(2*i//k,i//k)**2
-                                  for k in [k for k in i.divisors()
-                                            if k in j.divisors()] ) // n ) // 4
+                    return (binomial(2 * i, i) +
+                            sum(f(k) * binomial(2 * i // k, i // k)**2
+                                for k in i.divisors()
+                                if k in j.divisors()) // n) // 4
                 else:
-                    return sum( f(k) * binomial(2*i//k,i//k) *
-                                binomial(2*j//k,j//k)
-                                for k in [k for k in i.divisors()
-                                          if k in j.divisors()] ) // ( 2 * n )
+                    return sum(f(k) * binomial(2 * i // k, i // k) *
+                               binomial(2 * j // k, j // k)
+                               for k in i.divisors()
+                               if k in j.divisors()) // (2 * n)
 
         # types B and C (finite and affine)
         elif self._letter in ['B', 'C']:
@@ -1763,37 +1779,38 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 n = self._rank
                 return binomial(2 * n, n) // (n + 1)
 
-        elif self._letter in ['BB','CC']:
+        elif self._letter in ['BB', 'CC']:
             # these two formulas are not yet proven
-            print(Warning("Warning: This method uses a formula "
-                          "which has not been proved correct."))
+            print("Warning: This method uses a formula "
+                  "which has not been proved correct.")
             if self.is_affine():
                 if self._twist == 1:
                     n = self._rank - 1
-                    if n%2==1:
-                        return binomial( 2*n-1, n-1 )
+                    N = binomial(2 * n - 1, n - 1)
+                    if n % 2:
+                        return N
                     else:
-                        return binomial( 2*n-1, n-1 ) + binomial( n-1, n//2 -1 )
+                        return N + binomial(n - 1, n // 2 - 1)
 
         # type BC (affine)
         elif self._letter == 'BC':
             # this formula is not yet proven
-            print(Warning("Warning: This method uses a formula "
-                          "which has not been proved correct."))
+            print("Warning: This method uses a formula "
+                  "which has not been proved correct.")
             if self.is_affine():
                 if self._twist == 1:
                     n = self._rank - 1
-                    return binomial( 2*n, n )
+                    return binomial(2 * n, n)
 
         # types BD and CD (affine)
-        elif self._letter in ['BD','CD']:
+        elif self._letter in ['BD', 'CD']:
             # this formula is not yet proven
-            print(Warning("Warning: This method uses a formula "
-                          "which has not been proved correct."))
+            print("Warning: This method uses a formula "
+                  "which has not been proved correct.")
             if self.is_affine():
                 if self._twist == 1:
                     n = self._rank - 2
-                    return 2*binomial( 2*n, n )
+                    return 2 * binomial(2 * n, n)
 
         # type D (finite and affine)
         elif self._letter == 'D':
@@ -1802,22 +1819,22 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 if self._rank == 4:
                     return 6
                 else:
-                    f = Euler_Phi()
+                    f = euler_phi
                     n = ZZ(self._rank)
-                    return sum( f( n//k ) * binomial( 2*k, k )
-                                for k in n.divisors() ) // (2*n)
+                    return sum(f(n // k) * binomial(2 * k, k)
+                               for k in n.divisors()) // (2 * n)
             # this formula is not yet proven
             elif self.is_affine():
                 n = self._rank - 3
                 if n == 2:
                     return 9
                 else:
-                    print(Warning ("Warning: This method uses a formula "
-                                   "which has not been proved correct."))
-                    if n%2==1:
-                        return 2*binomial(2*n,n)
+                    print("Warning: This method uses a formula "
+                          "which has not been proved correct.")
+                    if n % 2:
+                        return 2 * binomial(2 * n, n)
                     else:
-                        return 2*binomial(2*n,n) + binomial(n, n//2)
+                        return 2 * binomial(2 * n, n) + binomial(n, n // 2)
 
         # the exceptional types are hard-coded
         # type E (finite, affine and elliptic)
@@ -1851,9 +1868,9 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             elif self.is_affine():
                 return 60
             elif self.is_elliptic():
-                if self._twist == [1,2]:
+                if self._twist == [1, 2]:
                     return 90
-                if self._twist == [1,1] or self._twist == [2,2]:
+                if self._twist == [1, 1] or self._twist == [2, 2]:
                     return 35
 
         # type G
@@ -1863,9 +1880,9 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
             elif self.is_affine():
                 return 6
             elif self.is_elliptic():
-                if self._twist == [1,3]:
+                if self._twist == [1, 3]:
                     return 7
-                if self._twist == [1,1] or self._twist == [3,3]:
+                if self._twist == [1, 1] or self._twist == [3, 3]:
                     return 2
 
         # type X
@@ -1882,7 +1899,7 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
 
     def dual(self):
         """
-        Return the QuiverMutationType which is dual to ``self``.
+        Return the :class:`QuiverMutationType` which is dual to ``self``.
 
         EXAMPLES::
 
@@ -1902,19 +1919,24 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
         """
         letter = self.letter()
         # the self-dual cases
-        if letter != 'BC' and letter[0] in ['B','C']:
-            if letter == 'BB': letter = 'CC'
-            elif letter == 'CC': letter = 'BB'
-            elif letter[0] == 'B': letter = 'C' + letter[1:]
-            elif letter[0] == 'C': letter = 'B' + letter[1:]
+        if letter != 'BC' and letter[0] in ['B', 'C']:
+            if letter == 'BB':
+                letter = 'CC'
+            elif letter == 'CC':
+                letter = 'BB'
+            elif letter[0] == 'B':
+                letter = 'C' + letter[1:]
+            elif letter[0] == 'C':
+                letter = 'B' + letter[1:]
             rank = self._rank
             if self.is_affine():
                 rank -= 1
             twist = self._twist
-            return QuiverMutationType(letter,rank,twist)
+            return QuiverMutationType(letter, rank, twist)
         # the cases F and G have non-trivial duality in some cases
-        elif letter in ['F','G']:
-            if self.is_finite(): return self
+        elif letter in ['F', 'G']:
+            if self.is_finite():
+                return self
             elif self.is_affine():
                 rank = self._rank - 1
                 twist = - self._twist
@@ -1922,17 +1944,18 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
                 twist = self._twist
                 rank = self._rank - 2
                 if letter == 'F':
-                    if self._twist == [2,2]:
-                        twist == [1,1]
-                    if self._twist == [1,1]:
-                        twist == [2,2]
+                    if self._twist == [2, 2]:
+                        twist == [1, 1]
+                    if self._twist == [1, 1]:
+                        twist == [2, 2]
                 if letter == 'G':
-                    if self._twist == [3,3]:
-                        twist = [1,1]
-                    elif self._twist == [1,1]:
-                        twist = [3,3]
-            else: rank = self._rank
-            return QuiverMutationType(letter,rank,twist)
+                    if self._twist == [3, 3]:
+                        twist = [1, 1]
+                    elif self._twist == [1, 1]:
+                        twist = [3, 3]
+            else:
+                rank = self._rank
+            return QuiverMutationType(letter, rank, twist)
         else:
             return self
 
@@ -1940,9 +1963,10 @@ class QuiverMutationType_Irreducible(QuiverMutationType_abstract):
 class QuiverMutationType_Reducible(QuiverMutationType_abstract):
     """
     The mutation type for a cluster algebra or a quiver. Should not be
-    called directly, but through QuiverMutationType.  Inherits from
-    QuiverMutationType_abstract.
+    called directly, but through :class:`QuiverMutationType`.  Inherits from
+    :class:`QuiverMutationType_abstract`.
     """
+
     def __init__(self, *args):
         """
         Should not be called directly, but through QuiverMutationType.
@@ -1958,7 +1982,7 @@ class QuiverMutationType_Reducible(QuiverMutationType_abstract):
             [ ['A', 4], ['B', 6] ]
         """
         data = args
-        if len(data) < 2 or not all( isinstance(comp, QuiverMutationType_Irreducible) for comp in data ):
+        if len(data) < 2 or not all(isinstance(comp, QuiverMutationType_Irreducible) for comp in data):
             return _mutation_type_error(data)
 
         # _info is initialized
@@ -1996,12 +2020,13 @@ class QuiverMutationType_Reducible(QuiverMutationType_abstract):
         # _description is as for CartanType
         self._description = "[ "
         comps = self.irreducible_components()
-        for i in xrange(len(comps)):
-            if i > 0: self._description += ", "
+        for i in range(len(comps)):
+            if i > 0:
+                self._description += ", "
             self._description += comps[i]._description
         self._description += " ]"
 
-    def irreducible_components( self ):
+    def irreducible_components(self):
         """
         Return a list of all irreducible components of ``self``.
 
@@ -2032,7 +2057,7 @@ class QuiverMutationType_Reducible(QuiverMutationType_abstract):
         which are mutation equivalent to the standard quiver of
         ``self`` (up to isomorphism) is returned.
 
-        Otherwise, ``NotImplemented`` is returned.
+        Otherwise, :obj:`NotImplemented` is returned.
 
         EXAMPLES::
 
@@ -2049,28 +2074,29 @@ class QuiverMutationType_Reducible(QuiverMutationType_abstract):
         """
         if not self.is_mutation_finite():
             return infinity
-        else:
-            components = []
-            multiplicities = []
-            for x in self.irreducible_components():
-                if components.count(x) == 0:
-                    components.append(x)
-                    multiplicities.append(1)
-                else:
-                    y = components.index(x)
-                    multiplicities[y] = multiplicities[y]+1
 
-            sizes = [ x.class_size() for x in components ]
-            if NotImplemented in sizes:
-                print("Size unknown")
-                return NotImplemented
+        components = []
+        multiplicities = []
+        for x in self.irreducible_components():
+            if not components.count(x):
+                components.append(x)
+                multiplicities.append(1)
             else:
-                return prod( [binomial(sizes[i]+multiplicities[i]-1,
-                            multiplicities[i] ) for i in range (0,len(sizes))])
+                y = components.index(x)
+                multiplicities[y] += 1
+
+        sizes = [x.class_size() for x in components]
+        if NotImplemented in sizes:
+            print("Size unknown")
+            return NotImplemented
+        else:
+            return prod(binomial(sizes[i] + multiplicities[i] - 1,
+                                 multiplicities[i])
+                        for i in range(len(sizes)))
 
     def dual(self):
         """
-        Return the QuiverMutationType which is dual to ``self``.
+        Return the :class:`QuiverMutationType` which is dual to ``self``.
 
         EXAMPLES::
 
@@ -2080,10 +2106,10 @@ class QuiverMutationType_Reducible(QuiverMutationType_abstract):
             [ ['A', 5], ['C', 6], ['B', 5], ['D', 4] ]
         """
         comps = self.irreducible_components()
-        return QuiverMutationType( [comp.dual() for comp in comps ] )
+        return QuiverMutationType([comp.dual() for comp in comps])
 
 
-def _construct_classical_mutation_classes(n):
+def _construct_classical_mutation_classes(n) -> dict[tuple, list | set]:
     r"""
     Return a dict with keys being tuples representing regular
     QuiverMutationTypes of the given rank, and with values being lists
@@ -2102,45 +2128,45 @@ def _construct_classical_mutation_classes(n):
         ('AO', (((0, 1), (4, -1)),))]
     """
     from sage.combinat.cluster_algebra_quiver.quiver import ClusterQuiver
-    data = {}
+    data: dict[tuple, set | list] = {}
 
     # finite A
-    data[ ('A',n) ] = ClusterQuiver(['A',n]).mutation_class(data_type='dig6')
+    data[('A', n)] = ClusterQuiver(['A', n]).mutation_class(data_type='dig6')
     # affine A
     for j in range(1, n//2+1):
-        data[ ('A',(n-j,j),1) ] = ClusterQuiver(['A',[n-j,j],1]).mutation_class(data_type='dig6')
+        data[('A', (n-j, j), 1)] = ClusterQuiver(['A', [n-j, j], 1]).mutation_class(data_type='dig6')
     # finite B
     if n > 1:
-        data[ ('B',n) ] = ClusterQuiver(['B',n]).mutation_class(data_type='dig6')
+        data[('B', n)] = ClusterQuiver(['B', n]).mutation_class(data_type='dig6')
     # affine B
     if n > 2:
-        data[ ('BB',n-1,1) ] = ClusterQuiver(['BB',n-1,1]).mutation_class(data_type='dig6')
+        data[('BB', n-1, 1)] = ClusterQuiver(['BB', n-1, 1]).mutation_class(data_type='dig6')
     # finite C
     if n > 2:
-        data[ ('C',n) ] = ClusterQuiver(['C',n]).mutation_class(data_type='dig6')
+        data[('C', n)] = ClusterQuiver(['C', n]).mutation_class(data_type='dig6')
     # affine C
     if n > 1:
-        data[ ('BC',n-1,1) ] = ClusterQuiver(['BC',n-1,1]).mutation_class(data_type='dig6')
+        data[('BC', n-1, 1)] = ClusterQuiver(['BC', n-1, 1]).mutation_class(data_type='dig6')
     # affine CC
     if n > 2:
-        data[ ('CC',n-1,1) ] = ClusterQuiver(['CC',n-1,1]).mutation_class(data_type='dig6')
+        data[('CC', n-1, 1)] = ClusterQuiver(['CC', n-1, 1]).mutation_class(data_type='dig6')
     # affine BD
     if n > 3:
-        data[ ('BD',n-1,1) ] = ClusterQuiver(['BD',n-1,1]).mutation_class(data_type='dig6')
+        data[('BD', n-1, 1)] = ClusterQuiver(['BD', n-1, 1]).mutation_class(data_type='dig6')
     # affine CD
     if n > 3:
-        data[ ('CD',n-1,1) ] = ClusterQuiver(['CD',n-1,1]).mutation_class(data_type='dig6')
+        data[('CD', n-1, 1)] = ClusterQuiver(['CD', n-1, 1]).mutation_class(data_type='dig6')
     # finite D
     if n > 3:
-        data[ ('D',n) ] = ClusterQuiver(['D',n]).mutation_class(data_type='dig6')
+        data[('D', n)] = ClusterQuiver(['D', n]).mutation_class(data_type='dig6')
     # affine D
     if n > 4:
-        data[ ('D',n-1,1) ] = ClusterQuiver(['D',n-1,1]).mutation_class(data_type='dig6')
+        data[('D', n-1, 1)] = ClusterQuiver(['D', n-1, 1]).mutation_class(data_type='dig6')
 
     return data
 
 
-def _construct_exceptional_mutation_classes(n):
+def _construct_exceptional_mutation_classes(n) -> dict[tuple, list | set]:
     r"""
     Return a dict with keys being tuples representing exceptional
     QuiverMutationTypes of the given rank, and with values being lists
@@ -2164,43 +2190,43 @@ def _construct_exceptional_mutation_classes(n):
         ('BP_', (((0, 1), (2, -2)), ((1, 2), (1, -3)), ((2, 0), (3, -1))))]
     """
     from sage.combinat.cluster_algebra_quiver.quiver import ClusterQuiver
-    data = {}
+    data: dict[tuple, list | set] = {}
     # finite E
-    if n in [6,7,8]:
-        data[ ('E',n) ] = ClusterQuiver(['E',n]).mutation_class(data_type='dig6')
+    if n in [6, 7, 8]:
+        data[('E', n)] = ClusterQuiver(['E', n]).mutation_class(data_type='dig6')
     # affine E
-    if n in [7,8,9]:
-        data[ ('E',n-1,1) ] = ClusterQuiver(['E',n-1,1]).mutation_class(data_type='dig6')
+    if n in [7, 8, 9]:
+        data[('E', n - 1, 1)] = ClusterQuiver(['E', n - 1, 1]).mutation_class(data_type='dig6')
     # elliptic E
-    if n in [8,9,10]:
-        data[ ('E',n-2,(1,1)) ] = ClusterQuiver(['E',n-2,[1,1]]).mutation_class(data_type='dig6')
+    if n in [8, 9, 10]:
+        data[('E', n - 2, (1, 1))] = ClusterQuiver(['E', n - 2, [1, 1]]).mutation_class(data_type='dig6')
     # finite F
     if n == 4:
-        data[ ('F',4) ] = ClusterQuiver(['F',4]).mutation_class(data_type='dig6')
+        data[('F', 4)] = ClusterQuiver(['F', 4]).mutation_class(data_type='dig6')
     # affine F
     if n == 5:
-        data[ ('F',4,1) ] = ClusterQuiver(['F',4,1]).mutation_class(data_type='dig6')
-        data[ ('F',4,-1) ] = ClusterQuiver(['F',4,-1]).mutation_class(data_type='dig6')
+        data[('F', 4, 1)] = ClusterQuiver(['F', 4, 1]).mutation_class(data_type='dig6')
+        data[('F', 4, -1)] = ClusterQuiver(['F', 4, -1]).mutation_class(data_type='dig6')
     # finite G
     if n == 2:
-        data[ ('G',2) ] = ClusterQuiver(['G',2]).mutation_class(data_type='dig6')
+        data[('G', 2)] = ClusterQuiver(['G', 2]).mutation_class(data_type='dig6')
     # affine G
     if n == 3:
-        data[ ('G',2,1) ] = ClusterQuiver(['G',2,1]).mutation_class(data_type='dig6')
-        data[ ('G',2,-1) ] = ClusterQuiver(['G',2,-1]).mutation_class(data_type='dig6')
+        data[('G', 2, 1)] = ClusterQuiver(['G', 2, 1]).mutation_class(data_type='dig6')
+        data[('G', 2, -1)] = ClusterQuiver(['G', 2, -1]).mutation_class(data_type='dig6')
     # elliptic G
     if n == 4:
-        data[ ('G',2,(1,3)) ] = ClusterQuiver(['G',2,(1,3)]).mutation_class(data_type='dig6')
-        data[ ('G',2,(1,1)) ] = ClusterQuiver(['G',2,(1,1)]).mutation_class(data_type='dig6')
-        data[ ('G',2,(3,3)) ] = ClusterQuiver(['G',2,(3,3)]).mutation_class(data_type='dig6')
+        data[('G', 2, (1, 3))] = ClusterQuiver(['G', 2, (1, 3)]).mutation_class(data_type='dig6')
+        data[('G', 2, (1, 1))] = ClusterQuiver(['G', 2, (1, 1)]).mutation_class(data_type='dig6')
+        data[('G', 2, (3, 3))] = ClusterQuiver(['G', 2, (3, 3)]).mutation_class(data_type='dig6')
     # X
-    if n in [6,7]:
-        data[ ('X',n) ] = ClusterQuiver(['X',n]).mutation_class(data_type='dig6')
+    if n in [6, 7]:
+        data[('X', n)] = ClusterQuiver(['X', n]).mutation_class(data_type='dig6')
     # elliptic F
     if n == 6:
-        data[ ('F',4,(1,2)) ] = ClusterQuiver(['F',4,(1,2)]).mutation_class(data_type='dig6')
-        data[ ('F',4,(1,1)) ] = ClusterQuiver(['F',4,(1,1)]).mutation_class(data_type='dig6')
-        data[ ('F',4,(2,2)) ] = ClusterQuiver(['F',4,(2,2)]).mutation_class(data_type='dig6')
+        data[('F', 4, (1, 2))] = ClusterQuiver(['F', 4, (1, 2)]).mutation_class(data_type='dig6')
+        data[('F', 4, (1, 1))] = ClusterQuiver(['F', 4, (1, 1)]).mutation_class(data_type='dig6')
+        data[('F', 4, (2, 2))] = ClusterQuiver(['F', 4, (2, 2)]).mutation_class(data_type='dig6')
 
     return data
 
@@ -2211,34 +2237,29 @@ def _save_data_dig6(n, types='ClassicalExceptional', verbose=False):
 
     TESTS::
 
+        sage: # needs sage.modules
         sage: from sage.combinat.cluster_algebra_quiver.quiver_mutation_type import save_quiver_data
-        sage: save_quiver_data(2) # indirect doctest
+        sage: save_quiver_data(2)  # indirect doctest
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', 1)]
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1), ('G', 2)]
-
-        sage: save_quiver_data(2,up_to=False) # indirect doctest
+        sage: save_quiver_data(2, up_to=False)  # indirect doctest
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1), ('G', 2)]
-
-        sage: save_quiver_data(2,up_to=False, types='Classical') # indirect doctest
+        sage: save_quiver_data(2, up_to=False, types='Classical')  # indirect doctest
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1)]
-
-        sage: save_quiver_data(2,up_to=False, types='Exceptional') # indirect doctest
+        sage: save_quiver_data(2, up_to=False, types='Exceptional')  # indirect doctest
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('G', 2)]
-
-        sage: save_quiver_data(2,up_to=False, verbose=False) # indirect doctest
+        sage: save_quiver_data(2, up_to=False, verbose=False)  # indirect doctest
     """
-    import os.path
-    import cPickle
     data = {}
     possible_types = ['Classical', 'ClassicalExceptional', 'Exceptional']
     if types not in possible_types:
@@ -2251,16 +2272,15 @@ def _save_data_dig6(n, types='ClassicalExceptional', verbose=False):
         data.update(_construct_exceptional_mutation_classes(n))
 
     from sage.env import DOT_SAGE
-    from sage.misc.misc import sage_makedirs
-    types_path = os.path.join(DOT_SAGE, 'cluster_algebra_quiver')
-    types_file = os.path.join(types_path,'mutation_classes_%s.dig6'%n)
-    sage_makedirs(types_path)
+    types_path = Path(DOT_SAGE) / 'cluster_algebra_quiver'
+    types_path.mkdir(exist_ok=True)
+    types_file = types_path / f'mutation_classes_{n}.dig6'
     from sage.misc.temporary_file import atomic_write
-    with atomic_write(types_file) as f:
-        cPickle.dump(data, f)
+    with atomic_write(types_file, binary=True) as f:
+        pickle.dump(data, f)
     if verbose:
-        keys = sorted(data.keys(),key=str)
-        print("\nThe following types are saved to file", types_file,"and will now be used to determine quiver mutation types:")
+        keys = sorted(data, key=str)
+        print("\nThe following types are saved to file", types_file, "and will now be used to determine quiver mutation types:")
         print(keys)
 
 
@@ -2274,7 +2294,7 @@ def save_quiver_data(n, up_to=True, types='ClassicalExceptional', verbose=True):
 
     INPUT:
 
-    - ``n``: the rank (or the upper limit on the rank) of the mutation
+    - ``n`` -- the rank (or the upper limit on the rank) of the mutation
       classes that are being saved.
 
     - ``up_to`` -- (default:``True``) if ``True``, saves data for
@@ -2288,6 +2308,7 @@ def save_quiver_data(n, up_to=True, types='ClassicalExceptional', verbose=True):
 
     TESTS::
 
+        sage: # needs sage.modules
         sage: from sage.combinat.cluster_algebra_quiver.quiver_mutation_type import save_quiver_data
         sage: save_quiver_data(2)
         <BLANKLINE>
@@ -2296,66 +2317,56 @@ def save_quiver_data(n, up_to=True, types='ClassicalExceptional', verbose=True):
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1), ('G', 2)]
-
         sage: save_quiver_data(2,up_to=False)
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1), ('G', 2)]
-
         sage: save_quiver_data(2,up_to=False, types='Classical')
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('A', (1, 1), 1), ('A', 2), ('B', 2), ('BC', 1, 1)]
-
         sage: save_quiver_data(2,up_to=False, types='Exceptional')
         <BLANKLINE>
         The following types are saved to file ... and will now be used to determine quiver mutation types:
         [('G', 2)]
-
         sage: save_quiver_data(2,up_to=False, verbose=False)
     """
     from sage.combinat.cluster_algebra_quiver.mutation_type import load_data
     if up_to is True:
-        ranks = range(1,n+1)
+        ranks = range(1, n + 1)
     elif up_to is False:
         ranks = [n]
     for i in ranks:
-        _save_data_dig6(i,types=types,verbose=verbose)
+        _save_data_dig6(i, types=types, verbose=verbose)
     # we finally clear the load_data
     load_data.clear_cache()
 
 
-def _bipartite_graph_to_digraph(g):
+def _bipartite_graph_to_digraph(g) -> DiGraph:
     """
-    Return a digraph obtained from a bipartite graph g by choosing one
+    Return a digraph obtained from a bipartite graph ``g`` by choosing one
     set of the bipartition to be the set of sinks and the other to be the
     set of sources.
 
     EXAMPLES::
 
-        sage: from sage.combinat.cluster_algebra_quiver.quiver_mutation_type \
-              import _bipartite_graph_to_digraph
-        sage: G = Graph([(1,2)])
+        sage: from sage.combinat.cluster_algebra_quiver.quiver_mutation_type import _bipartite_graph_to_digraph
+        sage: G = Graph([(1, 2)])
         sage: _bipartite_graph_to_digraph(G)
         Digraph on 2 vertices
     """
-    if not g.is_bipartite():
-        raise ValueError('The input graph is not bipartite.')
-
-    order = g.bipartite_sets()
+    sources = g.bipartite_sets()[0]
     dg = DiGraph()
-    for edge in g.edges():
-        if edge[0] in order[0]:
-            dg.add_edge( edge[0],edge[1],edge[2] )
+    dg.add_vertices(g)
+    for a, b, c in g.edge_iterator():
+        if a in sources:
+            dg.add_edge(a, b, c)
         else:
-            dg.add_edge( edge[1],edge[0],edge[2] )
-    for vert in g.vertices():
-        if vert not in dg.vertices():
-            dg.add_vertex(vert)
+            dg.add_edge(b, a, c)
     return dg
 
 
-def _is_mutation_type(data):
+def _is_mutation_type(data) -> bool:
     """
     Return ``True`` if ``data`` is a QuiverMutationType.
 
@@ -2373,14 +2384,15 @@ def _is_mutation_type(data):
     except Exception:
         return False
 
+
 def _mutation_type_error(data):
-    """
+    r"""
     Output an error message because data which is not a valid quiver mutation
     type has been passed to QuiverMutationType.
 
     EXAMPLES::
 
-        sage: QuiverMutationType( 'Christian', 'Stump' ) # indirect doctest
+        sage: QuiverMutationType( 'Christian', 'Stump' )  # indirect doctest
         Traceback (most recent call last):
         ...
         ValueError: ['Christian', 'Stump'] is not a valid quiver mutation type
@@ -2392,49 +2404,62 @@ def _mutation_type_error(data):
     """
     if data[2] is None:
         del data[2]
-    return_str  = str(data) + ' is not a valid quiver mutation type'
+    return_str = str(data) + ' is not a valid quiver mutation type'
     return_str += '\n            Finite types have the form [ \'?\', n ] for type ? and rank n'
     return_str += '\n            Affine type A has the form [ \'A\', [ i, j ], 1 ] for rank i+j'
-    return_str += '\n            Affine type ? has the form [ \'?\', k, \pm 1 ] for rank k+1'
+    return_str += '\n            Affine type ? has the form [ \'?\', k, \\pm 1 ] for rank k+1'
     return_str += '\n            Elliptic type ? has the form [ \'?\', k, [i, j] ] (1 <= i,j <= 3) for rank k+2'
     return_str += '\n            For correct syntax in other types, please consult the documentation.'
 
     raise ValueError(return_str)
 
 
-def _edge_list_to_matrix(edges, n, m):
-    """
+def _edge_list_to_matrix(edges, nlist, mlist) -> matrix:
+    r"""
     Return the matrix obtained from the edge list of a quiver.
 
     INPUT:
 
-    - ``edges``: the list of edges.
-
-    - ``n``: the number of mutable vertices of the quiver.
-
-    - ``m``: the number of frozen vertices of the quiver.
+    - ``edges`` -- the list of edges
+    - ``nlist`` -- the list of mutable vertices of the quiver
+    - ``mlist`` -- the list of frozen vertices of the quiver
 
     OUTPUT:
 
-    - An `(n+m) \times n` matrix corresponding to the edge-list.
+    An `(n+m) \times n` matrix corresponding to the edge-list.
 
     EXAMPLES::
 
         sage: from sage.combinat.cluster_algebra_quiver.quiver_mutation_type import _edge_list_to_matrix
-        sage: G = QuiverMutationType(['A',2])._digraph
-        sage: _edge_list_to_matrix(G.edges(),2,0)
+        sage: G = QuiverMutationType(['A', 2])._digraph
+        sage: _edge_list_to_matrix(G.edges(sort=True), [0, 1], [])                      # needs sage.modules
         [ 0  1]
         [-1  0]
+
+        sage: G2 = DiGraph([('a', 'b', 1)])
+        sage: _edge_list_to_matrix(G2.edges(sort=True), ['a', 'b'], [])                 # needs sage.modules
+        [ 0  1]
+        [-1  0]
+
+        sage: G3 = DiGraph([('a', 'b', 1), ('b', 'c', 1)])
+        sage: _edge_list_to_matrix(G3.edges(sort=True), ['a', 'b'], ['c'])              # needs sage.modules
+        [ 0  1]
+        [-1  0]
+        [ 0 -1]
     """
-    M = matrix(ZZ, n + m, n, sparse=True)
-    for edge in edges:
-        if edge[2] is None:
-            edge = (edge[0], edge[1], (1, -1))
-        elif edge[2] in ZZ:
-            edge = (edge[0], edge[1], (edge[2], -edge[2]))
-        v1, v2, (a, b) = edge
-        if v1 < n:
-            M[v2, v1] = b
-        if v2 < n:
-            M[v1, v2] = a
+    n = len(nlist)
+    nmlist = nlist + mlist
+    nm = len(nmlist)
+    M = matrix(ZZ, nm, n, sparse=True)
+    for v1, v2, label in edges:
+        if label is None:
+            a, b = 1, -1
+        elif label in ZZ:
+            a, b = label, -label
+        else:
+            a, b = label
+        if v1 in nlist:
+            M[nmlist.index(v2), nmlist.index(v1)] = b
+        if v2 in nlist:
+            M[nmlist.index(v1), nmlist.index(v2)] = a
     return M

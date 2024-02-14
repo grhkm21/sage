@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.groups
 r"""
 Automorphism groups and canonical labels
 
@@ -99,57 +100,63 @@ REFERENCE:
 
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2006 - 2011 Robert L. Miller <rlmillster@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from libc.string cimport memcmp, memcpy
-include 'data_structures_pyx.pxi' # includes bitsets
+from cysignals.memory cimport sig_malloc, sig_realloc, sig_free
 
-cdef inline int agcl_cmp(int a, int b):
-    if a < b: return -1
-    elif a == b: return 0
-    else: return 1
+from sage.groups.perm_gps.partn_ref.data_structures cimport *
+from sage.data_structures.bitset_base cimport *
+
+cdef inline int agcl_cmp(int a, int b) noexcept:
+    if a < b:
+        return -1
+    elif a == b:
+        return 0
+    else:
+        return 1
 
 # Functions
 
-cdef bint all_children_are_equivalent_trivial(PartitionStack *PS, void *S):
+cdef bint all_children_are_equivalent_trivial(PartitionStack *PS, void *S) noexcept:
     return 0
 
-cdef int refine_and_return_invariant_trivial(PartitionStack *PS, void *S, int *cells_to_refine_by, int ctrb_len):
+cdef int refine_and_return_invariant_trivial(PartitionStack *PS, void *S, int *cells_to_refine_by, int ctrb_len) noexcept:
     return 0
 
-cdef int compare_structures_trivial(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree):
+cdef int compare_structures_trivial(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree) noexcept:
     return 0
 
 def test_get_aut_gp_and_can_lab_trivially(int n=6,
     list partition=[[0,1,2],[3,4],[5]], canonical_label=True, base=False):
     """
-    sage: tttt = sage.groups.perm_gps.partn_ref.automorphism_group_canonical_label.test_get_aut_gp_and_can_lab_trivially
-    sage: tttt()
-    12
-    sage: tttt(canonical_label=False, base=False)
-    12
-    sage: tttt(canonical_label=False, base=True)
-    12
-    sage: tttt(canonical_label=True, base=True)
-    12
-    sage: tttt(n=0, partition=[])
-    1
-    sage: tttt(n=0, partition=[], canonical_label=False, base=False)
-    1
-    sage: tttt(n=0, partition=[], canonical_label=False, base=True)
-    1
-    sage: tttt(n=0, partition=[], canonical_label=True, base=True)
-    1
+    TESTS::
 
+        sage: tttt = sage.groups.perm_gps.partn_ref.automorphism_group_canonical_label.test_get_aut_gp_and_can_lab_trivially
+        sage: tttt()
+        12
+        sage: tttt(canonical_label=False, base=False)
+        12
+        sage: tttt(canonical_label=False, base=True)
+        12
+        sage: tttt(canonical_label=True, base=True)
+        12
+        sage: tttt(n=0, partition=[])
+        1
+        sage: tttt(n=0, partition=[], canonical_label=False, base=False)
+        1
+        sage: tttt(n=0, partition=[], canonical_label=False, base=True)
+        1
+        sage: tttt(n=0, partition=[], canonical_label=True, base=True)
+        1
     """
     cdef aut_gp_and_can_lab *output
     cdef Integer I = Integer(0)
@@ -205,13 +212,14 @@ def test_intersect_parabolic_with_alternating(int n=9, list partition=[[0,1,2],[
     SC_dealloc(group)
     deallocate_agcl_output(output)
 
-cdef int compare_perms(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree):
+cdef int compare_perms(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree) noexcept:
     cdef list MS1 = <list> S1
     cdef list MS2 = <list> S2
     cdef int i, j
-    for i from 0 <= i < degree:
+    for i in range(degree):
         j = agcl_cmp(MS1[gamma_1[i]], MS2[gamma_2[i]])
-        if j != 0: return j
+        if j != 0:
+            return j
     return 0
 
 def coset_rep(list perm=[0,1,2,3,4,5], list gens=[[1,2,3,4,5,0]]):
@@ -229,28 +237,28 @@ def coset_rep(list perm=[0,1,2,3,4,5], list gens=[[1,2,3,4,5,0]]):
         sage: gens = [[1,2,3,0]]
         sage: reps = []
         sage: for p in SymmetricGroup(4):
-        ...     p = [p(i)-1 for i in range(1,5)]
-        ...     r = coset_rep(p, gens)
-        ...     if r not in reps:
-        ...         reps.append(r)
+        ....:   p = [p(i)-1 for i in range(1,5)]
+        ....:   r = coset_rep(p, gens)
+        ....:   if r not in reps:
+        ....:       reps.append(r)
         sage: len(reps)
         6
         sage: gens = [[1,0,2,3],[0,1,3,2]]
         sage: reps = []
         sage: for p in SymmetricGroup(4):
-        ...     p = [p(i)-1 for i in range(1,5)]
-        ...     r = coset_rep(p, gens)
-        ...     if r not in reps:
-        ...         reps.append(r)
+        ....:   p = [p(i)-1 for i in range(1,5)]
+        ....:   r = coset_rep(p, gens)
+        ....:   if r not in reps:
+        ....:       reps.append(r)
         sage: len(reps)
         6
         sage: gens = [[1,2,0,3]]
         sage: reps = []
         sage: for p in SymmetricGroup(4):
-        ...     p = [p(i)-1 for i in range(1,5)]
-        ...     r = coset_rep(p, gens)
-        ...     if r not in reps:
-        ...         reps.append(r)
+        ....:   p = [p(i)-1 for i in range(1,5)]
+        ....:   r = coset_rep(p, gens)
+        ....:   if r not in reps:
+        ....:       reps.append(r)
         sage: len(reps)
         8
 
@@ -275,8 +283,8 @@ def coset_rep(list perm=[0,1,2,3,4,5], list gens=[[1,2,3,4,5,0]]):
     output = get_aut_gp_and_can_lab(<void *> perm, part, n, &all_children_are_equivalent_trivial, &refine_and_return_invariant_trivial, &compare_perms, 1, group, NULL, NULL)
     SC_order(output.group, 0, I.value)
     assert I == 1
-    r_inv = range(n)
-    for i from 0 <= i < n:
+    r_inv = list(range(n))
+    for i in range(n):
         r_inv[output.relabeling[i]] = i
     label = [perm[r_inv[i]] for i in range(n)]
     PS_dealloc(part)
@@ -285,7 +293,7 @@ def coset_rep(list perm=[0,1,2,3,4,5], list gens=[[1,2,3,4,5,0]]):
     sig_free(c_perm)
     return label
 
-cdef aut_gp_and_can_lab *allocate_agcl_output(int n):
+cdef aut_gp_and_can_lab *allocate_agcl_output(int n) noexcept:
     r"""
     Allocate an instance of the aut_gp_and_can_lab struct of degree n. This can
     be input to the get_aut_gp_and_can_lab function, and the output will be
@@ -305,7 +313,7 @@ cdef aut_gp_and_can_lab *allocate_agcl_output(int n):
         return NULL
     return output
 
-cdef void deallocate_agcl_output(aut_gp_and_can_lab *output):
+cdef void deallocate_agcl_output(aut_gp_and_can_lab *output) noexcept:
     r"""
     Deallocates an aut_gp_and_can_lab struct.
     """
@@ -315,7 +323,7 @@ cdef void deallocate_agcl_output(aut_gp_and_can_lab *output):
         sig_free(output.generators)
     sig_free(output)
 
-cdef agcl_work_space *allocate_agcl_work_space(int n):
+cdef agcl_work_space *allocate_agcl_work_space(int n) noexcept:
     r"""
     Allocates work space for the get_aut_gp_and_can_lab function. It can be
     input to the function in which case it must be deallocated after the
@@ -349,7 +357,7 @@ cdef agcl_work_space *allocate_agcl_work_space(int n):
        work_space.orbits_of_subgroup    is NULL or \
        work_space.orbits_of_permutation is NULL or \
        work_space.first_ps              is NULL:
-        deallocate_agcl_work_space(work_space)
+        sig_free(work_space)
         return NULL
 
     work_space.perm_stack       = int_array
@@ -367,7 +375,7 @@ cdef agcl_work_space *allocate_agcl_work_space(int n):
         return NULL
     return work_space
 
-cdef void deallocate_agcl_work_space(agcl_work_space *work_space):
+cdef void deallocate_agcl_work_space(agcl_work_space *work_space) noexcept:
     r"""
     Deallocate work space for the get_aut_gp_and_can_lab function.
     """
@@ -389,10 +397,11 @@ cdef void deallocate_agcl_work_space(agcl_work_space *work_space):
 
 cdef aut_gp_and_can_lab *get_aut_gp_and_can_lab(void *S,
     PartitionStack *partition, int n,
-    bint (*all_children_are_equivalent)(PartitionStack *PS, void *S),
-    int (*refine_and_return_invariant)\
-         (PartitionStack *PS, void *S, int *cells_to_refine_by, int ctrb_len),
-    int (*compare_structures)(int *gamma_1, int *gamma_2, void *S1, void *S2, int degree),
+    bint (*all_children_are_equivalent)(PartitionStack *PS, void *S) noexcept,
+    int (*refine_and_return_invariant)(PartitionStack *PS, void *S,
+                                       int *cells_to_refine_by, int ctrb_len) noexcept,
+    int (*compare_structures)(int *gamma_1, int *gamma_2, void *S1, void *S2,
+                              int degree) noexcept,
     bint canonical_label, StabilizerChain *input_group,
     agcl_work_space *work_space_prealloc, aut_gp_and_can_lab *output_prealloc) except NULL:
     """
@@ -476,7 +485,7 @@ cdef aut_gp_and_can_lab *get_aut_gp_and_can_lab(void *S,
 
     cdef int i, j, k, ell, b
     cdef bint discrete, automorphism, update_label
-    cdef bint backtrack, new_vertex, narrow, mem_err = 0
+    cdef bint backtrack, new_vertex, mem_err = 0
 
     cdef aut_gp_and_can_lab *output
     cdef agcl_work_space *work_space
@@ -892,17 +901,3 @@ cdef aut_gp_and_can_lab *get_aut_gp_and_can_lab(void *S,
         deallocate_agcl_work_space(work_space)
 
     return output
-
-
-
-
-
-
-
-
-
-
-
-
-
-

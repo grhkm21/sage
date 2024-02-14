@@ -17,13 +17,15 @@ Recursive Species
 #*****************************************************************************
 from sage.combinat.species.species import GenericCombinatorialSpecies
 from sage.combinat.species.structure import SpeciesStructureWrapper
-from sage.rings.all import QQ
+from sage.rings.rational_field import QQ
+
 
 class CombinatorialSpeciesStructure(SpeciesStructureWrapper):
     pass
 
+
 class CombinatorialSpecies(GenericCombinatorialSpecies):
-    def __init__(self):
+    def __init__(self, min=None):
         """
         EXAMPLES::
 
@@ -37,19 +39,16 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
             sage: E = species.EmptySetSpecies()
             sage: L = CombinatorialSpecies()
             sage: L.define(E+X*L)
-            sage: L.generating_series().coefficients(4)
+            sage: L.generating_series()[0:4]
             [1, 1, 1, 1]
             sage: LL = loads(dumps(L))
-            sage: LL.generating_series().coefficients(4)
+            sage: LL.generating_series()[0:4]
             [1, 1, 1, 1]
         """
         self._generating_series = {}
         self._isotype_generating_series = {}
         self._cycle_index_series = {}
-        self._min = None
-        self._max = None
-        self._weight = 1
-        GenericCombinatorialSpecies.__init__(self, min=None, max=None, weight=None)
+        GenericCombinatorialSpecies.__init__(self, min=min, max=None, weight=None)
 
     _default_structure_class = CombinatorialSpeciesStructure
 
@@ -88,15 +87,13 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
             sage: A == B
             True
 
-        ::
-
             sage: C = species.CombinatorialSpecies()
             sage: E = species.EmptySetSpecies()
             sage: C.define(E+X*C*C)
             sage: A == C
             False
         """
-        if not isinstance(other, GenericCombinatorialSpecies):
+        if not isinstance(other, CombinatorialSpecies):
             return False
         if not hasattr(self, "_reference"):
             return False
@@ -108,9 +105,33 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
         del self._computing_eq
         return res
 
+    def __ne__(self, other):
+        """
+        Check whether ``self`` is not equal to ``other``.
+
+        EXAMPLES::
+
+            sage: A = species.CombinatorialSpecies()
+            sage: B = species.CombinatorialSpecies()
+            sage: A != B
+            True
+            sage: X = species.SingletonSpecies()
+            sage: A.define(X+A*A)
+            sage: B.define(X+B*B)
+            sage: A != B
+            False
+
+            sage: C = species.CombinatorialSpecies()
+            sage: E = species.EmptySetSpecies()
+            sage: C.define(E+X*C*C)
+            sage: A != C
+            True
+        """
+        return not (self == other)
+
     def _unique_info(self):
         """
-        Returns a tuple which should uniquely identify the species.
+        Return a tuple which should uniquely identify the species.
 
         EXAMPLES::
 
@@ -209,10 +230,10 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
             sage: F = CombinatorialSpecies()
             sage: F.generating_series()
-            Uninitialized lazy power series
+            Uninitialized Lazy Series
         """
         if base_ring not in self._generating_series:
-            self._generating_series[base_ring] = series_ring()
+            self._generating_series[base_ring] = series_ring.undefined(valuation=(0 if self._min is None else self._min))
 
         res = self._generating_series[base_ring]
         if hasattr(self, "_reference") and not hasattr(res, "_reference"):
@@ -226,10 +247,10 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
             sage: F = CombinatorialSpecies()
             sage: F.isotype_generating_series()
-            Uninitialized lazy power series
+            Uninitialized Lazy Series
         """
         if base_ring not in self._isotype_generating_series:
-            self._isotype_generating_series[base_ring] = series_ring()
+            self._isotype_generating_series[base_ring] = series_ring.undefined(valuation=(0 if self._min is None else self._min))
 
         res = self._isotype_generating_series[base_ring]
         if hasattr(self, "_reference") and not hasattr(res, "_reference"):
@@ -242,11 +263,11 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
         EXAMPLES::
 
             sage: F = CombinatorialSpecies()
-            sage: F.cycle_index_series()
-            Uninitialized lazy power series
+            sage: F.cycle_index_series()                                                # needs sage.modules
+            Uninitialized Lazy Series
         """
         if base_ring not in self._cycle_index_series:
-            self._cycle_index_series[base_ring] = series_ring()
+            self._cycle_index_series[base_ring] = series_ring.undefined(valuation=(0 if self._min is None else self._min))
 
         res = self._cycle_index_series[base_ring]
         if hasattr(self, "_reference") and not hasattr(res, "_reference"):
@@ -284,7 +305,9 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
     def define(self, x):
         """
-        Defines self to be equal to the combinatorial species x. This is
+        Define ``self`` to be equal to the combinatorial species ``x``.
+
+        This is
         used to define combinatorial species recursively. All of the real
         work is done by calling the .set() method for each of the series
         associated to self.
@@ -299,7 +322,7 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
             sage: E = species.EmptySetSpecies()
             sage: L = CombinatorialSpecies()
             sage: L.define(E+X*L)
-            sage: L.generating_series().coefficients(4)
+            sage: L.generating_series()[0:4]
             [1, 1, 1, 1]
             sage: L.structures([1,2,3]).cardinality()
             6
@@ -314,7 +337,7 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
         ::
 
             sage: L = species.LinearOrderSpecies()
-            sage: L.generating_series().coefficients(4)
+            sage: L.generating_series()[0:4]
             [1, 1, 1, 1]
             sage: L.structures([1,2,3]).cardinality()
             6
@@ -325,28 +348,28 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
             sage: A = CombinatorialSpecies()
             sage: A.define(E+X*A*A)
-            sage: A.generating_series().coefficients(6)
+            sage: A.generating_series()[0:6]
             [1, 1, 2, 5, 14, 42]
             sage: A.generating_series().counts(6)
             [1, 1, 4, 30, 336, 5040]
             sage: len(A.structures([1,2,3,4]).list())
             336
-            sage: A.isotype_generating_series().coefficients(6)
+            sage: A.isotype_generating_series()[0:6]
             [1, 1, 2, 5, 14, 42]
             sage: len(A.isotypes([1,2,3,4]).list())
             14
 
         ::
 
-            sage: A = CombinatorialSpecies()
+            sage: A = CombinatorialSpecies(min=1)
             sage: A.define(X+A*A)
-            sage: A.generating_series().coefficients(6)
+            sage: A.generating_series()[0:6]
             [0, 1, 1, 2, 5, 14]
             sage: A.generating_series().counts(6)
             [0, 1, 2, 12, 120, 1680]
             sage: len(A.structures([1,2,3]).list())
             12
-            sage: A.isotype_generating_series().coefficients(6)
+            sage: A.isotype_generating_series()[0:6]
             [0, 1, 1, 2, 5, 14]
             sage: len(A.isotypes([1,2,3,4]).list())
             5
@@ -355,19 +378,17 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
             sage: X2 = X*X
             sage: X5 = X2*X2*X
-            sage: A = CombinatorialSpecies()
-            sage: B = CombinatorialSpecies()
-            sage: C = CombinatorialSpecies()
+            sage: A = CombinatorialSpecies(min=1)
+            sage: B = CombinatorialSpecies(min=1)
+            sage: C = CombinatorialSpecies(min=1)
             sage: A.define(X5+B*B)
             sage: B.define(X5+C*C)
             sage: C.define(X2+C*C+A*A)
-            sage: A.generating_series().coefficients(Integer(10))
-            [0, 0, 0, 0, 0, 1, 0, 0, 1, 2]
-            sage: A.generating_series().coefficients(15)
+            sage: A.generating_series()[0:15]
             [0, 0, 0, 0, 0, 1, 0, 0, 1, 2, 5, 4, 14, 10, 48]
-            sage: B.generating_series().coefficients(15)
+            sage: B.generating_series()[0:15]
             [0, 0, 0, 0, 1, 1, 2, 0, 5, 0, 14, 0, 44, 0, 138]
-            sage: C.generating_series().coefficients(15)
+            sage: C.generating_series()[0:15]
             [0, 0, 1, 0, 1, 0, 2, 0, 5, 0, 15, 0, 44, 2, 142]
 
         ::
@@ -376,10 +397,19 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
             sage: F.define(E+X+(X*F+X*X*F))
             sage: F.generating_series().counts(10)
             [1, 2, 6, 30, 192, 1560, 15120, 171360, 2217600, 32296320]
-            sage: F.generating_series().coefficients(10)
+            sage: F.generating_series()[0:10]
             [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
-            sage: F.isotype_generating_series().coefficients(10)
+            sage: F.isotype_generating_series()[0:10]
             [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+
+        Check that :issue:`35071` is fixed::
+
+            sage: X = species.SingletonSpecies()
+            sage: E = species.SetSpecies(max=3)
+            sage: B = species.CombinatorialSpecies(min=1)
+            sage: B.define(X*E(B))
+            sage: B.generating_series()
+            z + z^2 + 3/2*z^3 + 5/2*z^4 + 9/2*z^5 + 17/2*z^6 + 133/8*z^7 + O(z^8)
         """
         if not isinstance(x, GenericCombinatorialSpecies):
             raise TypeError("x must be a combinatorial species")
@@ -388,7 +418,6 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
             raise TypeError("only undefined combinatorial species can be set")
 
         self._reference = x
-
 
     def _add_to_digraph(self, d):
         """
@@ -400,17 +429,17 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
 
         EXAMPLES::
 
-            sage: d = DiGraph(multiedges=True)
+            sage: d = DiGraph(multiedges=True)                                          # needs sage.graphs
             sage: X = species.SingletonSpecies()
             sage: B = species.CombinatorialSpecies()
             sage: B.define(X+B*B)
-            sage: B._add_to_digraph(d); d
+            sage: B._add_to_digraph(d); d                                               # needs sage.graphs
             Multi-digraph on 4 vertices
 
         TESTS::
 
             sage: C = species.CombinatorialSpecies()
-            sage: C._add_to_digraph(d)
+            sage: C._add_to_digraph(d)                                                  # needs sage.graphs
             Traceback (most recent call last):
             ...
             NotImplementedError
@@ -432,7 +461,7 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
         EXAMPLES::
 
             sage: C = species.CombinatorialSpecies()
-            sage: C.algebraic_equation_system()
+            sage: C.algebraic_equation_system()                                         # needs sage.graphs
             Traceback (most recent call last):
             ...
             NotImplementedError
@@ -440,8 +469,8 @@ class CombinatorialSpecies(GenericCombinatorialSpecies):
         ::
 
             sage: B = species.BinaryTreeSpecies()
-            sage: B.algebraic_equation_system()
-            [-node3^2 + node1, -node1 + node3 - z]
+            sage: B.algebraic_equation_system()                                         # needs sage.graphs
+            [-node3^2 + node1, -node1 + node3 + (-z)]
         """
         try:
             return var_mapping[self._reference]

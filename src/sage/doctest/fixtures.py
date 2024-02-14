@@ -14,7 +14,7 @@ EXAMPLES:
 You can use :func:`trace_method` to see how a method
 communicates with its surroundings::
 
-    sage: class Foo(object):
+    sage: class Foo():
     ....:     def f(self):
     ....:         self.y = self.g(self.x)
     ....:     def g(self, arg):
@@ -33,7 +33,7 @@ communicates with its surroundings::
 """
 
 #*****************************************************************************
-#       Copyright (C) 2014 Martin von Gagern <Martin.vGagern@gmx.net>
+#       Copyright (C) 2014-2015 Martin von Gagern <Martin.vGagern@gmx.net>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,8 +57,8 @@ def reproducible_repr(val):
     All types for which special handling had been implemented are
     covered by the examples below. If a doctest requires special
     handling for additional types, this function may be extended
-    apropriately. It is an error if an argument to this function has
-    a non-reproducible ``repr`` implementation and is not explicitely
+    appropriately. It is an error if an argument to this function has
+    a non-reproducible ``repr`` implementation and is not explicitly
     mentioned in an example case below.
 
     INPUT:
@@ -71,7 +71,7 @@ def reproducible_repr(val):
     returns but for certain cases with more guarantees to ensure
     exactly the same result for semantically equivalent objects.
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: from sage.doctest.fixtures import reproducible_repr
         sage: print(reproducible_repr(set(["a", "c", "b", "d"])))
@@ -80,9 +80,9 @@ def reproducible_repr(val):
         frozenset(['a', 'b', 'c', 'd'])
         sage: print(reproducible_repr([1, frozenset("cab"), set("bar"), 0]))
         [1, frozenset(['a', 'b', 'c']), set(['a', 'b', 'r']), 0]
-        sage: print(reproducible_repr({3.0:"three","2":"two",1:"one"}))
+        sage: print(reproducible_repr({3.0: "three", "2": "two", 1: "one"}))            # optional - sage.rings.real_mpfr
         {'2': 'two', 1: 'one', 3.00000000000000: 'three'}
-        sage: print(reproducible_repr("foo\nbar")) # demonstrate default case
+        sage: print(reproducible_repr("foo\nbar"))  # demonstrate default case
         'foo\nbar'
     """
 
@@ -111,7 +111,7 @@ def reproducible_repr(val):
     return repr(val)
 
 
-class AttributeAccessTracerHelper(object):
+class AttributeAccessTracerHelper():
 
     def __init__(self, delegate, prefix="  ", reads=True):
         r"""
@@ -132,9 +132,9 @@ class AttributeAccessTracerHelper(object):
         - ``reads`` -- (default: ``True``)
           whether to trace read access as well.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     def f(self, *args):
             ....:         return self.x*self.x
             ....:
@@ -164,9 +164,9 @@ class AttributeAccessTracerHelper(object):
         function to report arguments and return value.
         Otherwise an attribute read access is reported.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     def f(self, *args):
             ....:         return self.x*self.x
             ....:
@@ -206,9 +206,9 @@ class AttributeAccessTracerHelper(object):
 
         The name and new value are also reported in the output.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     pass
             ....:
             sage: foo = Foo()
@@ -224,7 +224,7 @@ class AttributeAccessTracerHelper(object):
         setattr(self.delegate, name, val)
 
 
-class AttributeAccessTracerProxy(object):
+class AttributeAccessTracerProxy():
 
     def __init__(self, delegate, **kwds):
         r"""
@@ -245,9 +245,9 @@ class AttributeAccessTracerProxy(object):
         - ``reads`` -- (default: ``True``)
           whether to trace read access as well.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     def f(self, *args):
             ....:         return self.x*self.x
             ....:
@@ -279,9 +279,9 @@ class AttributeAccessTracerProxy(object):
         function to report arguments and return value.
         Otherwise an attribute read access is reported.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     def f(self, *args):
             ....:         return self.x*self.x
             ....:
@@ -305,9 +305,9 @@ class AttributeAccessTracerProxy(object):
 
         The name and new value are also reported in the output.
 
-        EXAMPLE::
+        EXAMPLES::
 
-            sage: class Foo(object):
+            sage: class Foo():
             ....:     pass
             ....:
             sage: foo = Foo()
@@ -340,11 +340,10 @@ def trace_method(obj, meth, **kwds):
 
     - ``reads`` -- (default: ``True``)
       whether to trace read access as well.
-      
 
-    EXAMPLE::
+    EXAMPLES::
 
-        sage: class Foo(object):
+        sage: class Foo():
         ....:     def f(self, arg=None):
         ....:         self.y = self.g(self.x)
         ....:         if arg: return arg*arg
@@ -369,8 +368,10 @@ def trace_method(obj, meth, **kwds):
         exit f -> 9
         9
     """
-    f = getattr(obj, meth).__func__
+    from sage.cpython.getattr import raw_getattr
+    f = raw_getattr(obj, meth)
     t = AttributeAccessTracerProxy(obj, **kwds)
+
     @wraps(f)
     def g(*args, **kwds):
         arglst = [reproducible_repr(arg) for arg in args]

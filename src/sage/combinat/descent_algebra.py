@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 """
 Descent Algebras
 
@@ -5,12 +6,12 @@ AUTHORS:
 
 - Travis Scrimshaw (2013-07-28): Initial version
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2013 Travis Scrimshaw <tscrim at ucdavis.edu>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.misc.cachefunc import cached_method
 from sage.misc.bindable_class import BindableClass
@@ -19,9 +20,10 @@ from sage.structure.parent import Parent
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.categories.algebras import Algebras
 from sage.categories.realizations import Realizations, Category_realization_of_parent
-from sage.categories.all import FiniteDimensionalAlgebrasWithBasis
-from sage.rings.all import ZZ, QQ
-from sage.functions.other import factorial
+from sage.categories.finite_dimensional_algebras_with_basis import FiniteDimensionalAlgebrasWithBasis
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
+from sage.arith.misc import factorial
 from sage.combinat.free_module import CombinatorialFreeModule
 from sage.combinat.permutation import Permutations
 from sage.combinat.composition import Compositions
@@ -29,6 +31,7 @@ from sage.combinat.integer_matrices import IntegerMatrices
 from sage.combinat.subset import SubsetsSorted
 from sage.combinat.symmetric_group_algebra import SymmetricGroupAlgebra
 from sage.combinat.ncsf_qsym.ncsf import NonCommutativeSymmetricFunctions
+
 
 class DescentAlgebra(UniqueRepresentation, Parent):
     r"""
@@ -53,7 +56,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
     We follow the notations and conventions in [GR1989]_, apart from the
     order of multiplication being different from the one used in that
-    article. Schocker's exposition [Schocker2004]_, in turn, uses the
+    article. Schocker's exposition [Sch2004]_, in turn, uses the
     same order of multiplication as we are, but has different notations
     for the bases.
 
@@ -65,22 +68,13 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
     REFERENCES:
 
-    .. [GR1989] \C. Reutenauer, A. M. Garsia. *A decomposition of Solomon's
-       descent algebra.* Adv. Math. **77** (1989).
-       http://www.lacim.uqam.ca/~christo/Publi%C3%A9s/1989/Decomposition%20Solomon.pdf
+    - [GR1989]_
 
-    .. [Atkinson] \M. D. Atkinson. *Solomon's descent algebra revisited.*
-       Bull. London Math. Soc. 24 (1992) 545-551.
-       http://www.cs.otago.ac.nz/staffpriv/mike/Papers/Descent/DescAlgRevisited.pdf
+    - [At1992]_
 
-    .. [MR-Desc] \C. Malvenuto, C. Reutenauer, *Duality between
-       quasi-symmetric functions and the Solomon descent algebra*,
-       Journal of Algebra 177 (1995), no. 3, 967-982.
-       http://www.lacim.uqam.ca/~christo/Publi%C3%A9s/1995/Duality.pdf
+    - [MR1995]_
 
-    .. [Schocker2004] Manfred Schocker, *The descent algebra of the
-       symmetric group*. Fields Inst. Comm. 40 (2004), pp. 145-161.
-       http://www.mathematik.uni-bielefeld.de/~ringel/schocker-neu.ps
+    - [Sch2004]_
 
     EXAMPLES::
 
@@ -133,6 +127,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
         sage: all(I(B(b)) == b for b in I.basis())
         True
     """
+
     def __init__(self, R, n):
         r"""
         EXAMPLES::
@@ -186,7 +181,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
         The basis element corresponding to a composition `p` (or to
         the subset of `\{1, 2, \ldots, n-1\}`) is denoted `\Delta^p`
-        in [Schocker2004]_.
+        in [Sch2004]_.
 
         EXAMPLES::
 
@@ -200,6 +195,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             sage: list(D.basis())
             [D{}]
         """
+
         def __init__(self, alg, prefix="D"):
             r"""
             Initialize ``self``.
@@ -263,7 +259,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: D.product_on_basis((1, 3), (2,))
                 D{} + D{1} + D{1, 2} + 2*D{1, 2, 3} + D{1, 3} + D{2} + D{2, 3} + D{3}
             """
-            return self(self.to_B_basis(S)*self.to_B_basis(T))
+            return self(self.to_B_basis(S) * self.to_B_basis(T))
 
         @cached_method
         def one_basis(self):
@@ -282,7 +278,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 ....:      for U in DescentAlgebra(QQ, 3).D().basis() )
                 True
             """
-            return tuple([])
+            return tuple()
 
         @cached_method
         def to_B_basis(self, S):
@@ -294,7 +290,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: DA = DescentAlgebra(QQ, 4)
                 sage: D = DA.D()
                 sage: B = DA.B()
-                sage: map(B, D.basis()) # indirect doctest
+                sage: list(map(B, D.basis()))  # indirect doctest
                 [B[4],
                  B[1, 3] - B[4],
                  B[2, 2] - B[4],
@@ -312,7 +308,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
             n = self.realization_of()._n
             C = Compositions(n)
-            return B.sum_of_terms([(C.from_subset(T, n), (-1)**(len(S)-len(T)))
+            return B.sum_of_terms([(C.from_subset(T, n), (-1)**(len(S) - len(T)))
                                    for T in SubsetsSorted(S)])
 
         def to_symmetric_group_algebra_on_basis(self, S):
@@ -339,7 +335,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             n = self.realization_of()._n
             SGA = SymmetricGroupAlgebra(self.base_ring(), n)
             # Need to convert S to a list of positions by -1 for indexing
-            P = Permutations(descents=([x-1 for x in S], n))
+            P = Permutations(descents=([x - 1 for x in S], n))
             return SGA.sum_of_terms([(p, 1) for p in P])
 
         def __getitem__(self, S):
@@ -369,13 +365,13 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             n = self.realization_of()._n
             if S in ZZ:
                 if S >= n or S <= 0:
-                    raise ValueError("({0},) is not a subset of {{1, ..., {1}}}".format(S, n-1))
+                    raise ValueError("({0},) is not a subset of {{1, ..., {1}}}".format(S, n - 1))
                 return self.monomial((S,))
             if not S:
                 return self.one()
             S = sorted(S)
             if S[-1] >= n or S[0] <= 0:
-                raise ValueError("{0} is not a subset of {{1, ..., {1}}}".format(S, n-1))
+                raise ValueError("{0} is not a subset of {{1, ..., {1}}}".format(S, n - 1))
             return self.monomial(tuple(S))
 
     standard = D
@@ -399,7 +395,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
         (where `i_1 < i_2 < \cdots < i_k`), which is what Sage uses to
         index the basis.
 
-        The basis element `B_p` is denoted `\Xi^p` in [Schocker2004]_.
+        The basis element `B_p` is denoted `\Xi^p` in [Sch2004]_.
 
         By using compositions of `n`, the product `B_p B_q` becomes a
         sum over the non-negative-integer matrices `M` with row sum `p`
@@ -417,6 +413,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             [B[1, 1, 1, 1], B[1, 1, 2], B[1, 2, 1], B[1, 3],
              B[2, 1, 1], B[2, 2], B[3, 1], B[4]]
         """
+
         def __init__(self, alg, prefix="B"):
             r"""
             Initialize ``self``.
@@ -452,8 +449,10 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             """
             IM = IntegerMatrices(list(p), list(q))
             P = Compositions(self.realization_of()._n)
-            to_composition = lambda m: P( [x for x in m.list() if x != 0] )
-            return self.sum_of_monomials([to_composition(_) for _ in IM])
+
+            def to_composition(m):
+                return P([x for x in m.list() if x != 0])
+            return self.sum_of_monomials([to_composition(mat) for mat in IM])
 
         @cached_method
         def one_basis(self):
@@ -474,7 +473,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             """
             n = self.realization_of()._n
             P = Compositions(n)
-            if not n: # n == 0
+            if not n:  # n == 0
                 return P([])
             return P([n])
 
@@ -502,7 +501,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: DA = DescentAlgebra(QQ, 4)
                 sage: B = DA.B()
                 sage: I = DA.I()
-                sage: map(I, B.basis()) # indirect doctest
+                sage: list(map(I, B.basis()))  # indirect doctest
                 [I[1, 1, 1, 1],
                  1/2*I[1, 1, 1, 1] + I[1, 1, 2],
                  1/2*I[1, 1, 1, 1] + I[1, 2, 1],
@@ -522,7 +521,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                     count = 0
                     s = 0
                     while s != val:
-                        s += q[last+count]
+                        s += q[last + count]
                         count += 1
                     ret /= factorial(count)
                     last += count
@@ -540,7 +539,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: DA = DescentAlgebra(QQ, 4)
                 sage: B = DA.B()
                 sage: D = DA.D()
-                sage: map(D, B.basis()) # indirect doctest
+                sage: list(map(D, B.basis()))  # indirect doctest
                 [D{} + D{1} + D{1, 2} + D{1, 2, 3}
                   + D{1, 3} + D{2} + D{2, 3} + D{3},
                  D{} + D{1} + D{1, 2} + D{2},
@@ -558,7 +557,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: DA = DescentAlgebra(QQ, 0)
                 sage: B = DA.B()
                 sage: D = DA.D()
-                sage: map(D, B.basis())
+                sage: list(map(D, B.basis()))
                 [D{}]
             """
             D = self.realization_of().D()
@@ -580,7 +579,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
                 sage: B = DescentAlgebra(QQ, 4).B()
                 sage: S = NonCommutativeSymmetricFunctions(QQ).Complete()
-                sage: map(S, B.basis()) # indirect doctest
+                sage: list(map(S, B.basis()))  # indirect doctest
                 [S[1, 1, 1, 1],
                  S[1, 1, 2],
                  S[1, 2, 1],
@@ -647,6 +646,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             sage: list(I.basis())
             [I[1, 1, 1, 1], I[1, 1, 2], I[1, 2, 1], I[1, 3], I[2, 1, 1], I[2, 2], I[3, 1], I[4]]
         """
+
         def __init__(self, alg, prefix="I"):
             r"""
             Initialize ``self``.
@@ -662,7 +662,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                                              category=DescentAlgebraBases(alg),
                                              bracket="", prefix=prefix)
 
-            ## Change of basis:
+            # Change of basis:
             B = alg.B()
             self.module_morphism(self.to_B_basis,
                                  codomain=B, category=self.category()
@@ -691,7 +691,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             #   to the B basis to do the multiplication
             # TODO: if the partitions of p and q match, return s*I_p where
             #   s is the size of the stabilizer of the partition of p
-            return self(self.to_B_basis(p)*self.to_B_basis(q))
+            return self(self.to_B_basis(p) * self.to_B_basis(q))
 
         @cached_method
         def one(self):
@@ -719,16 +719,16 @@ class DescentAlgebra(UniqueRepresentation, Parent):
         def one_basis(self):
             """
             The element `1` is not (generally) a basis vector in the `I`
-            basis, thus this returns a ``TypeError``.
+            basis, thus this raises a :class:`TypeError`.
 
             EXAMPLES::
 
                 sage: DescentAlgebra(QQ, 4).I().one_basis()
                 Traceback (most recent call last):
                 ...
-                TypeError: 1 is not a basis element in the I basis.
+                TypeError: 1 is not a basis element in the I basis
             """
-            raise TypeError("1 is not a basis element in the I basis.")
+            raise TypeError("1 is not a basis element in the I basis")
 
         @cached_method
         def to_B_basis(self, p):
@@ -755,7 +755,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                 sage: DA = DescentAlgebra(QQ, 4)
                 sage: B = DA.B()
                 sage: I = DA.I()
-                sage: map(B, I.basis()) # indirect doctest
+                sage: list(map(B, I.basis()))  # indirect doctest
                 [B[1, 1, 1, 1],
                  -1/2*B[1, 1, 1, 1] + B[1, 1, 2],
                  -1/2*B[1, 1, 1, 1] + B[1, 2, 1],
@@ -776,11 +776,11 @@ class DescentAlgebra(UniqueRepresentation, Parent):
                     count = 0
                     s = 0
                     while s != val:
-                        s += q[last+count]
+                        s += q[last + count]
                         count += 1
                     ret /= count
                     last += count
-                if (len(q) - len(p)) % 2 == 1:
+                if (len(q) - len(p)) % 2:
                     ret = -ret
                 return ret
 
@@ -788,7 +788,7 @@ class DescentAlgebra(UniqueRepresentation, Parent):
 
         def idempotent(self, la):
             """
-            Return the idemponent corresponding to the partition ``la``
+            Return the idempotent corresponding to the partition ``la``
             of `n`.
 
             EXAMPLES::
@@ -808,15 +808,17 @@ class DescentAlgebra(UniqueRepresentation, Parent):
             from sage.combinat.permutation import Permutations
             k = len(la)
             C = Compositions(self.realization_of()._n)
-            return self.sum_of_terms([(C(x), ~QQ(factorial(k)))
+            return self.sum_of_terms([(C(x), QQ((1, factorial(k))))
                                       for x in Permutations(la)])
 
     idempotent = I
+
 
 class DescentAlgebraBases(Category_realization_of_parent):
     r"""
     The category of bases of a descent algebra.
     """
+
     def __init__(self, base):
         r"""
         Initialize the bases of a descent algebra.
@@ -902,7 +904,7 @@ class DescentAlgebraBases(Category_realization_of_parent):
             """
             C = Compositions(self.realization_of()._n)
             if p in C:
-                return self.monomial(C(p)) # Make sure it's a composition
+                return self.monomial(C(p))  # Make sure it's a composition
             if not p:
                 return self.one()
 
@@ -910,7 +912,7 @@ class DescentAlgebraBases(Category_realization_of_parent):
                 p = [p]
             return self.monomial(C(p))
 
-        def is_field(self, proof = True):
+        def is_field(self, proof=True):
             """
             Return whether this descent algebra is a field.
 
@@ -1009,4 +1011,3 @@ class DescentAlgebraBases(Category_realization_of_parent):
                 [1, 2, 3, 4] + [2, 1, 3, 4] + [3, 1, 2, 4] + [4, 1, 2, 3]
             """
             return self.parent().to_symmetric_group_algebra(self)
-

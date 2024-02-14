@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules
 r"""
 Abstract classes for the rigged configuration bijections
 
@@ -17,7 +18,7 @@ AUTHORS:
 - Travis Scrimshaw (2011-04-15): Initial version
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2011, 2012 Travis Scrimshaw <tscrim@ucdavis.edu>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
@@ -29,11 +30,12 @@ AUTHORS:
 #
 #  The full text of the GPL is available at:
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from copy import deepcopy
 from sage.misc.abstract_method import abstract_method
+
 
 class KRTToRCBijectionAbstract:
     """
@@ -119,18 +121,19 @@ class KRTToRCBijectionAbstract:
         """
         if verbose:
             from sage.combinat.rigged_configurations.tensor_product_kr_tableaux_element \
-              import TensorProductOfKirillovReshetikhinTableauxElement
+                import TensorProductOfKirillovReshetikhinTableauxElement
 
         for cur_crystal in reversed(self.tp_krt):
+            target = cur_crystal.parent()._r
             # Iterate through the columns
             for col_number, cur_column in enumerate(reversed(cur_crystal.to_array(False))):
-                self.cur_path.insert(0, []) # Prepend an empty list
+                self.cur_path.insert(0, [])  # Prepend an empty list
 
                 self.cur_dims.insert(0, [0, 1])
 
                 for letter in reversed(cur_column):
-                    self.cur_dims[0][0] += 1
-                    val = letter.value # Convert from a CrystalOfLetter to an Integer
+                    self.cur_dims[0][0] = self._next_index(self.cur_dims[0][0], target)
+                    val = letter.value  # Convert from a CrystalOfLetter to an Integer
 
                     if verbose:
                         print("====================")
@@ -140,7 +143,7 @@ class KRTToRCBijectionAbstract:
                         print("--------------------\n")
 
                     # Build the next state
-                    self.cur_path[0].insert(0, [letter]) # Prepend the value
+                    self.cur_path[0].insert(0, [letter])  # Prepend the value
                     self.next_state(val)
 
                 # If we've split off a column, we need to merge the current column
@@ -164,7 +167,7 @@ class KRTToRCBijectionAbstract:
                     for a in range(self.n):
                         self._update_vacancy_nums(a)
 
-        self.ret_rig_con.set_immutable() # Return it to immutable
+        self.ret_rig_con.set_immutable()  # Return it to immutable
         return self.ret_rig_con
 
     @abstract_method
@@ -213,12 +216,12 @@ class KRTToRCBijectionAbstract:
 
             sage: KRT = crystals.TensorProductOfKirillovReshetikhinTableaux(['A', 4, 1], [[2,1]])
             sage: from sage.combinat.rigged_configurations.bij_abstract_class import KRTToRCBijectionAbstract
-            sage: bijection = KRTToRCBijectionAbstract(KRT(pathlist=[[3,2]]))  
+            sage: bijection = KRTToRCBijectionAbstract(KRT(pathlist=[[3,2]]))
             sage: bijection._update_vacancy_nums(2)
         """
         # Check to make sure we have a valid index (currently removed)
         # If the current tableau is empty, there is nothing to do
-        if not self.ret_rig_con[a]: # Check to see if we have vacancy numbers
+        if not self.ret_rig_con[a]:  # Check to see if we have vacancy numbers
             return
 
         # Setup the first block
@@ -266,13 +269,29 @@ class KRTToRCBijectionAbstract:
                     pos = 0
                     width = rigged_partition[index]
                     val = rigged_partition.rigging[index]
-                    for i in reversed(range(index-1)):
+                    for i in reversed(range(index - 1)):
                         if rigged_partition[i] > width or rigged_partition.rigging[i] >= val:
                             pos = i + 1
                             break
 
                     rigged_partition.rigging.pop(index)
                     rigged_partition.rigging.insert(pos, val)
+
+    def _next_index(self, r, target):
+        """
+        Return the next index after ``r`` when performing a step
+        in the bijection going towards ``target``.
+
+        TESTS::
+
+            sage: KRT = crystals.TensorProductOfKirillovReshetikhinTableaux(['A', 4, 1], [[2,1]])
+            sage: from sage.combinat.rigged_configurations.bij_abstract_class import KRTToRCBijectionAbstract
+            sage: bijection = KRTToRCBijectionAbstract(KRT(pathlist=[[5,2]]))
+            sage: bijection._next_index(1, 2)
+            2
+        """
+        return r + 1
+
 
 class RCToKRTBijectionAbstract:
     """
@@ -315,19 +334,7 @@ class RCToKRTBijectionAbstract:
         # This is a dummy edge to start the process
         cp = RC_element.__copy__()
         cp.set_immutable()
-        self._graph = [ [[], (cp, 0)] ]
-
-        # Compute the current L matrix
-#        self.L = {}
-#        for dim in self.rigged_con.parent().dims:
-#            if self.L.has_key(dim[0]):
-#                row = self.L[dim[0]]
-#                if row.has_key(dim[1]):
-#                    row[dim[1]] += 1
-#                else:
-#                    row[dim[1]] = 1
-#            else:
-#                self.L[dim[0]] = {dim[1]:1}
+        self._graph = [[[], (cp, 0)]]
 
     def __eq__(self, rhs):
         r"""
@@ -408,7 +415,7 @@ class RCToKRTBijectionAbstract:
                         y = self.rigged_con.parent()(*[x._clone() for x in self.cur_partitions], use_vacancy_numbers=True)
                         self._graph.append([self._graph[-1][1], (y, len(self._graph)), 'ls'])
 
-                while self.cur_dims[0][0] > 0:
+                while self.cur_dims[0][0]:  # > 0:
                     if verbose:
                         print("====================")
                         print(repr(self.rigged_con.parent()(*self.cur_partitions, use_vacancy_numbers=True)))
@@ -416,34 +423,26 @@ class RCToKRTBijectionAbstract:
                         print(ret_crystal_path)
                         print("--------------------\n")
 
-                    self.cur_dims[0][0] -= 1 # This takes care of the indexing
-                    b = self.next_state(self.cur_dims[0][0])
+                    ht = self.cur_dims[0][0]
+                    self.cur_dims[0][0] = self._next_index(ht)
+                    b = self.next_state(ht)
 
                     # Make sure we have a crystal letter
-                    ret_crystal_path[-1].append(letters(b)) # Append the rank
+                    ret_crystal_path[-1].append(letters(b))  # Append the rank
 
                     if build_graph:
                         y = self.rigged_con.parent()(*[x._clone() for x in self.cur_partitions], use_vacancy_numbers=True)
                         self._graph.append([self._graph[-1][1], (y, len(self._graph)), letters(b)])
 
-                self.cur_dims.pop(0) # Pop off the leading column
+                self.cur_dims.pop(0)  # Pop off the leading column
 
         if build_graph:
-            self._graph.pop(0) # Remove the dummy at the start
+            self._graph.pop(0)  # Remove the dummy at the start
             from sage.graphs.digraph import DiGraph
             from sage.graphs.dot2tex_utils import have_dot2tex
             self._graph = DiGraph(self._graph, format="list_of_edges")
             if have_dot2tex():
                 self._graph.set_latex_options(format="dot2tex", edge_labels=True)
-
-        # Basic check to make sure we end with the empty configuration
-        #tot_len = sum([len(rp) for rp in self.cur_partitions])
-        #if tot_len != 0:
-        #    print "Invalid bijection end for:"
-        #    print self.rigged_con
-        #    print "-----------------------"
-        #    print self.cur_partitions
-        #    raise ValueError("Invalid bijection end")
         return self.KRT(pathlist=ret_crystal_path)
 
     @abstract_method
@@ -456,7 +455,7 @@ class RCToKRTBijectionAbstract:
             sage: RC = RiggedConfigurations(['A', 4, 1], [[2, 1]])
             sage: from sage.combinat.rigged_configurations.bij_type_A import RCToKRTBijectionTypeA
             sage: bijection = RCToKRTBijectionTypeA(RC(partition_list=[[1],[1],[1],[1]]))
-            sage: bijection.next_state(0)
+            sage: bijection.next_state(1)
             5
             sage: bijection.cur_partitions
             [(/)
@@ -483,7 +482,7 @@ class RCToKRTBijectionAbstract:
         """
 
         # Nothing to do if there the rigged partition is empty
-        if len(self.cur_partitions[a]) == 0:
+        if not self.cur_partitions[a]:
             return
 
         partition = self.cur_partitions[a]
@@ -527,8 +526,22 @@ class RCToKRTBijectionAbstract:
             sage: bijection._find_singular_string(bijection.cur_partitions[2], 0)
             0
         """
-        for i in reversed(range(0, len(partition))):
-            if partition[i] >= last_size and \
-              partition.vacancy_numbers[i] == partition.rigging[i]:
+        for i in reversed(range(len(partition))):
+            if (partition[i] >= last_size
+                    and partition.vacancy_numbers[i] == partition.rigging[i]):
                 return i
 
+    def _next_index(self, r):
+        """
+        Return the next index after ``r`` when performing a step
+        in the bijection.
+
+        TESTS::
+
+            sage: RC = RiggedConfigurations(['A', 4, 1], [[2, 1]])
+            sage: from sage.combinat.rigged_configurations.bij_abstract_class import RCToKRTBijectionAbstract
+            sage: bijection = RCToKRTBijectionAbstract(RC(partition_list=[[1],[1],[1],[1]]))
+            sage: bijection._next_index(2)
+            1
+        """
+        return r - 1

@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+# sage.doctest: needs sage.combinat sage.modules
 r"""
 Introduction to Quasisymmetric Functions
 
 In this document we briefly explain the quasisymmetric function bases and
-related functionality in Sage.   We assume the reader is familar with the
+related functionality in Sage.   We assume the reader is familiar with the
 package :class:`SymmetricFunctions`.
 
 Quasisymmetric functions, denoted `QSym`, form a subring of the power
@@ -46,10 +46,14 @@ names. ::
 
     sage: QSym = QuasiSymmetricFunctions(QQ)
     sage: QSym.inject_shorthands()
-    Injecting M as shorthand for Quasisymmetric functions over the Rational Field in the Monomial basis
-    Injecting F as shorthand for Quasisymmetric functions over the Rational Field in the Fundamental basis
-    Injecting dI as shorthand for Quasisymmetric functions over the Rational Field in the dualImmaculate basis
-    Injecting QS as shorthand for Quasisymmetric functions over the Rational Field in the Quasisymmetric Schur basis
+    Defining M as shorthand for Quasisymmetric functions over the Rational Field in the Monomial basis
+    Defining F as shorthand for Quasisymmetric functions over the Rational Field in the Fundamental basis
+    Defining E as shorthand for Quasisymmetric functions over the Rational Field in the Essential basis
+    Defining dI as shorthand for Quasisymmetric functions over the Rational Field in the dualImmaculate basis
+    Defining QS as shorthand for Quasisymmetric functions over the Rational Field in the Quasisymmetric Schur basis
+    Defining YQS as shorthand for Quasisymmetric functions over the Rational Field in the Young Quasisymmetric Schur basis
+    Defining phi as shorthand for Quasisymmetric functions over the Rational Field in the phi basis
+    Defining psi as shorthand for Quasisymmetric functions over the Rational Field in the psi basis
 
 Now one can start constructing quasisymmetric functions.
 
@@ -95,7 +99,7 @@ To expand in variables, one can specify a finite size alphabet `x_1, x_2,
 The usual methods on free modules are available such as coefficients,
 degrees, and the support::
 
-    sage: z=3*M[1,2]+M[3]^2; z
+    sage: z = 3*M[1,2]+M[3]^2; z
     3*M[1, 2] + 2*M[3, 3] + M[6]
 
     sage: z.coefficient([1,2])
@@ -107,7 +111,7 @@ degrees, and the support::
     sage: sorted(z.coefficients())
     [1, 2, 3]
 
-    sage: sorted(z.monomials(), key=lambda x: x.support())
+    sage: sorted(z.monomials(), key=lambda x: tuple(x.support()))
     [M[1, 2], M[3, 3], M[6]]
 
     sage: z.monomial_coefficients()
@@ -128,7 +132,7 @@ leads to an error (this is due to the semantics of python)::
     sage: M[]
     Traceback (most recent call last):
     ...
-    SyntaxError: invalid syntax
+    SyntaxError: invalid ...
 
 
 Working with symmetric functions
@@ -141,7 +145,13 @@ related to the monomial symmetric functions by `m_\lambda =
 means the partition obtained by sorting the composition `c`::
 
     sage: SymmetricFunctions(QQ).inject_shorthands()
-    doctest:...: RuntimeWarning: redefining global value `e`
+    Defining e as shorthand for Symmetric Functions over Rational Field in the elementary basis
+    Defining f as shorthand for Symmetric Functions over Rational Field in the forgotten basis
+    Defining h as shorthand for Symmetric Functions over Rational Field in the homogeneous basis
+    Defining m as shorthand for Symmetric Functions over Rational Field in the monomial basis
+    Defining p as shorthand for Symmetric Functions over Rational Field in the powersum basis
+    Defining s as shorthand for Symmetric Functions over Rational Field in the Schur basis
+
     sage: m[2,1]
     m[2, 1]
     sage: M(m[2,1])

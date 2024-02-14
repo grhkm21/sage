@@ -1,6 +1,8 @@
-.. -*- coding: utf-8 -*-
+.. sage-doctest: needs sage.plot sage.symbolic
 
 .. linkall
+
+.. _prep-quickstart-differential-equations:
 
 Sage Quickstart for Differential Equations
 ==========================================

@@ -1,3 +1,5 @@
+.. _AffineFinite:
+
 ======================
 Affine Finite Crystals
 ======================
@@ -354,7 +356,7 @@ up to a relabeling of the arrows::
     sage: G = K.digraph()
     sage: Gdual = Kdual.digraph()
     sage: f = { 1:1, 0:2, 2:0 }
-    sage: for u,v,label in Gdual.edges():
+    sage: for u,v,label in Gdual.edges(sort=False):
     ....:     Gdual.set_edge_label(u,v,f[label])
     sage: G.is_isomorphic(Gdual, edge_labels = True)
     True
@@ -494,7 +496,7 @@ classical decomposition::
     sage: K.cardinality()
     249
     sage: L = [x for x in K if x.is_highest_weight([1,2,3,4,5,6,7,8])]
-    sage: map(lambda x: x.weight(), L)
+    sage: [x.weight() for x in L]
     [-2*Lambda[0] + Lambda[8], 0]
 
 

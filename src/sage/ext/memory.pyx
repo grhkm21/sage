@@ -3,14 +3,14 @@ Low-level memory allocation functions
 
 TESTS:
 
-Check that a ``MemoryError`` is raised if we try to allocate a
+Check that an error is raised if we try to allocate a
 ridiculously large integer, see :trac:`15363`::
 
-    sage: 2^(2^63-2)
-    Traceback (most recent call last):
-    ...
-    RuntimeError: exponent must be at most 2147483647          # 32-bit
-    MemoryError: failed to allocate 1152921504606847008 bytes  # 64-bit
+    sage: try:
+    ....:     2^(2^63-3)
+    ....: except (OverflowError, RuntimeError, FloatingPointError):
+    ....:     print ('Overflow error')
+    ...Overflow error
 
 AUTHORS:
 
@@ -31,8 +31,10 @@ AUTHORS:
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
+from cysignals.memory cimport sig_malloc, sig_realloc, sig_free
+from cysignals.signals cimport sig_error
+
 from sage.libs.gmp.misc cimport mp_set_memory_functions
-include "cysignals/memory.pxi"
 
 cdef extern from "Python.h":
     # Declare as returning void without except value
@@ -40,16 +42,16 @@ cdef extern from "Python.h":
     int unlikely(int) nogil  # Defined by Cython
 
 
-cdef void alloc_error(size_t size) nogil:
+cdef void alloc_error(size_t size) noexcept nogil:
     """
-    Jump back to ``sig_on()``, raising a ``MemoryError``.
+    Jump back to ``sig_on()``, raising a :class:`MemoryError`.
     """
     with gil:
         PyErr_Format(MemoryError, "failed to allocate %zu bytes", size)
     sig_error()
 
 
-cdef void* sage_sig_malloc(size_t size) nogil:
+cdef void* sage_sig_malloc(size_t size) noexcept nogil:
     """
     ``malloc()`` function for the MPIR/GMP library.
 
@@ -61,7 +63,7 @@ cdef void* sage_sig_malloc(size_t size) nogil:
     return p
 
 
-cdef void* sage_sig_realloc(void *ptr, size_t old_size, size_t new_size) nogil:
+cdef void* sage_sig_realloc(void *ptr, size_t old_size, size_t new_size) noexcept nogil:
     """
     ``realloc()`` function for the MPIR/GMP library.
 
@@ -73,7 +75,7 @@ cdef void* sage_sig_realloc(void *ptr, size_t old_size, size_t new_size) nogil:
     return p
 
 
-cdef void sage_sig_free(void *ptr, size_t size) nogil:
+cdef void sage_sig_free(void *ptr, size_t size) noexcept nogil:
     """
     ``free()`` function for the MPIR/GMP library.
     """

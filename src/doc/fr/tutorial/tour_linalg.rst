@@ -42,17 +42,6 @@ une matrice (ou un vecteur)  :math:`X` tel que :math:`AX=Y`:
     sage: A * X   # vérifions la réponse...
     (0, -4, -1)
 
-Un antislash (contre-oblique) ``\`` peut être employé à la place de
-``solve_right`` : il suffit d'écrire ``A \ Y`` au lieu de
-``A.solve_right(Y)``.
-
-.. link
-
-::
-
-    sage: A \ Y
-    (-2, 1, 0)
-
 S'il n'y a aucune solution, Sage renvoie une erreur :
 
 .. skip
@@ -133,8 +122,8 @@ Créons l'espace :math:`\text{Mat}_{3\times 3}(\QQ)`:
 (Pour indiquer l'espace des matrices 3 par 4, il faudrait utiliser
 ``MatrixSpace(QQ,3,4)``. Si le nombre de colonnes est omis, il est égal
 par défaut au nombre de lignes. Ainsi ``MatrixSpace(QQ,3)`` est un
-synonyme de ``MatrixSpace(QQ,3,3)``.) L'espace des matrices possède une
-base que Sage enregistre sous forme de liste :
+synonyme de ``MatrixSpace(QQ,3,3)``). L'espace des matrices est muni
+de sa base canonique:
 
 .. link
 
@@ -143,7 +132,7 @@ base que Sage enregistre sous forme de liste :
     sage: B = M.basis()
     sage: len(B)
     9
-    sage: B[1]
+    sage: B[0,1]
     [0 1 0]
     [0 0 0]
     [0 0 0]
@@ -252,4 +241,4 @@ Notez que Python distingue les majuscules des minuscules :
     sage: M = MatrixSpace(QQ, 10,10, Sparse=True)
     Traceback (most recent call last):
     ...
-    TypeError: __classcall__() got an unexpected keyword argument 'Sparse'
+    TypeError: ...__init__() got an unexpected keyword argument 'Sparse'

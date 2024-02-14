@@ -17,7 +17,8 @@ Abstract base class for commutative algebras
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from sage.rings.ring import CommutativeAlgebra
+from sage.categories.commutative_algebras import CommutativeAlgebras
+
 
 def is_CommutativeAlgebra(x):
     """
@@ -25,7 +26,14 @@ def is_CommutativeAlgebra(x):
 
     EXAMPLES::
 
-        sage: sage.rings.commutative_algebra.is_CommutativeAlgebra(sage.rings.ring.CommutativeAlgebra(ZZ))
+        sage: from sage.rings.commutative_algebra import is_CommutativeAlgebra
+        sage: from sage.rings.ring import CommutativeAlgebra
+        sage: is_CommutativeAlgebra(CommutativeAlgebra(ZZ))
+        doctest:warning...
+        DeprecationWarning: the function is_CommutativeAlgebra is deprecated; use '... in Algebras(base_ring).Commutative()' instead
+        See https://github.com/sagemath/sage/issues/35253 for details.
         True
     """
-    return isinstance(x, CommutativeAlgebra)
+    from sage.misc.superseded import deprecation
+    deprecation(35253, "the function is_CommutativeAlgebra is deprecated; use '... in Algebras(base_ring).Commutative()' instead")
+    return x in CommutativeAlgebras(x.base_ring())

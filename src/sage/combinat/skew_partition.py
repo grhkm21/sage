@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 r"""
 Skew Partitions
 
@@ -104,11 +103,11 @@ is an involution::
     [4, 3, 1] / [2]
 
 The :meth:`jacobi_trudi()` method computes the Jacobi-Trudi matrix. See
-[Mac95]_ for a definition and discussion.
+[Mac1995]_ for a definition and discussion.
 
 ::
 
-    sage: SkewPartition([[4,3,1],[2]]).jacobi_trudi()
+    sage: SkewPartition([[4,3,1],[2]]).jacobi_trudi()                                   # needs sage.modules
     [h[2]  h[]    0]
     [h[5] h[3]  h[]]
     [h[6] h[4] h[1]]
@@ -122,15 +121,11 @@ This example shows how to compute the corners of a skew partition.
     sage: SkewPartition([[4,3,1],[2]]).outer_corners()
     [(0, 3), (1, 2), (2, 0)]
 
-REFERENCES:
-
-.. [Mac95] Macdonald I.-G., (1995), "Symmetric Functions and Hall
-   Polynomials", Oxford Science Publication
-
 AUTHORS:
 
 - Mike Hansen: Initial version
 - Travis Scrimshaw (2013-02-11): Factored out ``CombinatorialClass``
+- Trevor K. Karn (2022-08-03): Add ``outside_corners``
 """
 #*****************************************************************************
 #       Copyright (C) 2007 Mike Hansen <mhansen@gmail.com>,
@@ -146,7 +141,6 @@ AUTHORS:
 #
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-from __future__ import print_function
 
 from sage.structure.global_options import GlobalOptions
 from sage.structure.parent import Parent
@@ -154,89 +148,17 @@ from sage.structure.unique_representation import UniqueRepresentation
 from sage.categories.infinite_enumerated_sets import InfiniteEnumeratedSets
 from sage.categories.finite_enumerated_sets import FiniteEnumeratedSets
 
-from sage.rings.all import ZZ, QQ
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
 from sage.sets.set import Set
 from sage.graphs.digraph import DiGraph
 from sage.matrix.matrix_space import MatrixSpace
 
 from sage.combinat.combinat import CombinatorialElement
-from sage.combinat.partition import PartitionOptions, _Partitions
-from sage.combinat.tableau import TableauOptions
+from sage.combinat.partition import Partitions, _Partitions
+from sage.combinat.tableau import Tableaux
 from sage.combinat.composition import Compositions
 
-SkewPartitionOptions=GlobalOptions(name="skew partitions",
-    doc="""
-    Sets and displays the global options for elements of the skew partition
-    classes.  If no parameters are set, then the function returns a copy of
-    the options dictionary.
-
-    The ``options`` to skew partitions can be accessed as the method
-    :obj:`SkewPartitions.global_options` of :class:`SkewPartitions` and
-    related parent classes.
-    """,
-    end_doc=r"""
-    EXAMPLES::
-
-        sage: SP = SkewPartition([[4,2,2,1], [3, 1, 1]])
-        sage: SP
-        [4, 2, 2, 1] / [3, 1, 1]
-        sage: SkewPartitions.global_options(display="lists")
-        sage: SP
-        [[4, 2, 2, 1], [3, 1, 1]]
-
-    Changing the ``convention`` for skew partitions also changes the
-    ``convention`` option for partitions and tableaux and vice versa::
-
-        sage: SkewPartitions.global_options(display="diagram", convention='French')
-        sage: SP
-        *
-         *
-         *
-           *
-        sage: T = Tableau([[1,2,3],[4,5]])
-        sage: T.pp()
-          4  5
-          1  2  3
-        sage: P = Partition([4, 2, 2, 1])
-        sage: P.pp()
-        *
-        **
-        **
-        ****
-        sage: Tableaux.global_options(convention="english")
-        sage: SP
-           *
-         *
-         *
-        *
-        sage: T.pp()
-          1  2  3
-          4  5
-        sage: SkewPartitions.global_options.reset()
-    """,
-    display=dict(default="quotient",
-                 description='Specifies how skew partitions should be printed',
-                 values=dict(lists='displayed as a pair of lists',
-                             quotient='displayed as a quotient of partitions',
-                             diagram='as a skew Ferrers diagram'),
-                 alias=dict(array="diagram", ferrers_diagram="diagram",
-                            young_diagram="diagram", pair="lists"),
-                 case_sensitive=False),
-    latex=dict(default="young_diagram",
-               description='Specifies how skew partitions should be latexed',
-               values=dict(diagram='latex as a skew Ferrers diagram',
-                           young_diagram='latex as a skew Young diagram',
-                           marked='latex as a partition where the skew shape is marked'),
-               alias=dict(array="diagram", ferrers_diagram="diagram"),
-               case_sensitive=False),
-    diagram_str=dict(link_to=(PartitionOptions,'diagram_str')),
-    latex_diagram_str=dict(link_to=(PartitionOptions,'latex_diagram_str')),
-    latex_marking_str=dict(default="X",
-                     description='The character used to marked the deleted cells when latexing marked partitions',
-                     checker=lambda char: isinstance(char, str)),
-    convention=dict(link_to=(TableauOptions,'convention')),
-    notation = dict(alt_name='convention')
-)
 
 class SkewPartition(CombinatorialElement):
     r"""
@@ -260,9 +182,9 @@ class SkewPartition(CombinatorialElement):
             sage: skp.outer()
             [3, 2, 1]
         """
-        skp = [_Partitions(_) for _ in skp]
+        skp = [_Partitions(p) for p in skp]
         if skp not in SkewPartitions():
-            raise ValueError("invalid skew partition: %s"%skp)
+            raise ValueError("invalid skew partition: %s" % skp)
         return SkewPartitions()(skp)
 
     def __init__(self, parent, skp):
@@ -280,14 +202,14 @@ class SkewPartition(CombinatorialElement):
         Return a string representation of ``self``.
 
         For more on the display options, see
-        :obj:`SkewPartitions.global_options`.
+        :obj:`SkewPartitions.options`.
 
         EXAMPLES::
 
             sage: SkewPartition([[3,2,1],[2,1]])
             [3, 2, 1] / [2, 1]
         """
-        return self.parent().global_options.dispatch(self, '_repr_', 'display')
+        return self.parent().options._dispatch(self, '_repr_', 'display')
 
     def _repr_quotient(self):
         """
@@ -298,7 +220,7 @@ class SkewPartition(CombinatorialElement):
             sage: print(SkewPartition([[3,2,1],[2,1]])._repr_quotient())
             [3, 2, 1] / [2, 1]
         """
-        return "%s / %s"%(self[0], self[1])
+        return "%s / %s" % (self[0], self[1])
 
     def _repr_lists(self):
         """
@@ -309,14 +231,14 @@ class SkewPartition(CombinatorialElement):
             sage: print(SkewPartition([[3,2,1],[2,1]])._repr_lists())
             [[3, 2, 1], [2, 1]]
         """
-        return repr([list(_) for _ in self])
+        return repr([list(r) for r in self])
 
     def _latex_(self):
         r"""
         Return a `\LaTeX` representation of ``self``.
 
         For more on the latex options, see
-        :obj:`SkewPartitions.global_options`.
+        :obj:`SkewPartitions.options`.
 
         EXAMPLES::
 
@@ -330,7 +252,7 @@ class SkewPartition(CombinatorialElement):
             \end{array}$}
             }
         """
-        return self.parent().global_options.dispatch(self, '_latex_', 'latex')
+        return self.parent().options._dispatch(self, '_latex_', 'latex')
 
     def _latex_diagram(self):
         r"""
@@ -346,11 +268,19 @@ class SkewPartition(CombinatorialElement):
             &\lr{\ast}&\lr{\ast}\\\cline{2-3}
             \end{array}$}
             }
+
+        TESTS:
+
+        Check that :trac:`34760` is fixed::
+
+            sage: print(SkewPartition([[],[]])._latex_diagram())
+            {\emptyset}
+
         """
-        if len(self._list) == 0:
+        if not any(self._list):
             return "{\\emptyset}"
 
-        char = self.parent().global_options('latex_diagram_str')
+        char = self.parent().options.latex_diagram_str
 
         from sage.combinat.output import tex_from_array
         arr = [[char]*row_size for row_size in self[0]]
@@ -373,8 +303,15 @@ class SkewPartition(CombinatorialElement):
             &\lr{\phantom{x}}&\lr{\phantom{x}}\\\cline{2-3}
             \end{array}$}
             }
+
+        TESTS:
+
+        Check that :trac:`34760` is fixed::
+
+            sage: print(SkewPartition([[],[]])._latex_young_diagram())
+            {\emptyset}
         """
-        if len(self._list) == 0:
+        if not any(self._list):
             return "{\\emptyset}"
 
         from sage.combinat.output import tex_from_array
@@ -398,12 +335,19 @@ class SkewPartition(CombinatorialElement):
             \lr{X}&\lr{\phantom{x}}&\lr{\phantom{x}}\\\cline{1-3}
             \end{array}$}
             }
+
+        TESTS:
+
+        Check that :trac:`34760` is fixed::
+
+            sage: print(SkewPartition([[],[]])._latex_marked())
+            {\emptyset}
         """
-        if len(self._list) == 0:
+        if not any(self._list):
             return "{\\emptyset}"
 
         from sage.combinat.output import tex_from_array
-        char = self.parent().global_options('latex_marking_str')
+        char = self.parent().options.latex_marking_str
         arr = [["\\phantom{x}"]*row_size for row_size in self[0]]
         for i, skew_size in enumerate(self[1]): # This is always smaller by containment
             for j in range(skew_size):
@@ -418,7 +362,7 @@ class SkewPartition(CombinatorialElement):
 
         EXAMPLES::
 
-            sage: loads('x\x9c\x85P\xcbN\xc2@\x14\r\x08>\x06\xf1\xfd~\xbb+.\x9a\xa8\xdf\xe0\xc2McJ\xba4\x93i\xb9v&\xb4\x03w\x1e!,Ht!\xfe\xb6Sh1\xb0qw\xce}\x9c{\xee\xf9\xac\'\x9a\xa5\xe0\'\x83<\x16\x92\x19_\xf7aD\x87L\x19a\xc4@\x92\xae\xa3o\x15\xa3I\xc6\xb4&X\xeb|a}\x82k^\xd4\xa4\x9ci\x8e\x8d\xc0\xa1Lh\x83\xcdw\\\xf7\xe6\x92\xda(\x9b\x18\xab\xc0\xef\x8d%\xcbER\xae/3\xdc\xf0\xa2\x87\xc5\x05MY\x96\xd1\x910\x9c&\xcc@:Pc\x1f2\xc8A\x9a\xf9<n\xae\xf8\xfd\xb3\xba\x10!\xb8\x95P\x1a[\x91\x19!)%)\x18f\x8c"HV\x8dY)\xd0\x02U0T\xa0\xdd\r6[\xb7RA\xcf&@\xb0U\x1e\x9b[\x11\xa0}!?\x84\x14\x06(H\x9b\x83r\x8d\x1e\xd5`4y-\x1b/\x8bz\xb7(\xe3vg\xf2\x83\xed\x10w\xa2\xf6\xf2#\xbb\xd3\x10\xf7\xa6\xb8\x1f\x04\x81\t\xf1\xc0Ez\xc8[\xff?7K\x88\xe0Q!{\x1c\xe2\xc9\x04O=\xde\x08\xb8\x0b\xfe\xac\x0c^\t\x99\x16N\x9diP$g}\xa0\x15\xc1\xf3\xa8\xf6\xfc\x1d\xe2\x05w\xe0\xc9\x81\xcb\x02<:p\x05v\x1a\xf3\xc2\xc65w\xa27\x95\xe8\xadWM\xdcU\xe0\xbe\x18\x05\x1b\xfb\xbf\x8e\x7f\xcc\xbb')
+            sage: loads(b'x\x9c\x85P\xcbN\xc2@\x14\r\x08>\x06\xf1\xfd~\xbb+.\x9a\xa8\xdf\xe0\xc2McJ\xba4\x93i\xb9v&\xb4\x03w\x1e!,Ht!\xfe\xb6Sh1\xb0qw\xce}\x9c{\xee\xf9\xac\'\x9a\xa5\xe0\'\x83<\x16\x92\x19_\xf7aD\x87L\x19a\xc4@\x92\xae\xa3o\x15\xa3I\xc6\xb4&X\xeb|a}\x82k^\xd4\xa4\x9ci\x8e\x8d\xc0\xa1Lh\x83\xcdw\\\xf7\xe6\x92\xda(\x9b\x18\xab\xc0\xef\x8d%\xcbER\xae/3\xdc\xf0\xa2\x87\xc5\x05MY\x96\xd1\x910\x9c&\xcc@:Pc\x1f2\xc8A\x9a\xf9<n\xae\xf8\xfd\xb3\xba\x10!\xb8\x95P\x1a[\x91\x19!)%)\x18f\x8c"HV\x8dY)\xd0\x02U0T\xa0\xdd\r6[\xb7RA\xcf&@\xb0U\x1e\x9b[\x11\xa0}!?\x84\x14\x06(H\x9b\x83r\x8d\x1e\xd5`4y-\x1b/\x8bz\xb7(\xe3vg\xf2\x83\xed\x10w\xa2\xf6\xf2#\xbb\xd3\x10\xf7\xa6\xb8\x1f\x04\x81\t\xf1\xc0Ez\xc8[\xff?7K\x88\xe0Q!{\x1c\xe2\xc9\x04O=\xde\x08\xb8\x0b\xfe\xac\x0c^\t\x99\x16N\x9diP$g}\xa0\x15\xc1\xf3\xa8\xf6\xfc\x1d\xe2\x05w\xe0\xc9\x81\xcb\x02<:p\x05v\x1a\xf3\xc2\xc65w\xa27\x95\xe8\xadWM\xdcU\xe0\xbe\x18\x05\x1b\xfb\xbf\x8e\x7f\xcc\xbb')
             [3, 2, 1] / [1, 1]
             sage: loads(dumps( SkewPartition([[3,2,1], [1,1]]) ))
             [3, 2, 1] / [1, 1]
@@ -446,15 +390,15 @@ class SkewPartition(CombinatorialElement):
              ***
             ***
             *
-            sage: SkewPartitions.global_options(diagram_str='#', convention="French")
+            sage: SkewPartitions.options(diagram_str='#', convention="French")
             sage: print(SkewPartition([[5,4,3,1],[3,1]]).diagram())
             #
             ###
              ###
                ##
-            sage: SkewPartitions.global_options.reset()
+            sage: SkewPartitions.options._reset()
         """
-        char, convention = self.parent().global_options('diagram_str','convention')
+        char, convention = self.parent().options('diagram_str', 'convention')
 
         if convention == "English":
             L = range(len(self[0]))
@@ -495,12 +439,12 @@ class SkewPartition(CombinatorialElement):
             [                        *   *   *    * ]
             [      **   **   *    *  *   *  *    *  ]
             [ ***, * , *  , **, ** , *, * , * , *   ]
-            sage: SkewPartitions.global_options(diagram_str='#', convention="French")
+            sage: SkewPartitions.options(diagram_str='#', convention="French")
             sage: ascii_art(SkewPartitions(3).list())
             [                        #  #   #   #   ]
             [      #   #    ##  ##   #   #  #    #  ]
             [ ###, ##,  ##,  #,   #, #,  #,  #,   # ]
-            sage: SkewPartitions.global_options.reset()
+            sage: SkewPartitions.options._reset()
         """
         from sage.typeset.ascii_art import AsciiArt
         return AsciiArt(self.diagram().splitlines())
@@ -518,27 +462,33 @@ class SkewPartition(CombinatorialElement):
             ⎢       ┌┬┐   ┌┬┐   ┌┐    ┌┐  ├┤   ├┤  ┌┼┘   ┌┼┘ ⎥
             ⎢ ┌┬┬┐  ├┼┘  ┌┼┴┘  ┌┼┤  ┌┬┼┘  ├┤  ┌┼┘  ├┤   ┌┼┘  ⎥
             ⎣ └┴┴┘, └┘ , └┘  , └┴┘, └┴┘ , └┘, └┘ , └┘ , └┘   ⎦
-            sage: SkewPartitions.global_options(convention="French")
+            sage: SkewPartitions.options.convention = "French"
             sage: unicode_art(SkewPartitions(3).list())
             ⎡                             ┌┐  ┌┐   ┌┐   ┌┐   ⎤
             ⎢       ┌┐   ┌┐    ┌┬┐  ┌┬┐   ├┤  └┼┐  ├┤   └┼┐  ⎥
             ⎢ ┌┬┬┐  ├┼┐  └┼┬┐  └┼┤  └┴┼┐  ├┤   ├┤  └┼┐   └┼┐ ⎥
             ⎣ └┴┴┘, └┴┘,  └┴┘,  └┘,   └┘, └┘,  └┘,  └┘,   └┘ ⎦
-            sage: SkewPartitions.global_options.reset()
+            sage: SkewPartitions.options._reset()
 
             sage: unicode_art(SkewPartition([[3,1],[2]]))
               ┌┐
             ┌┬┴┘
             └┘
+
+        TESTS::
+
+            sage: unicode_art(SkewPartition([[],[]]))
+            ∅
         """
+        from sage.typeset.unicode_art import UnicodeArt
         out, inn = self
         inn = inn + [0] * (len(out) - len(inn))
-        if not self._list:
-            return u'∅'
-        if self.parent().global_options('convention') == "French":
-            s, t, b, l, r, tr, tl, br, bl, x, h = list(u' ┴┬├┤┘└┐┌┼─')
+        if not any(self._list):
+            return UnicodeArt('∅')
+        if self.parent().options.convention == "French":
+            s, t, b, l, r, tr, tl, br, bl, x, h = list(' ┴┬├┤┘└┐┌┼─')
         else:
-            s, t, b, l, r, tr, tl, br, bl, x, h = list(u' ┬┴├┤┐┌┘└┼─')
+            s, t, b, l, r, tr, tl, br, bl, x, h = list(' ┬┴├┤┐┌┘└┼─')
 
         # working with English conventions
         txt = [s * inn[0] + tl + t * (out[0] - inn[0] - 1) + tr]
@@ -549,10 +499,10 @@ class SkewPartition(CombinatorialElement):
             i1 = inn[i + 1]
 
             if i0 == i1:
-                start = u' ' * i1 + l
+                start = ' ' * i1 + l
                 d0 = 1
             else:
-                start = u' ' * i1 + tl
+                start = ' ' * i1 + tl
                 d0 = 0
 
             if o0 == o1:
@@ -574,9 +524,8 @@ class SkewPartition(CombinatorialElement):
             txt += [start + middle + end]
         txt += [s * inn[-1] + bl + b * (out[-1] - inn[-1] - 1) + br]
 
-        if self.parent().global_options('convention') == "French":
+        if self.parent().options.convention == "French":
             txt = list(reversed(txt))
-        from sage.typeset.unicode_art import UnicodeArt        
         return UnicodeArt(txt, baseline=0)
 
     def inner(self):
@@ -710,13 +659,14 @@ class SkewPartition(CombinatorialElement):
 
     def is_ribbon(self):
         r"""
-        Return ``True`` if and only if ``self`` is a ribbon, that is,
-        if it has exactly one cell in each of `q` consecutive
-        diagonals for some nonnegative integer `q`.
+        Return ``True`` if and only if ``self`` is a ribbon.
+
+        This means that if it has exactly one cell in each of `q`
+        consecutive diagonals for some nonnegative integer `q`.
 
         EXAMPLES::
 
-            sage: P=SkewPartition([[4,4,3,3],[3,2,2]])
+            sage: P = SkewPartition([[4,4,3,3],[3,2,2]])
             sage: P.pp()
                *
               **
@@ -725,7 +675,7 @@ class SkewPartition(CombinatorialElement):
             sage: P.is_ribbon()
             True
 
-            sage: P=SkewPartition([[4,3,3],[1,1]])
+            sage: P = SkewPartition([[4,3,3],[1,1]])
             sage: P.pp()
              ***
              **
@@ -733,7 +683,7 @@ class SkewPartition(CombinatorialElement):
             sage: P.is_ribbon()
             False
 
-            sage: P=SkewPartition([[4,4,3,2],[3,2,2]])
+            sage: P = SkewPartition([[4,4,3,2],[3,2,2]])
             sage: P.pp()
                *
               **
@@ -742,7 +692,7 @@ class SkewPartition(CombinatorialElement):
             sage: P.is_ribbon()
             False
 
-            sage: P=SkewPartition([[4,4,3,3],[4,2,2,1]])
+            sage: P = SkewPartition([[4,4,3,3],[4,2,2,1]])
             sage: P.pp()
             <BLANKLINE>
               **
@@ -751,7 +701,7 @@ class SkewPartition(CombinatorialElement):
             sage: P.is_ribbon()
             True
 
-            sage: P=SkewPartition([[4,4,3,3],[4,2,2]])
+            sage: P = SkewPartition([[4,4,3,3],[4,2,2]])
             sage: P.pp()
             <BLANKLINE>
               **
@@ -768,7 +718,7 @@ class SkewPartition(CombinatorialElement):
         l_out = len(lam)
         l_in = len(mu)
         mu += [0]*(l_out-l_in)
-        
+
         if l_out == 0:
             return True
         else:
@@ -782,7 +732,7 @@ class SkewPartition(CombinatorialElement):
                 else:
                     u += 1
 
-            # Find the least v strictly greater than u for which 
+            # Find the least v strictly greater than u for which
             # lam[v] != mu[v-1]+1
             v = u + 1
             v_test = True
@@ -813,6 +763,22 @@ class SkewPartition(CombinatorialElement):
     def outer_corners(self):
         """
         Return a list of the outer corners of ``self``.
+
+        These are corners that are contained inside of the shape.
+        For the corners which are outside of the shape,
+        use :meth:`outside_corners`.
+
+        .. WARNING::
+
+            In the case that ``self`` is an honest (rather than skew) partition,
+            these are the :meth:`~sage.combinat.partition.Partition.corners`
+            of the outer partition. In the language of [Sag2001]_ these would
+            be the "inner corners" of the outer partition.
+
+        .. SEEALSO::
+
+            - :meth:`sage.combinat.skew_partition.SkewPartition.outside_corners`
+            - :meth:`sage.combinat.partition.Partition.outside_corners`
 
         EXAMPLES::
 
@@ -877,6 +843,7 @@ class SkewPartition(CombinatorialElement):
 
         EXAMPLES::
 
+            sage: # needs sage.graphs
             sage: p = SkewPartition([[3,3,1], [2,1]])
             sage: Q = p.cell_poset(); Q
             Finite poset containing 4 elements
@@ -891,6 +858,7 @@ class SkewPartition(CombinatorialElement):
             sage: sorted(Q.upper_covers((0, 2)))
             [(1, 2)]
 
+            sage: # needs sage.graphs
             sage: P = p.cell_poset(orientation="NW"); P
             Finite poset containing 4 elements
             sage: sorted(P)
@@ -902,6 +870,7 @@ class SkewPartition(CombinatorialElement):
             sage: sorted(P.upper_covers((1, 2)))
             [(0, 2), (1, 1)]
 
+            sage: # needs sage.graphs
             sage: R = p.cell_poset(orientation="NE"); R
             Finite poset containing 4 elements
             sage: sorted(R)
@@ -929,7 +898,7 @@ class SkewPartition(CombinatorialElement):
             ....:                                   and c[1] >= d[1]):
             ....:                     return False
             ....:     return True
-            sage: all( check_NW(n) for n in range(7) )
+            sage: all( check_NW(n) for n in range(7) )                                  # needs sage.graphs
             True
 
             sage: def check_NE(n):
@@ -941,7 +910,7 @@ class SkewPartition(CombinatorialElement):
             ....:                                   and c[1] <= d[1]):
             ....:                     return False
             ....:     return True
-            sage: all( check_NE(n) for n in range(7) )
+            sage: all( check_NE(n) for n in range(7) )                                  # needs sage.graphs
             True
 
             sage: def test_duality(n, ori1, ori2):
@@ -953,11 +922,11 @@ class SkewPartition(CombinatorialElement):
             ....:                 if P.lt(c, d) != Q.lt(d, c):
             ....:                     return False
             ....:     return True
-            sage: all( test_duality(n, "NW", "SE") for n in range(7) )
+            sage: all( test_duality(n, "NW", "SE") for n in range(7) )                  # needs sage.graphs
             True
-            sage: all( test_duality(n, "NE", "SW") for n in range(7) )
+            sage: all( test_duality(n, "NE", "SW") for n in range(7) )                  # needs sage.graphs
             True
-            sage: all( test_duality(n, "NE", "SE") for n in range(4) )
+            sage: all( test_duality(n, "NE", "SE") for n in range(4) )                  # needs sage.graphs
             False
         """
         from sage.combinat.posets.posets import Poset
@@ -997,21 +966,13 @@ class SkewPartition(CombinatorialElement):
         In other words, the Frobenius rank of `\lambda / \mu` is the
         number of rows in the Jacobi-Trudi matrix of `\lambda / \mu`
         which don't contain `h_0`. Further definitions have been
-        considered in [Stan2002]_ (where Frobenius rank is just being
+        considered in [Sta2002]_ (where Frobenius rank is just being
         called rank).
 
         If `\mu` is the empty shape, then the Frobenius rank of
         `\lambda / \mu` is just the usual Frobenius rank of the
         partition `\lambda` (see
         :meth:`~sage.combinat.partition.Partition.frobenius_rank()`).
-
-        REFERENCES:
-
-        .. [Stan2002] Richard P. Stanley,
-           *The rank and minimal border strip decompositions of a
-           skew partition*,
-           J. Combin. Theory Ser. A 100 (2002), pp. 349-375.
-           :arxiv:`math/0109092v1`.
 
         EXAMPLES::
 
@@ -1046,11 +1007,11 @@ class SkewPartition(CombinatorialElement):
             True
         """
         N = len(self[0])
-        mu_betas = [x - j for (j, x) in enumerate(self[1])]
+        mu_betas = [x - j for j, x in enumerate(self[1])]
         mu_betas.extend([- j for j in range(len(self[1]), N)])
         res = 0
         for i, x in enumerate(self[0]):
-            if not x - i in mu_betas:
+            if (x - i) not in mu_betas:
                 res += 1
         return res
 
@@ -1087,9 +1048,9 @@ class SkewPartition(CombinatorialElement):
             sage: s.to_list()
             [[4, 3, 1], [2]]
             sage: type(s.to_list())
-            <type 'list'>
+            <class 'list'>
         """
-        return [list(_) for _ in list(self)]
+        return [list(r) for r in list(self)]
 
     def to_dag(self, format="string"):
         """
@@ -1109,18 +1070,19 @@ class SkewPartition(CombinatorialElement):
 
         EXAMPLES::
 
+            sage: # needs sage.graphs
             sage: dag = SkewPartition([[3, 3, 1], [1, 1]]).to_dag()
-            sage: dag.edges()
+            sage: dag.edges(sort=True)
             [('0,1', '0,2', None),
             ('0,1', '1,1', None),
             ('0,2', '1,2', None),
             ('1,1', '1,2', None)]
-            sage: dag.vertices()
+            sage: dag.vertices(sort=True)
             ['0,1', '0,2', '1,1', '1,2', '2,0']
             sage: dag = SkewPartition([[3, 2, 1], [1, 1]]).to_dag(format="tuple")
-            sage: dag.edges()
+            sage: dag.edges(sort=True)
             [((0, 1), (0, 2), None), ((0, 1), (1, 1), None)]
-            sage: dag.vertices()
+            sage: dag.vertices(sort=True)
             [(0, 1), (0, 2), (1, 1), (2, 0)]
         """
         outer = list(self.outer())
@@ -1129,7 +1091,7 @@ class SkewPartition(CombinatorialElement):
 
         G = DiGraph()
         for i, outer_i in enumerate(outer):
-            for j in xrange(inner[i], outer_i):
+            for j in range(inner[i], outer_i):
                 if format == "string":
                     string = "%d,%d" % (i, j)
                 else:
@@ -1257,11 +1219,11 @@ class SkewPartition(CombinatorialElement):
 
         EXAMPLES::
 
-            sage: SkewPartition([[3,2,1],[2,1]]).jacobi_trudi()
+            sage: SkewPartition([[3,2,1],[2,1]]).jacobi_trudi()                         # needs sage.modules
             [h[1]    0    0]
             [h[3] h[1]    0]
             [h[5] h[3] h[1]]
-            sage: SkewPartition([[4,3,2],[2,1]]).jacobi_trudi()
+            sage: SkewPartition([[4,3,2],[2,1]]).jacobi_trudi()                         # needs sage.modules
             [h[2]  h[]    0]
             [h[4] h[2]  h[]]
             [h[6] h[4] h[2]]
@@ -1290,6 +1252,90 @@ class SkewPartition(CombinatorialElement):
             m.append(row)
         return H(m)
 
+    def outside_corners(self):
+        r"""
+        Return the outside corners of ``self``.
+
+        The outside corners are corners which are outside of the shape. This
+        should not be confused with :meth:`outer_corners` which consists of
+        corners inside the shape. It returns a result analogous to the
+        ``.outside_corners()`` method on (non-skew) ``Partitions``.
+
+        .. SEEALSO::
+
+            - :meth:`sage.combinat.skew_partition.SkewPartition.outer_corners`
+            - :meth:`sage.combinat.partition.Partition.outside_corners`
+
+        EXAMPLES::
+
+            sage: mu = SkewPartition([[3,2,1],[2,1]])
+            sage: mu.pp()
+              *
+             *
+            *
+            sage: mu.outside_corners()
+            [(0, 3), (1, 2), (2, 1), (3, 0)]
+        """
+        return self.outer().outside_corners()
+
+    def specht_module(self, base_ring=None):
+        r"""
+        Return the Specht module corresponding to ``self``.
+
+        EXAMPLES::
+
+            sage: mu = SkewPartition([[3,2,1], [2]])
+            sage: SM = mu.specht_module(QQ)                                             # needs sage.modules
+            sage: s = SymmetricFunctions(QQ).s()                                        # needs sage.modules
+            sage: s(SM.frobenius_image())                                               # needs sage.modules
+            s[2, 1, 1] + s[2, 2] + s[3, 1]
+
+        We verify that the Frobenius image is the corresponding
+        skew Schur function::
+
+            sage: s[3,2,1].skew_by(s[2])                                                # needs sage.modules
+            s[2, 1, 1] + s[2, 2] + s[3, 1]
+
+        ::
+
+            sage: mu = SkewPartition([[4,2,1], [2,1]])
+            sage: SM = mu.specht_module(QQ)                                             # needs sage.modules
+            sage: s(SM.frobenius_image())                                               # needs sage.modules
+            s[2, 1, 1] + s[2, 2] + 2*s[3, 1] + s[4]
+            sage: s(mu)                                                                 # needs sage.modules
+            s[2, 1, 1] + s[2, 2] + 2*s[3, 1] + s[4]
+        """
+        from sage.combinat.specht_module import SpechtModule
+        from sage.combinat.symmetric_group_algebra import SymmetricGroupAlgebra
+        if base_ring is None:
+            from sage.rings.rational_field import QQ
+            base_ring = QQ
+        R = SymmetricGroupAlgebra(base_ring, self.size())
+        return SpechtModule(R, self.cells())
+
+    def specht_module_dimension(self, base_ring=None):
+        r"""
+        Return the dimension of the Specht module corresponding to ``self``.
+
+        This is equal to the number of standard (skew) tableaux of
+        shape ``self``.
+
+        EXAMPLES::
+
+            sage: mu = SkewPartition([[3,2,1], [2]])
+            sage: mu.specht_module_dimension()                                          # needs sage.modules
+            8
+            sage: mu.specht_module_dimension(GF(2))                                     # needs sage.modules sage.rings.finite_rings
+            8
+        """
+        from sage.categories.fields import Fields
+        if base_ring is None or (base_ring in Fields() and base_ring.characteristic() == 0):
+            from sage.combinat.skew_tableau import StandardSkewTableaux
+            return StandardSkewTableaux(self).cardinality()
+        from sage.combinat.specht_module import specht_module_rank
+        return specht_module_rank(self, base_ring)
+
+
 def row_lengths_aux(skp):
     """
     EXAMPLES::
@@ -1304,6 +1350,7 @@ def row_lengths_aux(skp):
         return []
     else:
         return [x[0] - x[1] for x in zip(skp[0], skp[1])]
+
 
 class SkewPartitions(UniqueRepresentation, Parent):
     """
@@ -1362,8 +1409,84 @@ class SkewPartitions(UniqueRepresentation, Parent):
         else:
             Parent.__init__(self, category=FiniteEnumeratedSets())
 
+    # add options to class
+    class options(GlobalOptions):
+        """
+        Sets and displays the options for elements of the skew partition
+        classes.  If no parameters are set, then the function returns a copy of
+        the options dictionary.
+
+        The ``options`` to skew partitions can be accessed as the method
+        :obj:`SkewPartitions.options` of :class:`SkewPartitions` and
+        related parent classes.
+
+        @OPTIONS@
+
+        EXAMPLES::
+
+            sage: SP = SkewPartition([[4,2,2,1], [3, 1, 1]])
+            sage: SP
+            [4, 2, 2, 1] / [3, 1, 1]
+            sage: SkewPartitions.options.display="lists"
+            sage: SP
+            [[4, 2, 2, 1], [3, 1, 1]]
+
+        Changing the ``convention`` for skew partitions also changes the
+        ``convention`` option for partitions and tableaux and vice versa::
+
+            sage: SkewPartitions.options(display="diagram", convention='French')
+            sage: SP
+            *
+             *
+             *
+               *
+            sage: T = Tableau([[1,2,3],[4,5]])
+            sage: T.pp()
+              4  5
+              1  2  3
+            sage: P = Partition([4, 2, 2, 1])
+            sage: P.pp()
+            *
+            **
+            **
+            ****
+            sage: Tableaux.options.convention="english"
+            sage: SP
+               *
+             *
+             *
+            *
+            sage: T.pp()
+              1  2  3
+              4  5
+            sage: SkewPartitions.options._reset()
+        """
+        NAME = 'SkewPartitions'
+        module = 'sage.combinat.skew_partition'
+        display = dict(default="quotient",
+                     description='Specifies how skew partitions should be printed',
+                     values=dict(lists='displayed as a pair of lists',
+                                 quotient='displayed as a quotient of partitions',
+                                 diagram='as a skew Ferrers diagram'),
+                     alias=dict(array="diagram", ferrers_diagram="diagram",
+                                young_diagram="diagram", pair="lists"),
+                     case_sensitive=False)
+        latex = dict(default="young_diagram",
+                   description='Specifies how skew partitions should be latexed',
+                   values=dict(diagram='latex as a skew Ferrers diagram',
+                               young_diagram='latex as a skew Young diagram',
+                               marked='latex as a partition where the skew shape is marked'),
+                   alias=dict(array="diagram", ferrers_diagram="diagram"),
+                   case_sensitive=False)
+        diagram_str = dict(link_to=(Partitions.options,'diagram_str'))
+        latex_diagram_str = dict(link_to=(Partitions.options,'latex_diagram_str'))
+        latex_marking_str = dict(default="X",
+                         description='The character used to marked the deleted cells when latexing marked partitions',
+                         checker=lambda char: isinstance(char, str))
+        convention = dict(link_to=(Tableaux.options,'convention'))
+        notation = dict(alt_name='convention')
+
     Element = SkewPartition
-    global_options = SkewPartitionOptions
 
     def _element_constructor_(self, skp):
         """
@@ -1454,7 +1577,7 @@ class SkewPartitions(UniqueRepresentation, Parent):
 
         - If it exists the unique skew-partitions with row lengths ``rowL``
           and column lengths ``colL``.
-        - Raise a ``ValueError`` if ``rowL`` and ``colL`` are not compatible.
+        - Raise a :class:`ValueError` if ``rowL`` and ``colL`` are not compatible.
 
         EXAMPLES::
 
@@ -1475,16 +1598,17 @@ class SkewPartitions(UniqueRepresentation, Parent):
             sage: S.from_row_and_column_length([1,2],[1,3])
             Traceback (most recent call last):
             ...
-            ValueError: Sum mismatch : [1, 2] and [1, 3]
+            ValueError: sum mismatch: [1, 2] and [1, 3]
             sage: S.from_row_and_column_length([3,2,1,2],[2,3,1,1,1])
             Traceback (most recent call last):
             ...
-            ValueError: Incompatible row and column length : [3, 2, 1, 2] and [2, 3, 1, 1, 1]
+            ValueError: incompatible row and column length : [3, 2, 1, 2] and [2, 3, 1, 1, 1]
 
         .. WARNING::
 
             If some rows and columns have length zero, there is no way to retrieve
-            unambiguously the skew partition. We therefore raise a ``ValueError``.
+            unambiguously the skew partition. We therefore raise
+            a :class:`ValueError`.
             For examples here are two skew partitions with the same row and column
             lengths::
 
@@ -1502,38 +1626,40 @@ class SkewPartitions(UniqueRepresentation, Parent):
         TESTS::
 
             sage: all(SkewPartitions().from_row_and_column_length(p.row_lengths(), p.column_lengths()) == p
-            ....:       for i in range(8) for p in SkewPartitions(i))
+            ....:       for i in range(7) for p in SkewPartitions(i))
             True
         """
         if sum(rowL) != sum(colL):
-            raise ValueError("Sum mismatch : %s and %s"%(rowL, colL))
-        if not all(i>0 for i in rowL) or not all(i>0 for i in colL):
+            raise ValueError(f"sum mismatch: {rowL} and {colL}")
+        if not all(i > 0 for i in rowL) or not all(i > 0 for i in colL):
             raise ValueError("row and column length must be positive")
-        if rowL == []:
-            return self.element_class(self, [[],[]])
+        if not rowL:
+            return self.element_class(self, [[], []])
         colL_new = colL[:]
-        resIn  = []
+        resIn = []
         resOut = []
         inPOld = len(colL)
         for row in rowL:
             inP = len(colL_new) - row
             if inP < 0 or inP > inPOld:
-                raise ValueError("Incompatible row and column length : %s and %s"%(rowL, colL))
+                raise ValueError("incompatible row and column length : %s and %s" % (rowL, colL))
             inPOld = inP
             resIn.append(inP)
             resOut.append(len(colL_new))
             for iCol in range(inP, len(colL_new)):
-                colL_new[iCol] -= 1;
+                colL_new[iCol] -= 1
                 if colL_new[iCol] < 0:
-                    raise ValueError("Incompatible row and column length : %s and %s"%(rowL, colL))
-            while colL_new != [] and colL_new[-1] == 0:
+                    raise ValueError("incompatible row and column length : %s and %s" % (rowL, colL))
+            while colL_new and colL_new[-1] == 0:
                 colL_new.pop()
         return self.element_class(self, [resOut, [x for x in resIn if x]])
+
 
 class SkewPartitions_all(SkewPartitions):
     """
     Class of all skew partitions.
     """
+
     def __init__(self):
         """
         Initialize ``self``.
@@ -1580,6 +1706,7 @@ class SkewPartitions_all(SkewPartitions):
                 yield self.element_class(self, p)
             n += 1
 
+
 class SkewPartitions_n(SkewPartitions):
     """
     The set of skew partitions of ``n`` with overlap at least
@@ -1617,7 +1744,7 @@ class SkewPartitions_n(SkewPartitions):
         """
         if overlap == 'connected':
             overlap = 1
-        return super(cls, SkewPartitions_n).__classcall__(cls, n, overlap)
+        return super().__classcall__(cls, n, overlap)
 
     def __init__(self, n, overlap):
         """
@@ -1695,9 +1822,9 @@ class SkewPartitions_n(SkewPartitions):
             sage: SkewPartitions(3, overlap=1)
             Skew partitions of 3 with a minimum overlap of 1
         """
-        string = "Skew partitions of %s"%self.n
+        string = "Skew partitions of %s" % self.n
         if self.overlap:
-            string += " with a minimum overlap of %s"%self.overlap
+            string += " with a minimum overlap of %s" % self.overlap
         return string
 
     def _count_slide(self, co, overlap=0):
@@ -1719,13 +1846,10 @@ class SkewPartitions_n(SkewPartitions):
             sage: [ sp for sp in s if sp.row_lengths() == [2,1] ]
             [[2, 1] / []]
         """
-        nn = len(co)
         result = 1
-        for i in range(nn-1):
-            comb    = min(co[i], co[i+1])
-            comb   += 1 - overlap
-            result *= comb
-
+        shift = 1 - overlap
+        for i in range(len(co) - 1):
+            result *= min(co[i], co[i + 1]) + shift
         return result
 
     def cardinality(self):
@@ -1754,7 +1878,7 @@ class SkewPartitions_n(SkewPartitions):
             return ZZ.one()
 
         if self.overlap > 0:
-            gg = Compositions(self.n, min_part = max(1, self.overlap))
+            gg = Compositions(self.n, min_part=max(1, self.overlap))
         else:
             gg = Compositions(self.n)
 
@@ -1805,13 +1929,15 @@ class SkewPartitions_n(SkewPartitions):
             sage: SkewPartitions(3, overlap=4).list()
             []
         """
-        for co in Compositions(self.n, min_part = max(1, self.overlap)):
+        for co in Compositions(self.n, min_part=max(1, self.overlap)):
             for sp in SkewPartitions(row_lengths=co, overlap=self.overlap):
                 yield self.element_class(self, sp)
 
 ######################################
 # Skew Partitions (from row lengths) #
 ######################################
+
+
 class SkewPartitions_rowlengths(SkewPartitions):
     """
     All skew partitions with given row lengths.
@@ -1831,7 +1957,7 @@ class SkewPartitions_rowlengths(SkewPartitions):
         co = Compositions()(co)
         if overlap == 'connected':
             overlap = 1
-        return super(SkewPartitions_rowlengths, cls).__classcall__(cls, co, overlap)
+        return super().__classcall__(cls, co, overlap)
 
     def __init__(self, co, overlap):
         """
@@ -1870,7 +1996,7 @@ class SkewPartitions_rowlengths(SkewPartitions):
             sage: SkewPartitions(row_lengths=[2,1])
             Skew partitions with row lengths [2, 1]
         """
-        return "Skew partitions with row lengths %s"%self.co
+        return "Skew partitions with row lengths %s" % self.co
 
     def _from_row_lengths_aux(self, sskp, ck_1, ck, overlap=0):
         """
@@ -1928,6 +2054,6 @@ class SkewPartitions_rowlengths(SkewPartitions):
             for sp in self._from_row_lengths_aux(sskp, self.co[-2], self.co[-1], self.overlap):
                 yield self.element_class(self, sp)
 
-from sage.structure.sage_object import register_unpickle_override
-register_unpickle_override('sage.combinat.skew_partition', 'SkewPartition_class', SkewPartition)
 
+from sage.misc.persist import register_unpickle_override
+register_unpickle_override('sage.combinat.skew_partition', 'SkewPartition_class', SkewPartition)

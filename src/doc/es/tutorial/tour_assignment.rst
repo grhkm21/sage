@@ -61,7 +61,7 @@ valores 'exactos', en lugar de aproximaciones numéricas. Para obtener una
 aproximación numérica, utilice la función ``n`` o el método
 ``n`` (ámbas tienen un nombre más largo, ``numerical_approx``, y
 la función ``N`` es la misma que ``n``)). Éstas toman argumentos opcionales
-`prec``, que es el número requerido de bits de precisión, y ``digits``,
+``prec``, que es el número requerido de bits de precisión, y ``digits``,
 que es el número requerido de digitos decimales de precisión;
 el número predeterminado es de 53 bits de precisión.
 
@@ -88,13 +88,13 @@ contener valores de cualquier tipo Python dentro de un ámbito dado:
 
     sage: a = 5   # a es un entero
     sage: type(a)
-    <type 'sage.rings.integer.Integer'>
+    <class 'sage.rings.integer.Integer'>
     sage: a = 5/3  # ahora es un número racional
     sage: type(a)
-    <type 'sage.rings.rational.Rational'>
+    <class 'sage.rings.rational.Rational'>
     sage: a = 'hello'  # ahora es una cadena
     sage: type(a)
-    <type 'str'>
+    <... 'str'>
 
 El lenguaje de programación C, que es un lenguaje de tipado estático, es muy
 diferente; una variable declarada como int solo puede contener un int

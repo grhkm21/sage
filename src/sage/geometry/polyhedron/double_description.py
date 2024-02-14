@@ -1,8 +1,8 @@
-"""
+r"""
 Double Description Algorithm for Cones
 
 This module implements the double description algorithm for extremal
-vertex enumeration in a pointed cone following [FukudaProdon]_. With a
+vertex enumeration in a pointed cone following [FP1996]_. With a
 little bit of preprocessing (see
 :mod:`~sage.geometry.polyhedron.double_description_inhomogeneous`)
 this defines a backend for polyhedral computations. But as far as this
@@ -28,22 +28,14 @@ The implementation works over any exact field that is embedded in
 `\RR`, for example::
 
     sage: from sage.geometry.polyhedron.double_description import StandardAlgorithm
-    sage: A = matrix(AA, [(1,0,1), (0,1,1), (-AA(2).sqrt(),-AA(3).sqrt(),1),
+    sage: A = matrix(AA, [(1,0,1), (0,1,1), (-AA(2).sqrt(),-AA(3).sqrt(),1),            # needs sage.rings.number_field
     ....:                 (-AA(3).sqrt(),-AA(2).sqrt(),1)])
     sage: alg = StandardAlgorithm(A)
-    sage: alg.run().R
+    sage: alg.run().R                                                                   # needs sage.rings.number_field
     [(-0.4177376677004119?, 0.5822623322995881?, 0.4177376677004119?),
      (-0.2411809548974793?, -0.2411809548974793?, 0.2411809548974793?),
      (0.07665629029830300?, 0.07665629029830300?, 0.2411809548974793?),
      (0.5822623322995881?, -0.4177376677004119?, 0.4177376677004119?)]
-
-REFERENCES:
-
-..  [FukudaProdon]
-    Komei Fukuda , Alain Prodon:
-    Double Description Method Revisited,
-    Combinatorics and Computer Science, volume 1120 of Lecture Notes
-    in Computer Science, page 91-111. Springer (1996)
 """
 
 #*****************************************************************************
@@ -62,12 +54,12 @@ REFERENCES:
 # TODO
 #
 # The adjacency check should use caching and the "combinatorial
-# criterion" instead of the "algebraic criterion", see [FukudaProdon]
+# criterion" instead of the "algebraic criterion", see [FP1996]
 # for definition. Since coefficient arithmetic is relatively expensive
 # we should avoid it as far as possible.
 #
 # Also, the variants of the double description algorithm described in
-# [FukudaProdon] should be implemented. The design of this module is
+# [FP1996] should be implemented. The design of this module is
 # such that variants of the basic algorithm should be easy to add as
 # subclasses of DoubleDescriptionPair and Problem.
 # *****************************************************************************
@@ -76,16 +68,16 @@ REFERENCES:
 # Compare with PPL if the base ring is QQ. Can be left enabled since
 # we don't use the Python fallback for polyhedra over QQ unless you
 # construct one by hand.
-from __future__ import division, absolute_import
 
 VERIFY_RESULT = True
 
 import itertools
 
 from sage.misc.cachefunc import cached_method
-from sage.rings.all import QQ
+from sage.rings.rational_field import QQ
 from sage.modules.free_module_element import vector
 from sage.matrix.matrix_space import MatrixSpace
+
 
 def random_inequalities(d, n):
     """
@@ -99,7 +91,7 @@ def random_inequalities(d, n):
 
     OUTPUT:
 
-    A random set of inequalites as a :class:`StandardAlgorithm` instance.
+    A random set of inequalities as a :class:`StandardAlgorithm` instance.
 
     EXAMPLES::
 
@@ -155,7 +147,7 @@ class DoubleDescriptionPair:
         self.problem = problem
         self.A = list(A_rows)
         self.R = list(R_cols)
-        self.one  = problem._field.one()
+        self.one = problem._field.one()
         self.zero = problem._field.zero()
 
         # a cache for scalar products (see the method zero_set)
@@ -254,7 +246,7 @@ class DoubleDescriptionPair:
         return matrix(self.problem.base_ring(), [[a.inner_product(r) for r in self.R] for a in self.A])
 
     def cone(self):
-        """
+        r"""
         Return the cone defined by `A`.
 
         This method is for debugging only. Assumes that the base ring
@@ -406,7 +398,7 @@ class DoubleDescriptionPair:
         Return a matrix space of size ``nrows`` and ``ncols`` over the base ring
         of ``self``.
 
-        These matrix spaces are cached to avoid the their creation in the very
+        These matrix spaces are cached to avoid their creation in the very
         demanding :meth:`add_inequality` and more precisely :meth:`are_adjacent`.
 
         EXAMPLES::
@@ -419,12 +411,13 @@ class DoubleDescriptionPair:
             sage: DD.matrix_space(3,2)
             Full MatrixSpace of 3 by 2 dense matrices over Rational Field
 
+            sage: # needs sage.rings.number_field
             sage: K.<sqrt2> = QuadraticField(2)
             sage: A = matrix([[1,sqrt2],[2,0]])
             sage: DD, _  = Problem(A).initial_pair()
             sage: DD.matrix_space(1,2)
-            Full MatrixSpace of 1 by 2 dense matrices over Number Field in sqrt2
-            with defining polynomial x^2 - 2
+            Full MatrixSpace of 1 by 2 dense matrices
+             over Number Field in sqrt2 with defining polynomial x^2 - 2 with sqrt2 = 1.414213562373095?
         """
         return MatrixSpace(self.problem.base_ring(), nrows, ncols)
 
@@ -529,7 +522,7 @@ class Problem:
     pair_class = DoubleDescriptionPair
 
     def __init__(self, A):
-        """
+        r"""
         Base class for implementations of the double description algorithm
 
         It does not make sense to instantiate the base class directly,
@@ -573,7 +566,8 @@ class Problem:
             ((1, 1), (-1, 1))
         """
         rows = [a.change_ring(self._field) for a in self._A.rows()]
-        for a in rows: a.set_immutable()
+        for a in rows:
+            a.set_immutable()
         return tuple(rows)
 
     def A_matrix(self):
@@ -604,9 +598,9 @@ class Problem:
 
         EXAMPLES::
 
-            sage: A = matrix(AA, [(1, 1), (-1, 1)])
+            sage: A = matrix(AA, [(1, 1), (-1, 1)])                                     # needs sage.rings.number_field
             sage: from sage.geometry.polyhedron.double_description import Problem
-            sage: Problem(A).base_ring()
+            sage: Problem(A).base_ring()                                                # needs sage.rings.number_field
             Algebraic Real Field
         """
         return self._field
@@ -732,7 +726,7 @@ class StandardAlgorithm(Problem):
     """
     Standard implementation of the double description algorithm
 
-    See [FukudaProdon]_ for the definition of the "Standard
+    See [FP1996]_ for the definition of the "Standard
     Algorithm".
 
     EXAMPLES::

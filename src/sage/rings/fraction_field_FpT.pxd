@@ -1,23 +1,24 @@
+from sage.libs.flint.types cimport nmod_poly_t
 
-from sage.libs.flint.nmod_poly cimport *
-
-from sage.rings.morphism cimport RingHomomorphism_coercion
+from sage.rings.morphism cimport RingHomomorphism
 from sage.categories.morphism cimport Morphism
-from sage.structure.element cimport Element, ModuleElement, RingElement
+from sage.structure.element cimport Element, ModuleElement, FieldElement
 from sage.categories.map cimport Section
 
-cdef class FpTElement(RingElement):
+cdef class FpTElement(FieldElement):
     cdef nmod_poly_t _numer, _denom
-    cdef bint initalized
+    cdef bint initialized
     cdef long p
 
-    cdef FpTElement _new_c(self)
-    cdef FpTElement _copy_c(self)
-    cpdef numerator(self)
-    cpdef denominator(self)
-    cpdef FpTElement next(self)
-    cpdef _sqrt_or_None(self)
-    cpdef bint is_square(self)
+    cdef FpTElement _new_c(self) noexcept
+    cpdef _add_(self, other) noexcept
+    cpdef _mul_(self, other) noexcept
+    cdef FpTElement _copy_c(self) noexcept
+    cpdef numerator(self) noexcept
+    cpdef denominator(self) noexcept
+    cpdef FpTElement next(self) noexcept
+    cpdef _sqrt_or_None(self) noexcept
+    cpdef bint is_square(self) noexcept
 
 cdef class FpT_iter:
     cdef parent

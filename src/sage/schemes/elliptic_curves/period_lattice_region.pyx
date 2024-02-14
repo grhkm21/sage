@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.rings.complex_double sage.symbolic
 r"""
 Regions in fundamental domains of period lattices
 
@@ -6,20 +7,13 @@ of the period lattice of an elliptic curve, used in computing minimum height
 bounds.
 
 In particular, these are the approximating sets ``S^{(v)}`` in section 3.2 of
-Thotsaphon Thongjunthug's Ph.D. Thesis and paper [TT]_.
+Thotsaphon Thongjunthug's Ph.D. Thesis and paper [Tho2010]_.
 
 AUTHORS:
 
 - Robert Bradshaw (2010): initial version
 
 - John Cremona (2014): added some docstrings and doctests
-
-REFERENCES:
-
-.. [T] \T. Thongjunthug, Computing a lower bound for the canonical
-   height on elliptic curves over number fields, Math. Comp. 79
-   (2010), pages 2431-2449.
-
 """
 
 #*****************************************************************************
@@ -32,12 +26,12 @@ REFERENCES:
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-from __future__ import division
-
 import numpy as np
 cimport numpy as np
 
-from sage.rings.all import CIF
+from sage.rings.cif import CIF
+from cpython.object cimport Py_EQ, Py_NE
+
 
 cdef class PeriodicRegion:
 
@@ -56,17 +50,17 @@ cdef class PeriodicRegion:
 
     def __init__(self, w1, w2, data, full=True):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: import numpy as np
             sage: from sage.schemes.elliptic_curves.period_lattice_region import PeriodicRegion
             sage: S = PeriodicRegion(CDF(2), CDF(2*I), np.zeros((4, 4)))
-            sage: S.plot()
+            sage: S.plot()                                                              # needs sage.plot
             Graphics object consisting of 1 graphics primitive
             sage: data = np.zeros((4, 4))
             sage: data[1,1] = True
             sage: S = PeriodicRegion(CDF(2), CDF(2*I+1), data)
-            sage: S.plot()
+            sage: S.plot()                                                              # needs sage.plot
             Graphics object consisting of 5 graphics primitives
         """
         if data.dtype is not np.int8:
@@ -159,7 +153,7 @@ cdef class PeriodicRegion:
 
         INPUT:
 
-        - ``condition`` (function) - a boolean-valued function on `\CC`.
+        - ``condition`` (function) -- a boolean-valued function on `\CC`.
 
         OUTPUT:
 
@@ -175,7 +169,7 @@ cdef class PeriodicRegion:
             sage: S = PeriodicRegion(CDF(1), CDF(I), data)
             sage: S.border()
             [(1, 1, 0), (2, 1, 0), (1, 1, 1), (1, 2, 1)]
-            sage: condition = lambda z: z.real().abs()<0.5
+            sage: condition = lambda z: z.real().abs()<1/2
             sage: S.verify(condition)
             False
             sage: condition = lambda z: z.real().abs()<1
@@ -193,10 +187,10 @@ cdef class PeriodicRegion:
 
         INPUT:
 
-        - ``condition`` (function, default None) - if not None, only
+        - ``condition`` (function, default None) -- if not None, only
           keep tiles in the refinement which satisfy the condition.
 
-        - ``times`` (int, default 1) - the number of times to refine;
+        - ``times`` (int, default 1) -- the number of times to refine;
           each refinement step halves the mesh size.
 
         OUTPUT:
@@ -257,16 +251,16 @@ cdef class PeriodicRegion:
             sage: data = np.zeros((4, 4))
             sage: data[1,1] = True
             sage: S = PeriodicRegion(CDF(1), CDF(I + 1/2), data)
-            sage: S.plot()
+            sage: S.plot()                                                              # needs sage.plot
             Graphics object consisting of 5 graphics primitives
-            sage: S.expand().plot()
+            sage: S.expand().plot()                                                     # needs sage.plot
             Graphics object consisting of 13 graphics primitives
             sage: S.expand().data
             array([[1, 1, 1, 0],
                    [1, 1, 1, 0],
                    [1, 1, 1, 0],
                    [0, 0, 0, 0]], dtype=int8)
-            sage: S.expand(corners=False).plot()
+            sage: S.expand(corners=False).plot()                                        # needs sage.plot
             Graphics object consisting of 13 graphics primitives
             sage: S.expand(corners=False).data
             array([[0, 1, 0, 0],
@@ -305,9 +299,9 @@ cdef class PeriodicRegion:
             sage: data = np.zeros((10, 10))
             sage: data[1:4,1:4] = True
             sage: S = PeriodicRegion(CDF(1), CDF(I + 1/2), data)
-            sage: S.plot()
+            sage: S.plot()                                                              # needs sage.plot
             Graphics object consisting of 13 graphics primitives
-            sage: S.contract().plot()
+            sage: S.contract().plot()                                                   # needs sage.plot
             Graphics object consisting of 5 graphics primitives
             sage: S.contract().data.sum()
             1
@@ -383,11 +377,11 @@ cdef class PeriodicRegion:
             sage: data[2:6, 2] = True
             sage: data[3, 3] = True
             sage: S = PeriodicRegion(CDF(1), CDF(I + 1/2), data)
-            sage: S.plot()
+            sage: S.plot()                                                              # needs sage.plot
             Graphics object consisting of 29 graphics primitives
-            sage: (S / 2).plot()
+            sage: (S / 2).plot()                                                        # needs sage.plot
             Graphics object consisting of 57 graphics primitives
-            sage: (S / 3).plot()
+            sage: (S / 3).plot()                                                        # needs sage.plot
             Graphics object consisting of 109 graphics primitives
             sage: (S / 2 / 3) == (S / 6) == (S / 3 / 2)
             True
@@ -420,7 +414,7 @@ cdef class PeriodicRegion:
             sage: S / (-1)
             Traceback (most recent call last):
             ...
-            OverflowError: can't convert negative value to unsigned int
+            OverflowError: can...t convert negative value to unsigned int
         """
         cdef unsigned int i, j, a, b, rows, cols
         if n <= 1:
@@ -440,9 +434,6 @@ cdef class PeriodicRegion:
                         for b in range(n):
                             new_data[(a*rows+i)//n, (b*cols+j)//n] = data[i,j]
         return PeriodicRegion(self.w1, self.w2, new_data)
-
-    def __div__(self, other):
-        return self / other
 
     def __invert__(self):
         """
@@ -520,11 +511,11 @@ cdef class PeriodicRegion:
             right._ensure_full()
         return PeriodicRegion(left.w1, left.w2, left.data ^ right.data, left.full)
 
-    def __cmp__(left, right):
+    def __richcmp__(left, right, op):
         """
-        Compares to regions.
+        Compare two regions.
 
-        Note: this is good for equality but not an ordering relation.
+        .. NOTE:: This is good for equality but not an ordering relation.
 
         TESTS::
 
@@ -544,17 +535,20 @@ cdef class PeriodicRegion:
             sage: S2 == S3
             False
         """
-        c = cmp(type(left), type(right))
-        if c: return c
-        c = cmp((left.w1, left.w2), (right.w1, right.w2))
-        if c: return c
-        if left.full ^ right.full:
-            left._ensure_full()
-            right._ensure_full()
-        if (left.data == right.data).all():
-            return 0
+        if type(left) is not type(right) or op not in [Py_EQ, Py_NE]:
+            return NotImplemented
+
+        if (left.w1, left.w2) != (right.w1, right.w2):
+            equal = False
         else:
-            return 1
+            if left.full ^ right.full:
+                left._ensure_full()
+                right._ensure_full()
+            equal = (left.data == right.data).all()
+
+        if op is Py_EQ:
+            return equal
+        return not equal
 
     def border(self, raw=True):
         """
@@ -588,7 +582,6 @@ cdef class PeriodicRegion:
             sage: data[1:3, 2] = True
             sage: PeriodicRegion(CDF(1), CDF(I), data).border()
             [(1, 1, 0), (2, 1, 0), (1, 1, 1), (1, 2, 0), (1, 3, 1), (3, 2, 0), (2, 2, 1), (2, 3, 1)]
-
         """
         cdef np.ndarray[np.npy_int8, ndim=2] framed = frame_data(self.data, self.full)
         cdef int m, n
@@ -627,7 +620,7 @@ cdef class PeriodicRegion:
             sage: S = PeriodicRegion(CDF(1), CDF(I+1/2), data)
             sage: S.innermost_point()
             0.375 + 0.25*I
-            sage: S.plot() + point(S.innermost_point())
+            sage: S.plot() + point(S.innermost_point())                                 # needs sage.plot
             Graphics object consisting of 24 graphics primitives
         """
         if self.is_empty():
@@ -654,13 +647,14 @@ cdef class PeriodicRegion:
             sage: data[2:5, 2] = True
             sage: data[3, 3] = True
             sage: S = PeriodicRegion(CDF(1), CDF(I + 1/2), data)
-            sage: plot(S) + plot(S.expand(), rgbcolor=(1, 0, 1), thickness=2)
+            sage: plot(S) + plot(S.expand(), rgbcolor=(1, 0, 1), thickness=2)           # needs sage.plot
             Graphics object consisting of 46 graphics primitives
         """
-        from sage.all import line
+        from sage.plot.line import line
         dw1, dw2 = self.ds()
         L = []
-        F = line([(0,0), tuple(self.w1), tuple(self.w1+self.w2), tuple(self.w2), (0,0)])
+        F = line([(0,0), tuple(self.w1),
+                  tuple(self.w1+self.w2), tuple(self.w2), (0,0)])
         if not self.full:
             F += line([tuple(self.w2/2), tuple(self.w1+self.w2/2)])
         if 'rgbcolor' not in kwds:
@@ -671,7 +665,7 @@ cdef class PeriodicRegion:
         return sum(L, F)
 
 
-cdef frame_data(data, bint full=True):
+cdef frame_data(data, bint full=True) noexcept:
     """
     Helper function for PeriodicRegion.expand() and
     PeriodicRegion.border().  This makes "wrapping around" work
@@ -701,7 +695,7 @@ cdef frame_data(data, bint full=True):
     framed[-1,:] = framed[-3,:]
     return framed
 
-cdef unframe_data(framed, bint full=True):
+cdef unframe_data(framed, bint full=True) noexcept:
     """
     Helper function for PeriodicRegion.expand().  This glues the
     borders together using the "or" operator.

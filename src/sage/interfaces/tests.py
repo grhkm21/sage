@@ -13,9 +13,9 @@ We test coercions::
     4
     sage: parent(a)
     Gap
-    sage: a = 2 * maxima('2'); a
+    sage: a = 2 * maxima('2'); a                                                        # needs sage.symbolic
     4
-    sage: parent(a)
+    sage: parent(a)                                                                     # needs sage.symbolic
     Maxima
     sage: a = 2 * singular('2'); a
     4
@@ -23,7 +23,7 @@ We test coercions::
     Singular
 
 Test that write errors to stderr are handled gracefully by GAP
-(see :trac:`13211`) and ECL (see :trac:`14426`) and other interfaces::
+(see :trac:`13211`) and other interfaces::
 
     sage: import subprocess
     sage: try:
@@ -31,21 +31,19 @@ Test that write errors to stderr are handled gracefully by GAP
     ....: except IOError:
     ....:     f = open('/dev/null', 'w')
     sage: kwds = dict(shell=True, stdout=f, stderr=f)
-    sage: subprocess.call("echo syntax error | ecl", **kwds)
-    0
-    sage: subprocess.call("echo syntax error | gap", **kwds)
-    0
+    sage: subprocess.call("echo syntax error | gap", **kwds) in (0, 1)
+    True
     sage: subprocess.call("echo syntax error | gp", **kwds)
     0
-    sage: subprocess.call("echo syntax error | ipython", **kwds) in (0,1)
+    sage: subprocess.call("echo syntax error | ipython", **kwds) in (0, 1, 120)
     True
-    sage: subprocess.call("echo syntax error | singular", **kwds)
+    sage: subprocess.call("echo syntax error | Singular", **kwds)
     0
+    sage: f.close()
 """
-from __future__ import print_function
 
-from all import *
-from sage.misc.misc import cputime, walltime
+from .all import *
+from sage.misc.timing import cputime, walltime
 import sys
 
 def manyvars(s, num=70000, inlen=1, step=2000):
@@ -53,14 +51,14 @@ def manyvars(s, num=70000, inlen=1, step=2000):
     Test that > 65,000 variable names works in each system.
     """
     print("Testing -- %s" % s)
-    t = '"%s"'%('9'*int(inlen))
+    t = '"%s"' % ('9'*int(inlen))
     try:
         t = cputime()
         w = walltime()
         v = []
         for i in range(num):
-            if i%step==0:
-                sys.stdout.write('%s '%i)
+            if i % step == 0:
+                sys.stdout.write('%s ' % i)
                 sys.stdout.flush()
             v.append(s(t))
         print('\nsuccess -- time = cpu: %s, wall: %s' % (cputime(t),

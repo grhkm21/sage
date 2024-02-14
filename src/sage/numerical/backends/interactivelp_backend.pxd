@@ -19,6 +19,17 @@ cdef class InteractiveLPBackend(GenericBackend):
     cdef object final_dictionary
     cdef int verbosity
 
-    cpdef dictionary(self)
+    cpdef int add_variable(self,
+                           lower_bound=*,
+                           upper_bound=*,
+                           binary=*,
+                           continuous=*,
+                           integer=*,
+                           obj=*,
+                           name=*,
+                           coefficients=*) \
+                           except -1
 
-    cpdef interactive_lp_problem(self)
+    cpdef dictionary(self) noexcept
+
+    cpdef interactive_lp_problem(self) noexcept

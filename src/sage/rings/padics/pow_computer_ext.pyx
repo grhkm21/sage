@@ -1,3 +1,10 @@
+# distutils: libraries = NTL_LIBRARIES gmp m
+# distutils: extra_compile_args = NTL_CFLAGS
+# distutils: include_dirs = NTL_INCDIR
+# distutils: library_dirs = NTL_LIBDIR
+# distutils: extra_link_args = NTL_LIBEXTRA
+# distutils: language = c++
+# sage.doctest: needs sage.rings.padics
 """
 PowComputer_ext
 
@@ -36,8 +43,7 @@ AUTHORS:
 
 - David Roe  (2008-01-01) initial version
 """
-
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2008 David Roe <roed.math@gmail.com>
 #                          William Stein <wstein@gmail.com>
 #
@@ -45,18 +51,17 @@ AUTHORS:
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
 #
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-include "cysignals/signals.pxi"
-include "sage/ext/stdsage.pxi"
-include "sage/libs/ntl/decl.pxi"
 from cpython.list cimport *
 from cpython.dict cimport *
 
-import weakref
-from sage.misc.misc import cputime
-from sage.rings.infinity import infinity
+from cysignals.signals cimport sig_on, sig_off
+
+include "../../libs/ntl/decl.pxi"
+
+from sage.misc.timing import cputime
 from sage.libs.gmp.mpz cimport *
 from sage.libs.ntl.ntl_ZZ_pContext cimport ntl_ZZ_pContext_factory
 from sage.libs.ntl.ntl_ZZ_pContext import ZZ_pContext_factory
@@ -64,15 +69,15 @@ from sage.libs.ntl.ntl_ZZ cimport ntl_ZZ
 from sage.libs.ntl.ntl_ZZ_pX cimport ntl_ZZ_pX, ntl_ZZ_pX_Modulus
 from sage.rings.integer cimport Integer
 
-cdef extern from "ccobject.h":
-     ZZ_c* Allocate_ZZ_array "Allocate_array<ZZ>"(size_t n)
-     void Delete_ZZ_array "Delete_array<ZZ>"(ZZ_c* v)
-     ZZ_pX_c* Allocate_ZZ_pX_array "Allocate_array<ZZ_pX>"(size_t n)
-     void Delete_ZZ_pX_array "Delete_array<ZZ_pX>"(ZZ_pX_c* v)
-     ZZ_pX_Multiplier_c* Allocate_ZZ_pX_Multiplier_array "Allocate_array<ZZ_pXMultiplier>"(size_t n)
-     void Delete_ZZ_pX_Multiplier_array "Delete_array<ZZ_pXMultiplier>"(ZZ_pX_Multiplier_c* v)
-     ZZ_pX_Modulus_c* Allocate_ZZ_pX_Modulus_array "Allocate_array<ZZ_pXModulus>"(size_t n)
-     void Delete_ZZ_pX_Modulus_array "Delete_array<ZZ_pXModulus>"(ZZ_pX_Modulus_c* v)
+cdef extern from "../../ext/ccobject.h":
+    ZZ_c* Allocate_ZZ_array "Allocate_array<ZZ>"(size_t n)
+    void Delete_ZZ_array "Delete_array<ZZ>"(ZZ_c* v)
+    ZZ_pX_c* Allocate_ZZ_pX_array "Allocate_array<ZZ_pX>"(size_t n)
+    void Delete_ZZ_pX_array "Delete_array<ZZ_pX>"(ZZ_pX_c* v)
+    ZZ_pX_Multiplier_c* Allocate_ZZ_pX_Multiplier_array "Allocate_array<ZZ_pXMultiplier>"(size_t n)
+    void Delete_ZZ_pX_Multiplier_array "Delete_array<ZZ_pXMultiplier>"(ZZ_pX_Multiplier_c* v)
+    ZZ_pX_Modulus_c* Allocate_ZZ_pX_Modulus_array "Allocate_array<ZZ_pXModulus>"(size_t n)
+    void Delete_ZZ_pX_Modulus_array "Delete_array<ZZ_pXModulus>"(ZZ_pX_Modulus_c* v)
 
 cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) except -1:
     """
@@ -85,7 +90,7 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
 
     EXAMPLES::
 
-        sage: A = PowComputer_ext_maker(5, 10, 10, 40, False, ntl.ZZ_pX([-5,65,125,0,1],5^10), 'small','e',ntl.ZZ_pX([1,-13,-25],5^10)) # indirect doctest
+        sage: A = PowComputer_ext_maker(5, 10, 10, 40, False, ntl.ZZ_pX([-5,65,125,0,1],5^10), 'small','e',ntl.ZZ_pX([1,-13,-25],5^10))  # indirect doctest
     """
     if prime_pow.deg <= 1:
         raise ValueError("Eisenstein extension must have degree at least 2")
@@ -187,8 +192,7 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
         raise TypeError("unrecognized Eisenstein type")
 
     cdef long i
-    cdef ZZ_pX_c tmp, modup, into_multiplier, shift_seed_inv
-    cdef ZZ_c a
+    cdef ZZ_pX_c into_multiplier, shift_seed_inv
     # We obtain successive p/x^(2^i) by squaring and then dividing by p.  So we need one extra digit of precision.
     prime_pow.restore_top_context()
     #cdef ntl_ZZ_pContext_class cup = prime_pow.get_context(prime_pow.prec_cap + low_length)
@@ -199,18 +203,15 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
     #ZZ_negate(a, a)
     ##cdef ntl_ZZ_pX printer = ntl_ZZ_pX([],prime_pow.get_context(prime_pow.prec_cap))
     ##printer.x = modup
-    ##print printer
     # Note that we're losing one digit of precision here.
     # This is correct because right shifting does not preserve precision.
     # a is now the negative of the inverse of the unit part of the constant of the defining polynomial (there's a mouthful)
     #ZZ_pX_RightShift(tmp, modup, 1)
     ##printer.x = modup
-    ##print printer
     #ZZ_pX_mul_ZZ_p(tmp, tmp, ZZ_to_ZZ_p(a))
     # tmp is now p/x
     #ZZ_pX_conv_modulus(into_multiplier, tmp, prime_pow.get_top_context().x)
     ##printer.x = into_multiplier
-    ##print printer
     #if multiplier:
     #    ZZ_pX_Multiplier_construct(low_shifter_m)
     #    ZZ_pX_Multiplier_build(low_shifter_m[0], into_multiplier, prime_pow.get_top_modulus()[0])
@@ -218,7 +219,6 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
     #    ZZ_pX_construct(low_shifter_p)
     #    low_shifter_p[0] = into_multiplier
     ##printer.x = (low_shifter[0]).val()
-    ##print printer
     ZZ_pX_InvMod_newton_ram(shift_seed_inv, shift_seed.x, prime_pow.get_top_modulus()[0], prime_pow.get_top_context().x)
     for i in range(low_length):
         # Currently tmp = p / x^(2^(i-1)).  Squaring yields p^2 / x^(2^i)
@@ -229,7 +229,6 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
         ZZ_pX_PowerXMod_long_pre(into_multiplier, prime_pow.e - (1L << i), prime_pow.get_top_modulus()[0])
         ZZ_pX_MulMod_pre(into_multiplier, into_multiplier, shift_seed_inv, prime_pow.get_top_modulus()[0])
         ##printer.x = into_multiplier
-        ##print printer
         if multiplier:
             ZZ_pX_Multiplier_build(low_shifter_m[i], into_multiplier, prime_pow.get_top_modulus()[0])
         else:
@@ -246,21 +245,15 @@ cdef int ZZ_pX_Eis_init(PowComputer_ZZ_pX prime_pow, ntl_ZZ_pX shift_seed) excep
     ###ZZ_pX_right_pshift(into_multiplier, modup, prime_pow.small_powers[1], prime_pow.get_top_context().x)
 
     ###printer.x = into_multiplier
-    ###print printer
 
     # into_multiplier now holds x^e/p
     # prime_pow.c.x should have been restored, but we make sure
     prime_pow.restore_top_context()
-    ##print "shift_seed=%s"%shift_seed
     ##printer.x = prime_pow.get_top_modulus()[0].val()
-    ##print "top_modulus=%s"%printer
-    ##print "top_context=%s"%prime_pow.get_top_context()
     into_multiplier = shift_seed_inv
     #ZZ_pX_InvMod_newton_ram(into_multiplier, shift_seed.x, prime_pow.get_top_modulus()[0], prime_pow.get_top_context().x)
     ##printer.x = into_multiplier
-    ##print "inverse = %s"%printer
     ##ZZ_pX_MulMod_pre(printer.x, into_multiplier, shift_seed.x, prime_pow.get_top_modulus()[0])
-    ##print "product = %s"%printer
     if multiplier:
         ZZ_pX_Multiplier_build(high_shifter_m[0], into_multiplier, prime_pow.get_top_modulus()[0])
     else:
@@ -315,7 +308,7 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
 
         sage: R.<x> = QQ[]
         sage: K = Qp(11,10)
-        sage: J.<a> = K.extension(x^30-11)
+        sage: J.<a> = K.extension(x^30 - 11)
         sage: M.<t> = PowerSeriesRing(J)
         sage: S.<x,y> = QQ[]
         sage: xr = O(a^152)*t + (8*a^2 + 10*a^32 + 7*a^62 + 10*a^92 + 7*a^122 + O(a^152))*t^2 + O(a^154)*t^3 + (2*a^4 + 10*a^64 + 2*a^124 + O(a^154))*t^4 + O(a^156)*t^5 + (5*a^6 + 2*a^96 + a^126 + O(a^156))*t^6 + O(a^158)*t^7 + (7*a^8 + 6*a^38 + 8*a^68 + 2*a^98 + 5*a^128 + O(a^158))*t^8 + O(a^160)*t^9 + (8*a^10 + 10*a^40 + a^70 + 5*a^130 + O(a^160))*t^10 + O(a^162)*t^11 + (9*a^12 + 7*a^42 + 8*a^72 + 6*a^102 + 9*a^132 + O(a^162))*t^12 + O(a^164)*t^13 + (2*a^14 + 5*a^44 + 3*a^74 + a^104 + 4*a^134 + O(a^164))*t^14 + O(a^166)*t^15 + (2*a^16 + 5*a^46 + 8*a^76 + 5*a^106 + 7*a^136 + O(a^166))*t^16 + O(a^168)*t^17 + (7*a^18 + 3*a^48 + 6*a^78 + 9*a^138 + O(a^168))*t^18 + O(a^172)*t^19 + (7*a^50 + 3*a^80 + 5*a^110 + 5*a^140 + 7*a^170 + O(a^172))*t^20 + O(a^172)*t^21 + (a^22 + a^52 + 3*a^82 + 3*a^112 + 2*a^142 + O(a^172))*t^22 + O(a^174)*t^23 + (4*a^24 + 7*a^54 + 9*a^84 + 4*a^114 + 7*a^144 + O(a^174))*t^24 + O(a^176)*t^25 + (3*a^26 + 8*a^56 + 8*a^116 + 5*a^146 + O(a^176))*t^26 + O(a^178)*t^27 + (2*a^28 + 2*a^58 + 6*a^88 + a^118 + 10*a^148 + O(a^178))*t^28 + O(a^180)*t^29 + (8*a^30 + 5*a^60 + 8*a^90 + 5*a^120 + 6*a^150 + O(a^180))*t^30 + O(a^184)*t^31 + (7*a^62 + 9*a^92 + 2*a^182 + O(a^184))*t^32
@@ -324,11 +317,9 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
         sage: f_dtr = yr*dtr; f_dtr
         O(a^456)*t^2 + O(a^306)*t^3 + O(a^156)*t^4 + (a^6 + 6*a^36 + 2*a^66 + 7*a^96 + 4*a^126 + O(a^156))*t^5 + O(a^158)*t^6 + (a^8 + 2*a^38 + 8*a^68 + 3*a^98 + O(a^158))*t^7 + O(a^160)*t^8 + (8*a^40 + 10*a^100 + 5*a^130 + O(a^160))*t^9 + O(a^162)*t^10 + (2*a^12 + 5*a^42 + 3*a^72 + 7*a^102 + O(a^162))*t^11 + O(a^164)*t^12 + (8*a^14 + a^44 + 6*a^74 + 4*a^104 + 7*a^134 + O(a^164))*t^13 + O(a^166)*t^14 + (2*a^16 + 8*a^46 + 5*a^106 + 4*a^136 + O(a^166))*t^15 + O(a^168)*t^16 + (a^18 + 6*a^48 + 5*a^78 + 2*a^108 + 9*a^138 + O(a^168))*t^17 + O(a^170)*t^18 + (8*a^50 + 2*a^110 + O(a^170))*t^19 + O(a^172)*t^20 + (4*a^52 + 2*a^82 + 7*a^112 + 5*a^142 + O(a^172))*t^21 + O(a^174)*t^22 + (2*a^54 + 3*a^84 + 8*a^114 + 6*a^144 + O(a^174))*t^23 + O(a^176)*t^24 + (a^26 + 6*a^56 + 4*a^86 + 9*a^116 + 3*a^146 + O(a^176))*t^25 + O(a^178)*t^26 + (10*a^28 + 5*a^58 + 4*a^88 + 10*a^118 + 6*a^148 + O(a^178))*t^27 + O(a^180)*t^28 + (5*a^30 + 5*a^60 + 4*a^90 + 9*a^120 + 3*a^150 + O(a^180))*t^29 + O(a^182)*t^30 + (4*a^32 + 10*a^62 + 5*a^92 + 7*a^122 + 3*a^152 + O(a^182))*t^31 + O(a^184)*t^32 + (5*a^34 + 9*a^94 + 3*a^124 + 6*a^154 + O(a^184))*t^33 + O(a^186)*t^34 + (4*a^36 + 3*a^66 + 10*a^96 + 2*a^126 + 6*a^156 + O(a^186))*t^35 + O(a^188)*t^36 + (6*a^38 + 9*a^68 + 7*a^128 + 10*a^158 + O(a^188))*t^37 + O(a^190)*t^38 + (7*a^40 + 3*a^70 + 4*a^100 + 4*a^130 + 8*a^160 + O(a^190))*t^39 + O(a^192)*t^40 + (a^42 + 10*a^72 + 10*a^102 + a^132 + 7*a^162 + O(a^192))*t^41 + O(a^194)*t^42 + (8*a^74 + 8*a^104 + 9*a^134 + 7*a^164 + O(a^194))*t^43 + O(a^196)*t^44 + (10*a^136 + 2*a^166 + O(a^196))*t^45 + O(a^198)*t^46 + (7*a^48 + 10*a^78 + 5*a^108 + 8*a^138 + 3*a^168 + O(a^198))*t^47 + O(a^200)*t^48 + (6*a^50 + 5*a^80 + a^110 + 6*a^170 + O(a^200))*t^49 + O(a^202)*t^50 + (a^52 + 8*a^82 + 2*a^112 + 10*a^172 + O(a^202))*t^51 + O(a^204)*t^52 + (9*a^54 + 2*a^84 + 6*a^114 + 4*a^144 + O(a^204))*t^53 + O(a^206)*t^54 + (2*a^56 + 5*a^86 + 2*a^116 + 4*a^146 + a^176 + O(a^206))*t^55 + O(a^208)*t^56 + (3*a^58 + 3*a^88 + a^118 + 5*a^148 + 2*a^178 + O(a^208))*t^57 + O(a^210)*t^58 + (5*a^60 + 10*a^90 + 9*a^120 + a^150 + 6*a^180 + O(a^210))*t^59 + O(a^212)*t^60 + (4*a^62 + 9*a^92 + 7*a^122 + 7*a^152 + 9*a^182 + O(a^212))*t^61 + O(a^214)*t^62 + (10*a^64 + 8*a^94 + 6*a^124 + 8*a^154 + 4*a^184 + O(a^214))*t^63 + O(a^216)*t^64 + (4*a^126 + 10*a^156 + 9*a^186 + O(a^216))*t^65 + O(a^218)*t^66 + (7*a^98 + 4*a^128 + 6*a^158 + 6*a^188 + O(a^218))*t^67 + O(a^220)*t^68 + (3*a^70 + 6*a^100 + 8*a^130 + 9*a^160 + 10*a^190 + O(a^220))*t^69 + O(a^222)*t^70 + (9*a^72 + 5*a^102 + 9*a^132 + 3*a^162 + 10*a^192 + O(a^222))*t^71 + O(a^224)*t^72 + (3*a^74 + 8*a^104 + 7*a^134 + 2*a^164 + O(a^224))*t^73 + O(a^226)*t^74 + (10*a^76 + a^106 + 2*a^136 + 4*a^166 + 9*a^196 + O(a^226))*t^75 + O(a^228)*t^76 + (3*a^78 + 6*a^108 + 9*a^138 + 4*a^168 + 5*a^198 + O(a^228))*t^77 + O(a^230)*t^78 + (4*a^80 + 10*a^110 + 7*a^170 + 8*a^200 + O(a^230))*t^79 + O(a^232)*t^80 + (5*a^82 + 4*a^112 + 9*a^142 + 8*a^172 + 8*a^202 + O(a^232))*t^81 + O(a^234)*t^82 + (4*a^84 + 9*a^114 + 8*a^144 + 2*a^174 + 6*a^204 + O(a^234))*t^83 + O(a^236)*t^84 + (3*a^86 + 5*a^116 + 4*a^146 + 8*a^206 + O(a^236))*t^85 + O(a^238)*t^86 + (a^118 + 7*a^148 + 6*a^208 + O(a^238))*t^87 + O(a^240)*t^88 + (4*a^90 + 9*a^120 + 9*a^150 + 6*a^180 + 6*a^210 + O(a^240))*t^89 + O(a^244)*t^90 + (10*a^122 + 3*a^152 + 8*a^182 + 4*a^212 + 2*a^242 + O(a^244))*t^91 + O(a^276)*t^92 + (9*a^154 + 10*a^184 + 10*a^214 + 7*a^244 + 9*a^274 + O(a^276))*t^93 + O(a^308)*t^94 + (9*a^186 + 4*a^216 + 5*a^246 + a^276 + 10*a^306 + O(a^308))*t^95
     """
-    ##print "starting..."
     cdef ZZ_pX_c low_part
     cdef ZZ_pX_c shifted_high_part
     cdef ZZ_pX_c powerx
-    cdef ZZ_pX_c shifter
     cdef ZZ_pX_c lowshift
     cdef ZZ_pX_c highshift
     cdef ZZ_pX_c working, working2
@@ -362,7 +353,6 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
     else:
         raise TypeError("inconsistent type")
 
-    cdef ntl_ZZ_pX printer
     if n < 0:
         if fm:
             c = self.get_top_context()
@@ -374,11 +364,9 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
         ##printer = ntl_ZZ_pX([],c)
         ZZ_pX_PowerXMod_long_pre(powerx, -n, m[0])
         ##printer.x = powerx
-        ##print printer
         ZZ_pX_conv_modulus(x[0], a[0], c.x)
         ZZ_pX_MulMod_pre(x[0], powerx, a[0], m[0])
         ##printer.x = x[0]
-        ##print printer
         return 0
     elif n == 0:
         if x != a:
@@ -389,9 +377,6 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
             ZZ_pX_conv_modulus(x[0], a[0], c.x)
         return 0
 
-    ##print "eis_part: %s" %(eis_part)
-    ##print "pshift: %s"%(pshift)
-
 # The following doesn't work, sadly.  It should be possible to precompute and do better than what I replace this code with.
 #    c = self.get_context(finalprec)
 #    m = self.get_modulus(finalprec)[0]
@@ -401,34 +386,27 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
 #    else:
 #        ZZ_pX_conv_modulus(x[0], a[0], c.x)
 #    ##printer.x = a[0]
-#    ##print "beginning: a = %s"%(printer)
 #    c.restore_c()
 #    if pshift:
 #        i = 0
 #        # This line restores the top context
 #        #ZZ_pX_right_pshift(x[0], x[0], self.pow_ZZ_tmp(pshift)[0], c.x)
 #        ##printer.x = x[0]
-#        ##print printer
 #        if pshift >= self.prec_cap:
 #            # shifter = p^(2^(high_length - 1))/x^(e*2^(high_length - 1))
 #            ZZ_pX_conv_modulus(shifter, high_shifter[high_length-1], c.x)
 #            ##printer.x = shifter
-#            ##print printer
 #            # if val = r + s * 2^(high_length - 1)
 #            # then shifter = p^(s*2^(high_length - 1))/x^(e*s*2^(high_length - 1))
 #            ZZ_pX_PowerMod_long_pre(shifter, shifter, (pshift / (1L << (high_length - 1))), m)
 #            ##printer.x = shifter
-#            ##print printer
 #            ZZ_pX_MulMod_pre(x[0], x[0], shifter, m)
 #            ##printer.x = shifter
-#            ##print printer
 #            # Now we only need to multiply self.unit by p^r/x^(e*r) where r < 2^(high_length - 1), which is tractible.
 #            pshift = pshift % (1L << (high_length - 1))
 #        while pshift > 0:
 #            if pshift & 1:
-#                ##print "pshift = %s"%pshift
 #                ##printer.x = x[0]
-#                ##print printer
 #                ZZ_pX_conv_modulus(highshift, high_shifter[i], c.x)
 #                ZZ_pX_MulMod_pre(x[0], x[0], highshift, m)
 #            i += 1
@@ -458,32 +436,23 @@ cdef int ZZ_pX_eis_shift_p(PowComputer_ZZ_pX self, ZZ_pX_c* x, ZZ_pX_c* a, long 
     i = 0
     two_shift = 1
     while eis_part > 0:
-        ##print "eis_part = %s"%(eis_part)
         if eis_part & 1:
-            ##print "i = %s"%(i)
-            ##print "two_shift = %s"%(two_shift)
             ##printer.x = working2
-            ##print "working2 = %s"%(printer)
             ZZ_pX_RightShift(shifted_high_part, working2, two_shift)
             ##printer.x = shifted_high_part
-            ##print "shifted_high_part = %s"%(printer)
             ZZ_pX_LeftShift(low_part, shifted_high_part, two_shift)
             ZZ_pX_sub(low_part, working2, low_part)
             ##printer.x = low_part
-            ##print "low_part = %s"%(printer)
             ZZ_pX_right_pshift(low_part, low_part, self.pow_ZZ_tmp(1)[0], c.x)
             ##printer.x = low_part
-            ##print "low_part = %s"%(printer)
             if fm:
                 ZZ_pX_MulMod_premul(low_part, low_part, low_shifter_fm[i], m[0])
             else:
                 ZZ_pX_conv_modulus(lowshift, low_shifter[i], c.x)
                 ZZ_pX_MulMod_pre(low_part, low_part, lowshift, m[0])
             ##printer.x = low_part
-            ##print "low_part = %s"%(printer)
             ZZ_pX_add(working2, low_part, shifted_high_part)
             ##printer.x = working2
-            ##print "x = %s"%(printer)
         i += 1
         two_shift = two_shift << 1
         eis_part = eis_part >> 1
@@ -497,7 +466,7 @@ cdef class PowComputer_ext(PowComputer_class):
 
         EXAMPLES::
 
-            sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10)) #indirect doctest
+            sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))  # indirect doctest
         """
         PowComputer_class.__init__(self, prime, cache_limit, prec_cap, ram_prec_cap, in_field, poly, shift_seed)
 
@@ -507,7 +476,6 @@ cdef class PowComputer_ext(PowComputer_class):
             raise MemoryError("out of memory allocating power storing")
 
         cdef Py_ssize_t i
-        cdef Integer x
 
         ZZ_conv_from_int(self.small_powers[0], 1)
 
@@ -533,7 +501,7 @@ cdef class PowComputer_ext(PowComputer_class):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del PC # indirect doctest
+            sage: del PC  # indirect doctest
         """
         if (<PowComputer_ext>self)._initialized:
             self.cleanup_ext()
@@ -545,7 +513,7 @@ cdef class PowComputer_ext(PowComputer_class):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC # indirect doctest
+            sage: PC  # indirect doctest
             PowComputer_ext for 5, with polynomial [9765620 0 1]
         """
         return "PowComputer_ext for %s, with polynomial %s"%(self.prime, self.polynomial())
@@ -562,28 +530,28 @@ cdef class PowComputer_ext(PowComputer_class):
             PowComputer_ext for 5, with polynomial [9765620 0 1]
         """
         cdef Integer cache_limit, prec_cap, ram_prec_cap
-        cache_limit = PY_NEW(Integer)
+        cache_limit = Integer.__new__(Integer)
         mpz_set_si(cache_limit.value, self.cache_limit)
-        prec_cap = PY_NEW(Integer)
+        prec_cap = Integer.__new__(Integer)
         mpz_set_si(prec_cap.value, self.prec_cap)
-        ram_prec_cap = PY_NEW(Integer)
+        ram_prec_cap = Integer.__new__(Integer)
         mpz_set_si(ram_prec_cap.value, self.ram_prec_cap)
         return PowComputer_ext_maker, (self.prime, cache_limit, prec_cap, ram_prec_cap, self.in_field, self._poly, self._prec_type, self._ext_type, self._shift_seed)
 
-    cdef void cleanup_ext(self):
+    cdef void cleanup_ext(self) noexcept:
         """
         Frees memory allocated in PowComputer_ext.
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del PC # indirect doctest
+            sage: del PC  # indirect doctest
         """
         Delete_ZZ_array(self.small_powers)
         mpz_clear(self.temp_m)
         mpz_clear(self.temp_m2)
 
-    cdef mpz_srcptr pow_mpz_t_tmp(self, unsigned long n):
+    cdef mpz_srcptr pow_mpz_t_tmp(self, long n) except NULL:
         """
         Provides fast access to an mpz_t* pointing to self.prime^n.
 
@@ -603,22 +571,28 @@ cdef class PowComputer_ext(PowComputer_class):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._pow_mpz_t_tmp_test(4) #indirect doctest
+            sage: PC._pow_mpz_t_tmp_test(4)  # indirect doctest
             625
         """
-        # READ THE DOCSTRING
         if n < 0:
-            # Exception will be ignored by Cython
-            raise ValueError("n must be positive")
+            raise ValueError("n must be non-negative")
         if n <= self.cache_limit:
             ZZ_to_mpz(self.temp_m, &(self.small_powers[n]))
         elif n == self.prec_cap:
             ZZ_to_mpz(self.temp_m, &self.top_power)
         else:
+            sig_on()
+            # n may exceed self.prec_cap. Very large values can, however, lead to
+            # out-of-memory situations in the following computation. This
+            # sig_on()/sig_off() prevents sage from crashing in such cases.
+            # It does not have a significant impact on performance. For small
+            # values of n the powers are taken from self.small_powers, for large
+            # values, the computation dominates the cost of the sig_on()/sig_off().
             mpz_pow_ui(self.temp_m, self.prime.value, n)
+            sig_off()
         return self.temp_m
 
-    cdef ZZ_c* pow_ZZ_tmp(self, long n):
+    cdef ZZ_c* pow_ZZ_tmp(self, long n) except NULL:
         """
         Provides fast access to a ZZ_c* pointing to self.prime^n.
 
@@ -634,12 +608,11 @@ cdef class PowComputer_ext(PowComputer_class):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._pow_mpz_t_tmp_test(4) #indirect doctest
+            sage: PC._pow_mpz_t_tmp_test(4)  # indirect doctest
             625
         """
         if n < 0:
-            # Exception will be ignored by Cython
-            raise ValueError("n must be positive")
+            raise ValueError("n must be non-negative")
         if n <= self.cache_limit:
             return &(self.small_powers[n])
         if n == self.prec_cap:
@@ -702,27 +675,27 @@ cdef class PowComputer_ext(PowComputer_class):
         return ans
 
 
-    cdef mpz_srcptr pow_mpz_t_top(self):
+    cdef mpz_srcptr pow_mpz_t_top(self) noexcept:
         """
         Returns self.prime^self.prec_cap as an ``mpz_srcptr``.
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 6, 6, 12, False, ntl.ZZ_pX([-5,0,1],5^6),'small', 'e',ntl.ZZ_pX([1],5^6))
-            sage: PC._pow_mpz_t_top_test() #indirect doctest
+            sage: PC._pow_mpz_t_top_test()  # indirect doctest
             15625
         """
         ZZ_to_mpz(self.temp_m, &self.top_power)
         return self.temp_m
 
-    cdef ZZ_c* pow_ZZ_top(self):
+    cdef ZZ_c* pow_ZZ_top(self) noexcept:
         """
         Returns self.prime^self.prec_cap as a ZZ_c.
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 6, 6, 12, False, ntl.ZZ_pX([-5,0,1],5^6),'small', 'e',ntl.ZZ_pX([1],5^6))
-            sage: PC._pow_ZZ_top_test() #indirect doctest
+            sage: PC._pow_ZZ_top_test()  # indirect doctest
             15625
         """
         return &self.top_power
@@ -781,22 +754,20 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             sage: PC.polynomial()
             [9765620 0 1]
         """
-        cdef ZZ_pX_Modulus_c* tmp
-        tmp.val()
         self.restore_top_context()
         cdef ntl_ZZ_pX r = ntl_ZZ_pX.__new__(ntl_ZZ_pX)
         r.c = self.get_top_context()
         r.x = (self.get_top_modulus()[0]).val()
         return r
 
-    cdef ntl_ZZ_pContext_class get_context(self, long n):
+    cdef ntl_ZZ_pContext_class get_context(self, long n) noexcept:
         """
         Returns a ZZ_pContext for self.prime^(abs(n)).
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_context_test(15) #indirect doctest
+            sage: PC._get_context_test(15)  # indirect doctest
             NTL modulus 30517578125
         """
         cdef ntl_ZZ pn = ntl_ZZ.__new__(ntl_ZZ)
@@ -822,7 +793,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         cdef Integer _n = Integer(n)
         return self.get_context(mpz_get_si(_n.value))
 
-    cdef ntl_ZZ_pContext_class get_context_capdiv(self, long n):
+    cdef ntl_ZZ_pContext_class get_context_capdiv(self, long n) noexcept:
         """
         Returns a ZZ_pContext for self.prime^((n-1) // self.e + 1)
 
@@ -832,7 +803,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_context_capdiv_test(30) #indirect doctest
+            sage: PC._get_context_capdiv_test(30)  # indirect doctest
             NTL modulus 30517578125
         """
         return self.get_context(self.capdiv(n))
@@ -870,7 +841,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5, 0, 1], 5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC.speed_test(10, 10^6) # random
+            sage: PC.speed_test(10, 10^6)  # random
             0.0090679999999991878
         """
         cdef Py_ssize_t i, end, _n
@@ -882,14 +853,14 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             self.get_modulus(_n)
         return cputime(t)
 
-    cdef ntl_ZZ_pContext_class get_top_context(self):
+    cdef ntl_ZZ_pContext_class get_top_context(self) noexcept:
         """
         Returns a ZZ_pContext for self.prime^self.prec_cap
 
         TESTS::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_top_context_test() #indirect doctest
+            sage: PC._get_top_context_test()  # indirect doctest
             NTL modulus 9765625
         """
         return self.get_context(self.prec_cap)
@@ -906,14 +877,14 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         """
         return self.get_top_context()
 
-    cdef restore_context(self, long n):
+    cdef restore_context(self, long n) noexcept:
         """
         Restores the contest corresponding to self.prime^n
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_context_test(4) #indirect doctest
+            sage: PC._restore_context_test(4)  # indirect doctest
         """
         self.get_context(n).restore_c()
 
@@ -929,14 +900,14 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         cdef Integer _n = Integer(n)
         self.restore_context(mpz_get_si(_n.value))
 
-    cdef restore_context_capdiv(self, long n):
+    cdef restore_context_capdiv(self, long n) noexcept:
         """
         Restores the context for self.prime^((n-1) // self.e + 1)
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_context_capdiv_test(4) #indirect doctest
+            sage: PC._restore_context_capdiv_test(4)  # indirect doctest
         """
         self.restore_context(self.capdiv(n))
 
@@ -947,12 +918,12 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_context_capdiv_test(8) #indirect doctest
+            sage: PC._restore_context_capdiv_test(8)  # indirect doctest
         """
         cdef Integer _n = Integer(n)
         self.restore_context_capdiv(mpz_get_si(_n.value))
 
-    cdef void restore_top_context(self):
+    cdef void restore_top_context(self) noexcept:
         """
         Restores the context corresponding to self.prime^self.prec_cap
 
@@ -974,7 +945,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         """
         self.restore_top_context()
 
-    cdef ZZ_pX_Modulus_c* get_modulus(self, long n):
+    cdef ZZ_pX_Modulus_c* get_modulus(self, long n) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^n)
 
@@ -983,7 +954,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             sage: A = PowComputer_ext_maker(5, 10, 1000, 2000, False, ntl.ZZ_pX([-5,0,1],5^1000), 'big', 'e',ntl.ZZ_pX([1],5^1000))
             sage: a = ntl.ZZ_pX([4,2],5^2)
             sage: b = ntl.ZZ_pX([6,3],5^2)
-            sage: A._get_modulus_test(a, b, 2) # indirect doctest
+            sage: A._get_modulus_test(a, b, 2)  # indirect doctest
             [4 24]
         """
         # Exception will be ignored by Cython
@@ -1002,16 +973,12 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             [4 24]
             sage: a * b
             [24 24 6]
-            sage: mod(6 * 5 + 24, 25)
+            sage: mod(6 * 5 + 24, 25)                                                   # needs sage.rings.finite_rings
             4
         """
         if self.pow_Integer(mpz_get_si(n.value)) != Integer(a.c.p):
-            #print self.pow_Integer(mpz_get_si(n.value))
-            #print a.c.p
             raise ValueError("a context mismatch")
         if self.pow_Integer(mpz_get_si(n.value)) != Integer(b.c.p):
-            #print self.pow_Integer(mpz_get_si(n.value))
-            #print b.c.p
             raise ValueError("b context mismatch")
         cdef ntl_ZZ_pX r = (<ntl_ZZ_pX>a)._new()
         cdef ntl_ZZ_pX aa = (<ntl_ZZ_pX>a)._new()
@@ -1021,14 +988,14 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         ZZ_pX_MulMod_pre(r.x, aa.x, bb.x, self.get_modulus(mpz_get_si(n.value))[0])
         return r
 
-    cdef ZZ_pX_Modulus_c* get_modulus_capdiv(self, long n):
+    cdef ZZ_pX_Modulus_c* get_modulus_capdiv(self, long n) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod
         self.prime^((n-1) // self.e + 1)
         """
         return self.get_modulus(self.capdiv(n))
 
-    cdef ZZ_pX_Modulus_c* get_top_modulus(self):
+    cdef ZZ_pX_Modulus_c* get_top_modulus(self) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod
         self.prime^self.prec_cap)
@@ -1038,7 +1005,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([129223,1231],5^10)
             sage: b = ntl.ZZ_pX([289741,323],5^10)
-            sage: A._get_top_modulus_test(a, b) #indirect doctest
+            sage: A._get_top_modulus_test(a, b)  # indirect doctest
             [1783058 7785200]
         """
         # Exception will be ignored by Cython
@@ -1058,14 +1025,14 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             [1783058 7785200]
             sage: a*b
             [9560618 7785200 397613]
-            sage: mod(397613 * 5 + 9560618, 5^10)
+            sage: mod(397613 * 5 + 9560618, 5^10)                                       # needs sage.rings.finite_rings
             1783058
         """
         cdef ntl_ZZ_pX ans = a._new()
         ZZ_pX_MulMod_pre(ans.x, a.x, b.x, self.get_top_modulus()[0])
         return ans
 
-    cdef long capdiv(self, long n):
+    cdef long capdiv(self, long n) noexcept:
         """
         If n >= 0 returns ceil(n / self.e)
 
@@ -1103,7 +1070,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             4
         """
         cdef Integer _n = Integer(n)
-        cdef Integer ans = PY_NEW(Integer)
+        cdef Integer ans = Integer.__new__(Integer)
         mpz_set_si(ans.value, self.capdiv(mpz_get_si(_n.value)))
         return ans
 
@@ -1149,7 +1116,6 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
             sage: W.<w> = R.ext(f)
             sage: y = W.teichmuller(3,10); y
             3 + 13*w^5 + 4*w^7 + 9*w^8 + 13*w^9 + O(w^10)
-
             sage: y^17 == y
             True
             sage: g = x^3 + 9*x^2 + 1
@@ -1163,7 +1129,7 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
         cdef ZZ_c tmp, q, u_q
         cdef ZZ_pX_c xnew_q
         cdef ntl_ZZ_pContext_class c
-        cdef long mini, minval
+        cdef long mini = 0, minval = 0
         if absprec == 0:
             return 1
         if absprec < 0:
@@ -1241,8 +1207,9 @@ cdef class PowComputer_ZZ_pX(PowComputer_ext):
                 ZZ_pX_add(xnew_q, xnew_q, x[0])
         return 0
 
+
 cdef class PowComputer_ZZ_pX_FM(PowComputer_ZZ_pX):
-    """
+    r"""
     This class only caches a context and modulus for p^prec_cap.
 
     Designed for use with fixed modulus p-adic rings, in Eisenstein
@@ -1255,7 +1222,7 @@ cdef class PowComputer_ZZ_pX_FM(PowComputer_ZZ_pX):
 
         EXAMPLES::
 
-            sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10)) #indirect doctest
+            sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))  # indirect doctest
             sage: A
             PowComputer_ext for 5, with polynomial [9765620 0 1]
         """
@@ -1281,30 +1248,30 @@ cdef class PowComputer_ZZ_pX_FM(PowComputer_ZZ_pX):
         else:
             raise NotImplementedError("NOT IMPLEMENTED IN PowComputer_ZZ_pX_FM")
 
-    cdef ntl_ZZ_pContext_class get_top_context(self):
+    cdef ntl_ZZ_pContext_class get_top_context(self) noexcept:
         """
         Returns a ZZ_pContext for self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_top_context_test() # indirect doctest
+            sage: PC._get_top_context_test()  # indirect doctest
             NTL modulus 9765625
         """
         return self.c
 
-    cdef void restore_top_context(self):
+    cdef void restore_top_context(self) noexcept:
         """
         Restores the context corresponding to self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_top_context_test() #indirect doctest
+            sage: PC._restore_top_context_test()  # indirect doctest
         """
         self.c.restore_c()
 
-    cdef ZZ_pX_Modulus_c* get_top_modulus(self):
+    cdef ZZ_pX_Modulus_c* get_top_modulus(self) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^self.prec_cap)
 
@@ -1313,12 +1280,12 @@ cdef class PowComputer_ZZ_pX_FM(PowComputer_ZZ_pX):
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([129223,1231],5^10)
             sage: b = ntl.ZZ_pX([289741,323],5^10)
-            sage: A._get_top_modulus_test(a, b) #indirect doctest
+            sage: A._get_top_modulus_test(a, b)  # indirect doctest
             [1783058 7785200]
         """
         return &self.mod
 
-    cdef ZZ_pX_Modulus_c* get_modulus(self, long n):
+    cdef ZZ_pX_Modulus_c* get_modulus(self, long n) noexcept:
         """
         Duplicates functionality of get_top_modulus if n == self.prec_cap.
 
@@ -1329,7 +1296,7 @@ cdef class PowComputer_ZZ_pX_FM(PowComputer_ZZ_pX):
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([129223,1231],5^10)
             sage: b = ntl.ZZ_pX([289741,323],5^10)
-            sage: A._get_modulus_test(a, b, 10) #indirect doctest
+            sage: A._get_modulus_test(a, b, 10)  # indirect doctest
             [1783058 7785200]
         """
         if n == self.prec_cap:
@@ -1349,7 +1316,7 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
 
         TESTS::
 
-            sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10)) #indirect doctest
+            sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))  # indirect doctest
         """
         # The __new__ method for PowComputer_ZZ_pX_FM has already run, so we have access to self.mod
         self._ext_type = 'e'
@@ -1409,7 +1376,8 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
             sage: A._high_shifter(0)
             [263296 51990 228 3465]
 
-            If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5.
+        If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5.::
+
             sage: R.<x> = ZZ[]
             sage: f = 263296 + 51990*x + 228*x^2 + 3465*x^3
             sage: g = x^4 + 15*x^2 + 75*x - 5
@@ -1419,12 +1387,14 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
             sage: A._high_shifter(1)
             [1420786 9298230 2217816 6212495]
 
-            Similarly:
+        Similarly::
+
             sage: f = 1420786 + 9298230*x + 2217816*x^2 + 6212495*x^3
             sage: h = f*x^8 % g; h
             -1328125000000*x^3 + 2962646484375*x^2 + 22094970703125*x - 1466308593725
 
-            Here, we need to remember that we're working modulo 5^10:
+        Here, we need to remember that we're working modulo 5^10::
+
             sage: h[0].valuation(5), h[1].valuation(5), h[2].valuation(5), h[3].valuation(5)
             (2, 12, 13, 13)
             sage: (h[0] - 25).valuation(5)
@@ -1446,12 +1416,12 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         if self._initialized:
             self.cleanup_ZZ_pX_FM_Eis()
 
-    cdef void cleanup_ZZ_pX_FM_Eis(self):
+    cdef void cleanup_ZZ_pX_FM_Eis(self) noexcept:
         """
         Does the actual work of deallocating low_shifter and
         high_shifter.
@@ -1459,7 +1429,7 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         Delete_ZZ_pX_Multiplier_array(self.low_shifter)
         Delete_ZZ_pX_Multiplier_array(self.high_shifter)
@@ -1474,7 +1444,7 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
 
             sage: from sage.rings.padics.pow_computer_ext import ZZ_pX_eis_shift_test
             sage: A = PowComputer_ext_maker(5, 3, 10, 40, False, ntl.ZZ_pX([-5,75,15,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1,-15,-3],5^10))
-            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5) #indirect doctest
+            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5)  # indirect doctest
             [1]
             sage: ZZ_pX_eis_shift_test(A, [0, 0, 1], 1, 5)
             [0 1]
@@ -1491,7 +1461,6 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
         """
         return ZZ_pX_eis_shift_p(self, x, a, n, finalprec)
 
-#         ##print "starting..."
 #         cdef ZZ_pX_c low_part
 #         cdef ZZ_pX_c shifted_high_part
 #         cdef ZZ_pX_c high_shifter
@@ -1502,10 +1471,8 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
 #             ##printer = ntl_ZZ_pX([],self.get_top_context())
 #             ZZ_pX_PowerXMod_long_pre(high_shifter, -n, self.get_top_modulus()[0])
 #             ##printer.x = high_shifter
-#             ##print printer
 #             ZZ_pX_MulMod_pre(x[0],high_shifter,a[0],self.get_top_modulus()[0])
 #             ##printer.x = x[0]
-#             ##print printer
 #             return 0
 #         elif n == 0:
 #             if x != a:
@@ -1517,36 +1484,27 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
 #         cdef int i
 
 #         ##printer = ntl_ZZ_pX([],self.get_top_context())
-#         ##print "eis_part: %s" %(eis_part)
-#         ##print "pshift: %s"%(pshift)
 #         if x != a:
-#             ##print "copying"
 #             x[0] = a[0]
 #         ##printer.x = a[0]
-#         ##print "beginning: a = %s"%(printer)
 #         if pshift:
 #             i = 0
 #             # This line restores the top context
 #             ZZ_pX_right_pshift(x[0], x[0], self.pow_ZZ_tmp(pshift)[0], self.get_top_context().x)
 #             ##printer.x = x[0]
-#             ##print printer
 #             if pshift >= self.prec_cap:
 #                 # high_shifter = p^(2^(high_length - 1))/x^(e*2^(high_length - 1))
 #                 # if val = r + s * 2^(high_length - 1)
 #                 # then high_shifter = p^(s*2^(high_length - 1))/x^(e*s*2^(high_length - 1))
 #                 ZZ_pX_PowerMod_long_pre(high_shifter, self.high_shifter[self.high_length-1].val(), (pshift / (1L << (self.high_length - 1))), self.get_top_modulus()[0])
 #                 ##printer.x = high_shifter
-#                 ##print printer
 #                 ZZ_pX_MulMod_pre(x[0], x[0], high_shifter, self.get_top_modulus()[0])
 #                 ##printer.x = high_shifter
-#                 ##print printer
 #                 # Now we only need to multiply self.unit by p^r/x^(e*r) where r < 2^(high_length - 1), which is tractible.
 #                 pshift = pshift % (1L << (self.high_length - 1))
 #             while pshift > 0:
 #                 if pshift & 1:
-#                     ##print "pshift = %s"%pshift
 #                     ##printer.x = x[0]
-#                     ##print printer
 #                     ZZ_pX_MulMod_premul(x[0], x[0], self.high_shifter[i], self.get_top_modulus()[0])
 #                 i += 1
 #                 pshift = pshift >> 1
@@ -1555,26 +1513,18 @@ cdef class PowComputer_ZZ_pX_FM_Eis(PowComputer_ZZ_pX_FM):
 #         i = 0
 #         two_shift = 1
 #         while eis_part > 0:
-#             ##print "eis_part = %s"%(eis_part)
 #             if eis_part & 1:
-#                 ##print "i = %s"%(i)
-#                 ##print "two_shift = %s"%(two_shift)
 #                 ZZ_pX_RightShift(shifted_high_part, x[0], two_shift)
 #                 ##printer.x = shifted_high_part
-#                 ##print "shifted_high_part = %s"%(printer)
 #                 ZZ_pX_LeftShift(low_part, shifted_high_part, two_shift)
 #                 ZZ_pX_sub(low_part, x[0], low_part)
 #                 ##printer.x = low_part
-#                 ##print "low_part = %s"%(printer)
 #                 ZZ_pX_right_pshift(low_part, low_part, self.pow_ZZ_tmp(1)[0], self.get_top_context().x)
 #                 ##printer.x = low_part
-#                 ##print "low_part = %s"%(printer)
 #                 ZZ_pX_MulMod_premul(low_part, low_part, self.low_shifter[i], self.get_top_modulus()[0])
 #                 ##printer.x = low_part
-#                 ##print "low_part = %s"%(printer)
 #                 ZZ_pX_add(x[0], low_part, shifted_high_part)
 #                 ##printer.x = x[0]
-#                 ##print "x = %s"%(printer)
 #             i += 1
 #             two_shift = two_shift << 1
 #             eis_part = eis_part >> 1
@@ -1593,7 +1543,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
 
         EXAMPLES::
 
-            sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small', 'e',ntl.ZZ_pX([1],5^10)) # indirect doctest
+            sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))  # indirect doctest
             sage: A
             PowComputer_ext for 5, with polynomial [9765620 0 1]
         """
@@ -1620,7 +1570,6 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
             self.cleanup_ext()
             raise MemoryError("out of memory allocating moduli")
 
-        cdef ntl_ZZ_pX printer
         cdef Py_ssize_t i
         cdef ZZ_pX_c tmp, pol
         if isinstance(poly, ntl_ZZ_pX):
@@ -1655,23 +1604,23 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         if self._initialized:
             self.cleanup_ZZ_pX_small()
 
-    cdef void cleanup_ZZ_pX_small(self):
+    cdef void cleanup_ZZ_pX_small(self) noexcept:
         """
         Deallocates cache of contexts, moduli.
 
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         Delete_ZZ_pX_Modulus_array(self.mod)
 
-    cdef ntl_ZZ_pContext_class get_context(self, long n):
+    cdef ntl_ZZ_pContext_class get_context(self, long n) noexcept:
         """
         Return the context for p^n.  This will use the cache if
         ``abs(n) <= self.cache_limit``.
@@ -1687,7 +1636,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: A._get_context_test(4) #indirect doctest
+            sage: A._get_context_test(4)  # indirect doctest
             NTL modulus 625
         """
         if n < 0:
@@ -1697,7 +1646,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
         except IndexError:
             return PowComputer_ZZ_pX.get_context(self, n)
 
-    cdef restore_context(self, long n):
+    cdef restore_context(self, long n) noexcept:
         """
         Restore the context for p^n.  This will use the cache if
         ``abs(n) <= self.cache_limit``.
@@ -1709,7 +1658,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: A._restore_context_test(4) #indirect doctest
+            sage: A._restore_context_test(4)  # indirect doctest
         """
         if n < 0:
             n = -n
@@ -1718,30 +1667,30 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
         except IndexError:
             (<ntl_ZZ_pContext_class>PowComputer_ZZ_pX.get_context(self, n)).restore_c()
 
-    cdef ntl_ZZ_pContext_class get_top_context(self):
+    cdef ntl_ZZ_pContext_class get_top_context(self) noexcept:
         """
         Returns a ZZ_pContext for self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_top_context_test() # indirect doctest
+            sage: PC._get_top_context_test()  # indirect doctest
             NTL modulus 9765625
         """
         return self.c[self.prec_cap]
 
-    cdef void restore_top_context(self):
+    cdef void restore_top_context(self) noexcept:
         """
         Restores the context corresponding to self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_top_context_test() #indirect doctest
+            sage: PC._restore_top_context_test()  # indirect doctest
         """
         (<ntl_ZZ_pContext_class>self.c[self.prec_cap]).restore_c()
 
-    cdef ZZ_pX_Modulus_c* get_modulus(self, long n):
+    cdef ZZ_pX_Modulus_c* get_modulus(self, long n) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^n).
 
@@ -1769,7 +1718,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
             ZZ_pX_Modulus_build(self.mod[self.prec_cap+1], tmp)
             return &(self.mod[self.prec_cap+1])
 
-    cdef ZZ_pX_Modulus_c* get_top_modulus(self):
+    cdef ZZ_pX_Modulus_c* get_top_modulus(self) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^self.prec_cap)
 
@@ -1778,7 +1727,7 @@ cdef class PowComputer_ZZ_pX_small(PowComputer_ZZ_pX):
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small','e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([129223,1231],5^10)
             sage: b = ntl.ZZ_pX([289741,323],5^10)
-            sage: A._get_top_modulus_test(a, b) #indirect doctest
+            sage: A._get_top_modulus_test(a, b)  # indirect doctest
             [1783058 7785200]
         """
         return &(self.mod[self.prec_cap])
@@ -1798,7 +1747,7 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 40, False, ntl.ZZ_pX([-5,75,15,0,1],5^10), 'small', 'e',ntl.ZZ_pX([1,-15,-3],5^10))
             sage: type(A)
-            <type 'sage.rings.padics.pow_computer_ext.PowComputer_ZZ_pX_small_Eis'>
+            <class 'sage.rings.padics.pow_computer_ext.PowComputer_ZZ_pX_small_Eis'>
             sage: TestSuite(A).run()
         """
         self._ext_type = 'e'
@@ -1858,7 +1807,8 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
             sage: A._high_shifter(0)
             [263296 51990 228 3465]
 
-            If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5.
+        If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5. ::
+
             sage: R.<x> = ZZ[]
             sage: f = 263296 + 51990*x + 228*x^2 + 3465*x^3
             sage: g = x^4 + 15*x^2 + 75*x - 5
@@ -1868,12 +1818,14 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
             sage: A._high_shifter(1)
             [1420786 9298230 2217816 6212495]
 
-            Similarly:
+        Similarly::
+
             sage: f = 1420786 + 9298230*x + 2217816*x^2 + 6212495*x^3
             sage: h = f*x^8 % g; h
             -1328125000000*x^3 + 2962646484375*x^2 + 22094970703125*x - 1466308593725
 
-            Here, we need to remember that we're working modulo 5^10:
+        Here, we need to remember that we're working modulo 5^10::
+
             sage: h[0].valuation(5), h[1].valuation(5), h[2].valuation(5), h[3].valuation(5)
             (2, 12, 13, 13)
             sage: (h[0] - 25).valuation(5)
@@ -1896,12 +1848,12 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'small', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         if self._initialized:
             self.cleanup_ZZ_pX_small_Eis()
 
-    cdef void cleanup_ZZ_pX_small_Eis(self):
+    cdef void cleanup_ZZ_pX_small_Eis(self) noexcept:
         """
         Does the actual work of deallocating low_shifter and
         high_shifter.
@@ -1909,7 +1861,7 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         Delete_ZZ_pX_array(self.low_shifter)
         Delete_ZZ_pX_array(self.high_shifter)
@@ -1924,7 +1876,7 @@ cdef class PowComputer_ZZ_pX_small_Eis(PowComputer_ZZ_pX_small):
 
             sage: from sage.rings.padics.pow_computer_ext import ZZ_pX_eis_shift_test
             sage: A = PowComputer_ext_maker(5, 10, 10, 40, False, ntl.ZZ_pX([-5,75,15,0,1],5^10), 'small', 'e',ntl.ZZ_pX([1,-15,-3],5^10))
-            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5) #indirect doctest
+            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5)  # indirect doctest
             [1]
             sage: ZZ_pX_eis_shift_test(A, [0, 0, 1], 1, 5)
             [0 1]
@@ -1954,7 +1906,7 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
 
         EXAMPLES::
 
-            sage: A = PowComputer_ext_maker(5, 6, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10)) # indirect doctest
+            sage: A = PowComputer_ext_maker(5, 6, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))  # indirect doctest
             sage: A
             PowComputer_ext for 5, with polynomial [9765620 0 1]
         """
@@ -2019,19 +1971,19 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 6, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         if self._initialized:
             self.cleanup_ZZ_pX_big()
 
-    cdef void cleanup_ZZ_pX_big(self):
+    cdef void cleanup_ZZ_pX_big(self) noexcept:
         """
         Deallocates the stored moduli and contexts.
 
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 6, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         Delete_ZZ_pX_Modulus_array(self.modulus_list)
 
@@ -2091,7 +2043,7 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
         """
         return self.modulus_dict
 
-    cdef ntl_ZZ_pContext_class get_context(self, long n):
+    cdef ntl_ZZ_pContext_class get_context(self, long n) noexcept:
         """
         Returns the context for p^n.
 
@@ -2106,9 +2058,9 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
         EXAMPLES::
 
             sage: A = PowComputer_ext_maker(5, 6, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big')
-            sage: A._get_context_test(4) #indirect doctest
+            sage: A._get_context_test(4)  # indirect doctest
             NTL modulus 625
-            sage: A._get_context_test(8) #indirect doctest
+            sage: A._get_context_test(8)  # indirect doctest
             NTL modulus 390625
         """
         if n == 0:
@@ -2127,30 +2079,30 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
                 self.context_dict[n] = PowComputer_ZZ_pX.get_context(self, n)
                 return self.context_dict[n]
 
-    cdef ntl_ZZ_pContext_class get_top_context(self):
+    cdef ntl_ZZ_pContext_class get_top_context(self) noexcept:
         """
         Returns a ZZ_pContext for self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
-            sage: PC._get_top_context_test() # indirect doctest
+            sage: PC._get_top_context_test()  # indirect doctest
             NTL modulus 9765625
         """
         return self.top_context
 
-    cdef void restore_top_context(self):
+    cdef void restore_top_context(self) noexcept:
         """
         Restores the context corresponding to self.prime^self.prec_cap
 
         EXAMPLES::
 
             sage: PC = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
-            sage: PC._restore_top_context_test() #indirect doctest
+            sage: PC._restore_top_context_test()  # indirect doctest
         """
         self.top_context.restore_c()
 
-    cdef ZZ_pX_Modulus_c* get_modulus(self, long n):
+    cdef ZZ_pX_Modulus_c* get_modulus(self, long n) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^n).
 
@@ -2163,13 +2115,13 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([4,2],5^2)
             sage: b = ntl.ZZ_pX([6,3],5^2)
-            sage: A._get_modulus_test(a, b, 2) # indirect doctest
+            sage: A._get_modulus_test(a, b, 2)  # indirect doctest
             [4 24]
             sage: a = ntl.ZZ_pX([4,2],5^6)
             sage: b = ntl.ZZ_pX([6,3],5^6)
-            sage: A._get_modulus_test(a, b, 6) # indirect doctest
+            sage: A._get_modulus_test(a, b, 6)  # indirect doctest
             [54 24]
-            sage: A._get_modulus_test(a, b, 6) # indirect doctest
+            sage: A._get_modulus_test(a, b, 6)  # indirect doctest
             [54 24]
         """
         cdef ntl_ZZ_pX tmp
@@ -2197,7 +2149,7 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
                 self.modulus_dict[n] = holder
                 return &(holder.x)
 
-    cdef ZZ_pX_Modulus_c* get_top_modulus(self):
+    cdef ZZ_pX_Modulus_c* get_top_modulus(self) noexcept:
         """
         Returns the modulus corresponding to self.polynomial() (mod self.prime^self.prec_cap)
 
@@ -2206,7 +2158,7 @@ cdef class PowComputer_ZZ_pX_big(PowComputer_ZZ_pX):
             sage: A = PowComputer_ext_maker(5, 5, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big','e',ntl.ZZ_pX([1],5^10))
             sage: a = ntl.ZZ_pX([129223,1231],5^10)
             sage: b = ntl.ZZ_pX([289741,323],5^10)
-            sage: A._get_top_modulus_test(a, b) #indirect doctest
+            sage: A._get_top_modulus_test(a, b)  # indirect doctest
             [1783058 7785200]
         """
         return &self.top_mod
@@ -2226,7 +2178,7 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
 
             sage: A = PowComputer_ext_maker(5, 3, 10, 40, False, ntl.ZZ_pX([-5,75,15,0,1],5^10), 'big', 'e',ntl.ZZ_pX([1,-15,-3],5^10))
             sage: type(A)
-            <type 'sage.rings.padics.pow_computer_ext.PowComputer_ZZ_pX_big_Eis'>
+            <class 'sage.rings.padics.pow_computer_ext.PowComputer_ZZ_pX_big_Eis'>
             sage: TestSuite(A).run()
         """
         self._ext_type = 'e'
@@ -2286,7 +2238,8 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
             sage: A._high_shifter(0)
             [263296 51990 228 3465]
 
-            If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5.
+        If we take this and multiply by x^4, and reduce modulo x^4 + 15*x^2 + 75*x - 5, we should get 5. ::
+
             sage: R.<x> = ZZ[]
             sage: f = 263296 + 51990*x + 228*x^2 + 3465*x^3
             sage: g = x^4 + 15*x^2 + 75*x - 5
@@ -2296,12 +2249,14 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
             sage: A._high_shifter(1)
             [1420786 9298230 2217816 6212495]
 
-            Similarly:
+        Similarly::
+
             sage: f = 1420786 + 9298230*x + 2217816*x^2 + 6212495*x^3
             sage: h = f*x^8 % g; h
             -1328125000000*x^3 + 2962646484375*x^2 + 22094970703125*x - 1466308593725
 
-            Here, we need to remember that we're working modulo 5^10:
+        Here, we need to remember that we're working modulo 5^10::
+
             sage: h[0].valuation(5), h[1].valuation(5), h[2].valuation(5), h[3].valuation(5)
             (2, 12, 13, 13)
             sage: (h[0] - 25).valuation(5)
@@ -2324,12 +2279,12 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 10, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'big', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         if self._initialized:
             self.cleanup_ZZ_pX_big_Eis()
 
-    cdef void cleanup_ZZ_pX_big_Eis(self):
+    cdef void cleanup_ZZ_pX_big_Eis(self) noexcept:
         """
         Does the actual work of deallocating low_shifter and
         high_shifter.
@@ -2337,7 +2292,7 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
         TESTS::
 
             sage: A = PowComputer_ext_maker(5, 3, 10, 20, False, ntl.ZZ_pX([-5,0,1],5^10), 'FM', 'e',ntl.ZZ_pX([1],5^10))
-            sage: del A # indirect doctest
+            sage: del A  # indirect doctest
         """
         Delete_ZZ_pX_array(self.low_shifter)
         Delete_ZZ_pX_array(self.high_shifter)
@@ -2352,7 +2307,7 @@ cdef class PowComputer_ZZ_pX_big_Eis(PowComputer_ZZ_pX_big):
 
             sage: from sage.rings.padics.pow_computer_ext import ZZ_pX_eis_shift_test
             sage: A = PowComputer_ext_maker(5, 10, 10, 40, False, ntl.ZZ_pX([-5,75,15,0,1],5^10), 'big', 'e',ntl.ZZ_pX([1,-15,-3],5^10))
-            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5) #indirect doctest
+            sage: ZZ_pX_eis_shift_test(A, [0, 1], 1, 5)  # indirect doctest
             [1]
             sage: ZZ_pX_eis_shift_test(A, [0, 0, 1], 1, 5)
             [0 1]

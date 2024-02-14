@@ -1,10 +1,15 @@
-"Interpreter reset"
+# cython: old_style_globals=True
+"""
+Interpreter reset
+"""
 
 import sys
 
 # Exclude these from the reset command.
 # DATA, base64 -- needed by the notebook
-EXCLUDE = set(['sage_mode', '__DIR__', 'DIR', 'DATA', 'base64'])
+# Add exit and quit to EXCLUDE to resolve trac #22529 and trac #16704
+EXCLUDE = set(['sage_mode', '__DIR__', 'DIR', 'DATA', 'base64', 'exit', 'quit'])
+
 
 def reset(vars=None, attached=False):
     """
@@ -15,27 +20,28 @@ def reset(vars=None, attached=False):
     If vars is specified, just restore the value of vars and leave
     all other variables alone (i.e., call restore).
 
-    Note that the variables in the set sage.misc.reset.EXCLUDE are
+    Note that the variables in the set :obj:`sage.misc.reset.EXCLUDE` are
     excluded from being reset.
 
     INPUT:
 
-    - ``vars`` - a list, or space or comma separated string (default:
-      None), variables to restore
+    - ``vars`` -- a list, or space or comma separated string (default:
+      ``None``), variables to restore
 
-    - ``attached`` - boolean (default: False), if ``vars`` is not None,
+    - ``attached`` -- boolean (default: ``False``), if ``vars`` is not None,
       whether to detach all attached files
 
     EXAMPLES::
 
         sage: x = 5
         sage: reset()
-        sage: x
+        sage: x                                                                         # needs sage.symbolic
         x
 
         sage: fn = tmp_filename(ext='foo.py')
         sage: sage.misc.reset.EXCLUDE.add('fn')
-        sage: open(fn, 'w').write('a = 111')
+        sage: with open(fn, 'w') as f:
+        ....:     _ = f.write('a = 111')
         sage: attach(fn)
         sage: [fn] == attached_files()
         True
@@ -51,6 +57,7 @@ def reset(vars=None, attached=False):
 
     Confirm that assumptions don't survive a reset (:trac:`10855`)::
 
+        sage: # needs sage.symbolic
         sage: assume(x > 3)
         sage: assumptions()
         [x > 3]
@@ -64,12 +71,12 @@ def reset(vars=None, attached=False):
 
     """
     from sage.symbolic.assumptions import forget
-    if not vars is None:
+    if vars is not None:
         restore(vars)
         return
     G = globals()  # this is the reason the code must be in Cython.
     T = type(sys)
-    for k in G.keys():
+    for k in list(G):
         if k[0] != '_' and not isinstance(k, T) and k not in EXCLUDE:
             try:
                 del G[k]
@@ -82,13 +89,14 @@ def reset(vars=None, attached=False):
         import sage.repl.attach
         sage.repl.attach.reset()
 
+
 def restore(vars=None):
     """
     Restore predefined global variables to their default values.
 
     INPUT:
 
-    - ``vars`` - string or list (default: None), if not None, restores
+    - ``vars`` -- string or list (default: ``None``), if not ``None``, restores
       just the given variables to the default value.
 
     EXAMPLES::
@@ -101,9 +109,9 @@ def restore(vars=None):
         Rational Field
         sage: x
         10
-        sage: y = var('y')
+        sage: y = var('y')                                                              # needs sage.symbolic
         sage: restore('x y')
-        sage: x
+        sage: x                                                                         # needs sage.symbolic
         x
         sage: y
         Traceback (most recent call last):
@@ -112,7 +120,7 @@ def restore(vars=None):
         sage: x = 10; y = 15/3; QQ='red'
         sage: ww = 15
         sage: restore()
-        sage: x, QQ, ww
+        sage: x, QQ, ww                                                                 # needs sage.symbolic
         (x, Rational Field, 15)
         sage: restore('ww')
         sage: ww
@@ -129,15 +137,13 @@ def restore(vars=None):
         if mode == 'cmdline':
             import sage.all_cmdline
             D = sage.all_cmdline.__dict__
-        elif mode == 'notebook':
-            import sage.all_notebook
-            D = sage.all_notebook.__dict__
         else:
             import sage.all
             D = sage.all.__dict__
     _restore(G, D, vars)
     import sage.calculus.calculus
     _restore(sage.calculus.calculus.syms_cur, sage.calculus.calculus.syms_default, vars)
+
 
 def _restore(G, D, vars):
     if vars is None:

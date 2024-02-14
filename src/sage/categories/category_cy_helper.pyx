@@ -19,9 +19,9 @@ AUTHOR:
 #*****************************************************************************
 
 #######################################
-## Sorting
+#  Sorting
 
-cpdef inline tuple category_sort_key(object category):
+cpdef inline tuple category_sort_key(object category) noexcept:
     """
     Return ``category._cmp_key``.
 
@@ -38,7 +38,7 @@ cpdef inline tuple category_sort_key(object category):
     """
     return category._cmp_key
 
-cpdef tuple _sort_uniq(categories):
+cpdef tuple _sort_uniq(categories) noexcept:
     """
     Return the categories after sorting them and removing redundant categories.
 
@@ -72,7 +72,7 @@ cpdef tuple _sort_uniq(categories):
             result.append(category)
     return tuple(result)
 
-cpdef tuple _flatten_categories(categories, ClasscallMetaclass JoinCategory):
+cpdef tuple _flatten_categories(categories, ClasscallMetaclass JoinCategory) noexcept:
     """
     Return the tuple of categories in ``categories``, while
     flattening join categories.
@@ -106,17 +106,17 @@ cpdef tuple _flatten_categories(categories, ClasscallMetaclass JoinCategory):
     return tuple(out)
 
 #############################################
-## Join
+#  Join
 
-cdef bint is_supercategory_of_done(new_cat, dict done):
+cdef bint is_supercategory_of_done(new_cat, dict done) noexcept:
     # This is a helper function. It replaces the closure
-    #   any(cat.is_subcategory(new_cat) for cat in done.iterkeys())
-    for cat in done.iterkeys():
+    # any(cat.is_subcategory(new_cat) for cat in done)
+    for cat in done:
         if cat.is_subcategory(new_cat):
             return True
     return False
 
-cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
+cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms) noexcept:
     """
     Helper for :meth:`~sage.categories.category.Category.join`.
 
@@ -136,15 +136,18 @@ cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
         sage: join_as_tuple(T,(),())
         (Category of algebras over Integer Ring,
          Category of finite monoids,
+         Category of finite additive groups,
          Category of coalgebras over Rational Field,
          Category of finite simplicial complexes)
         sage: join_as_tuple(T,('WithBasis',),())
         (Category of algebras with basis over Integer Ring,
          Category of finite monoids,
          Category of coalgebras with basis over Rational Field,
+         Category of finite additive groups,
          Category of finite simplicial complexes)
         sage: join_as_tuple(T,(),((Monoids(),'Finite'),))
         (Category of algebras over Integer Ring,
+         Category of finite additive groups,
          Category of coalgebras over Rational Field,
          Category of finite simplicial complexes)
     """
@@ -161,7 +164,7 @@ cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
                 axs = axs | {axiom}
         done[category] = axs
         for axiom in axiomsS.difference(axs):
-            todo.add( (category, axiom) )
+            todo.add((category, axiom))
 
     # Invariants:
     # - the current list of categories is stored in the keys of ``done``
@@ -180,7 +183,7 @@ cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
         # Removes redundant categories
         new_cats = [new_cat for new_cat in <tuple>(category._with_axiom_as_tuple(axiom))
                     if not is_supercategory_of_done(new_cat, done)]
-        for cat in done.keys():
+        for cat in list(done.keys()):
             for new_cat in new_cats:
                 if new_cat.is_subcategory(cat):
                     del done[cat]
@@ -193,9 +196,9 @@ cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
                     new_axioms.add(axiom)
 
         # Mark old categories with new axioms as todo
-        for category in done.iterkeys():
+        for category in done:
             for axiom in new_axioms:
-                todo.add( (category, axiom) )
+                todo.add((category, axiom))
         for new_cat in new_cats:
             axs = new_cat.axioms()
             for (cat, axiom) in ignore_axioms:
@@ -203,13 +206,13 @@ cpdef tuple join_as_tuple(tuple categories, tuple axioms, tuple ignore_axioms):
                     axs = axs | {axiom}
             done[new_cat] = axs
             for axiom in axiomsS.difference(axs):
-                todo.add( (new_cat, axiom) )
+                todo.add((new_cat, axiom))
 
-    return _sort_uniq(done.iterkeys())
+    return _sort_uniq(done)
 
 
 #############################################
-## Axiom related functions
+#  Axiom related functions
 
 cdef class AxiomContainer(dict):
     """
@@ -264,7 +267,7 @@ cdef class AxiomContainer(dict):
         return self
 
 
-cpdef inline get_axiom_index(AxiomContainer all_axioms, str axiom):
+cpdef inline get_axiom_index(AxiomContainer all_axioms, str axiom) noexcept:
     """
     Helper function: Return the rank of an axiom.
 
@@ -283,7 +286,7 @@ cpdef inline get_axiom_index(AxiomContainer all_axioms, str axiom):
     return (<dict>all_axioms)[axiom]
 
 
-cpdef tuple canonicalize_axioms(AxiomContainer all_axioms, axioms):
+cpdef tuple canonicalize_axioms(AxiomContainer all_axioms, axioms) noexcept:
     r"""
     Canonicalize a set of axioms.
 
@@ -315,6 +318,5 @@ cpdef tuple canonicalize_axioms(AxiomContainer all_axioms, axioms):
         ('Finite', 'Connected', 'WithBasis', 'Commutative')
     """
     cdef list L = list(set(axioms))
-    L.sort(key = (all_axioms).__getitem__)
+    L.sort(key=(all_axioms).__getitem__)
     return tuple(L)
-

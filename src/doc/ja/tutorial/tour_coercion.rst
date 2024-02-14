@@ -10,7 +10,7 @@
 しかし，ペアレントと型強制の意味について理解しておかないと，Sageにおける環その他の代数構造を有効かつ効率的に利用することができないのである．
 
 以下で試みるのは概念の解説であって，それをどうやって実現するかまでは示すことはできない．
-実装法に関するチュートリアルは `Sage thematic tutorial <http://sagemath.org/doc/thematic_tutorials/coercion_and_categories.html>`_ にある．
+実装法に関するチュートリアルは `Sage thematic tutorial <http://doc.sagemath.org/html/en/thematic_tutorials/coercion_and_categories.html>`_ にある．
 
 
 元
@@ -42,9 +42,9 @@ Pythonは(ダイナミックではあっても)強い型付けがなされる言
     sage: Q.<b> = PolynomialRing(ZZ, sparse=True)
     sage: R.<c> = PolynomialRing(ZZ, implementation='NTL')
     sage: type(a); type(b); type(c)
-    <type 'sage.rings.polynomial.polynomial_integer_dense_flint.Polynomial_integer_dense_flint'>
-    <class 'sage.rings.polynomial.polynomial_element_generic.PolynomialRing_integral_domain_with_category.element_class'>
-    <type 'sage.rings.polynomial.polynomial_integer_dense_ntl.Polynomial_integer_dense_ntl'>
+    <class 'sage.rings.polynomial.polynomial_integer_dense_flint.Polynomial_integer_dense_flint'>
+    <class 'sage.rings.polynomial.polynomial_ring.PolynomialRing_integral_domain_with_category.element_class'>
+    <class 'sage.rings.polynomial.polynomial_integer_dense_ntl.Polynomial_integer_dense_ntl'>
 
 
 以上から，解決すべき問題は二系統あることが分る．
@@ -99,7 +99,8 @@ Sageのクラス階層と圏の階層構造にはそれなりに類似が見ら�
     sage: Rings()
     Category of rings
     sage: ZZ.category()
-    Join of Category of euclidean domains
+    Join of Category of Dedekind domains
+        and Category of euclidean domains
         and Category of infinite enumerated sets
         and Category of metric spaces
     sage: ZZ.category().is_subcategory(Rings())
@@ -181,7 +182,7 @@ Sageにおけるペアレント構造は，Pythonオブジェクトとして唯�
 Sageにも *型変換* と *型強制* の考えは取り込まれている．
 しかし，Sageでは主たる対象が型ではなくペアレントになっているので，Cの型変換とSageにおける変換を混同しないよう注意していただきたい．
 
-以下の説明はかなり簡略化されているので，詳しい解説と実装情報についてはSageレファレンスマニュアルの型強制に関する節と `thematic tutorial <http://sagemath.org/doc/thematic_tutorials/coercion_and_categories.html>`_ を参照されたい．
+以下の説明はかなり簡略化されているので，詳しい解説と実装情報についてはSageレファレンスマニュアルの型強制に関する節と `thematic tutorial <http://doc.sagemath.org/html/en/thematic_tutorials/coercion_and_categories.html>`_ を参照されたい．
 
 *異なる* 環に属する元同士の演算実行については，両極をなす二つの立場がある:
 
@@ -342,7 +343,7 @@ Sageが宗とするのは歩み寄りだ．
 しかし，Sageは最も自然に見える *正準* な共通のペアレントを選択しようとする(ここでは ``QQ['x']``)．
 共通のペアレント候補が複数あってどれも同じく有望そうな場合，Sageは中の一つをランダムに選択するということは *しない* ．
 これは再現性の高い結果を求めるためで，選択の手段については `thematic tutorial
-<http://sagemath.org/doc/thematic_tutorials/coercion_and_categories.html>`_
+<http://doc.sagemath.org/html/en/thematic_tutorials/coercion_and_categories.html>`_
 に解説がある．
 
 
@@ -355,7 +356,7 @@ Sageが宗とするのは歩み寄りだ．
     sage: x+y
     Traceback (most recent call last):
     ...
-    TypeError: unsupported operand parent(s) for '+': 'Univariate Polynomial Ring in x over Rational Field' and 'Univariate Polynomial Ring in y over Rational Field'
+    TypeError: unsupported operand parent(s) for +: 'Univariate Polynomial Ring in x over Rational Field' and 'Univariate Polynomial Ring in y over Rational Field'
 
 だめな理由は，Sageが有望そうな候補 ``QQ['x']['y']`` ， ``QQ['y']['x']`` ， ``QQ['x','y']`` あるいは ``QQ['y','x']`` のどれも選択できないことである．
 と言うのも，これら4つの相異なる構造はどれも共通なペアレントとして相応しく，基準となるべき選択肢にならないからだ．

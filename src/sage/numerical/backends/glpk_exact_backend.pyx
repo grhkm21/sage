@@ -19,42 +19,21 @@ cdef class GLPKExactBackend(GLPKBackend):
     """
     MIP Backend that runs the GLPK solver in exact rational simplex mode.
 
-    The only access to data is via double-precision floats, however. It
-    reconstructs rationals from doubles and also provides results
-    as doubles.
+    The only access to data is via double-precision floats, which
+    means that rationals in the input data may be rounded before
+    the exact solver sees them. Thus, it is unreasonable to expect
+    that arbitrary LPs with rational coefficients are solved exactly.
+    Once the LP has been read into the backend, it reconstructs
+    rationals from doubles and does solve exactly over the rationals,
+    but results are returned as as doubles.
 
     There is no support for integer variables.
-
-    TESTS:
-
-    General backend testsuite::
-
-        sage: p = MixedIntegerLinearProgram(solver="GLPK/exact")
-        sage: TestSuite(p.get_backend()).run(skip="_test_pickling")
-        glp_exact: 5 rows, 1 columns, 4 non-zeros
-        GNU MP bignum library is being used
-        *     0:   objval =                      0   (0)
-        *     0:   objval =                      0   (0)
-        OPTIMAL SOLUTION FOUND
-        glp_exact: 5 rows, 1 columns, 4 non-zeros
-        GNU MP bignum library is being used
-        *     0:   objval =                      0   (0)
-        *     0:   objval =                      0   (0)
-        PROBLEM HAS UNBOUNDED SOLUTION
-        glp_exact: 3 rows, 3 columns, 8 non-zeros
-        GNU MP bignum library is being used
-              0:   infsum =                      1   (0)
-              4:   infsum =                      0   (0)
-        *     4:   objval =       1.66666666666667   (0)
-        *     4:   objval =       1.66666666666667   (0)
-        OPTIMAL SOLUTION FOUND
     """
-
     def __cinit__(self, maximization = True):
         """
         Constructor
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram(solver="GLPK/exact")
         """
@@ -91,7 +70,7 @@ cdef class GLPKExactBackend(GLPKBackend):
 
         OUTPUT: The index of the newly created variable
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.numerical.backends.generic_backend import get_solver
             sage: p = get_solver(solver = "GLPK/exact")
@@ -159,7 +138,7 @@ cdef class GLPKExactBackend(GLPKBackend):
 
         OUTPUT: The index of the variable created last.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.numerical.backends.generic_backend import get_solver
             sage: p = get_solver(solver = "GLPK/exact")
@@ -177,7 +156,7 @@ cdef class GLPKExactBackend(GLPKBackend):
         return GLPKBackend.add_variables(self, number, lower_bound, upper_bound, binary, continuous,
                                         integer, obj, names)
 
-    cpdef set_variable_type(self, int variable, int vtype):
+    cpdef set_variable_type(self, int variable, int vtype) noexcept:
         """
         Set the type of a variable.
 
@@ -195,7 +174,7 @@ cdef class GLPKExactBackend(GLPKBackend):
             *  0  Binary
             * -1 Real
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.numerical.backends.generic_backend import get_solver
             sage: p = get_solver(solver = "GLPK/exact")

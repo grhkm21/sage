@@ -2,7 +2,10 @@
 Clean the Install Dir
 """
 #*****************************************************************************
-#       Copyright (C) 2014 Volker Braun <vbraun.name@gmail.com>
+#       Copyright (C) 2014      Volker Braun <vbraun.name@gmail.com>
+#                     2015      Jeroen Demeyer
+#                     2017      Erik M. Bray
+#                     2020-2022 Matthias Koeppe
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +15,11 @@ Clean the Install Dir
 #*****************************************************************************
 
 
+import importlib.util
 import os
 
-from sage_setup.find import installed_files_by_module
-
+from sage.misc.package_dir import SourceDistributionFilter
+from sage_setup.find import get_extensions, installed_files_by_module
 
 
 def _remove(file_set, module_base, to_remove):
@@ -39,6 +43,7 @@ def _remove(file_set, module_base, to_remove):
     EXAMPLES::
 
         sage: files = set(['a/b/c.py', 'a/b/d.py', 'a/b/c.pyx'])
+        sage: from sage_setup.clean import _remove
         sage: _remove(files, 'a.b', ['c.py', 'd.py'])
         sage: files
         {'a/b/c.pyx'}
@@ -49,15 +54,20 @@ def _remove(file_set, module_base, to_remove):
         {'a/b/d.py'}
     """
     path = os.path.join(*module_base.split('.'))
+
     for filename in to_remove:
         if filename.startswith('.'):
             filename = path + filename
         else:
             filename = os.path.join(path, filename)
-        file_set.difference_update([filename])
+
+        remove = [filename]
+
+        remove.append(importlib.util.cache_from_source(filename))
+        file_set.difference_update(remove)
 
 
-def _find_stale_files(site_packages, python_packages, python_modules, ext_modules, data_files):
+def _find_stale_files(site_packages, python_packages, python_modules, ext_modules, data_files, nobase_data_files=()):
     """
     Find stale files
 
@@ -70,30 +80,38 @@ def _find_stale_files(site_packages, python_packages, python_modules, ext_module
     course. We check that when the doctest is being run, that is,
     after installation, there are no stale files::
 
-        sage: from sage.env import SAGE_SRC, SAGE_LIB, SAGE_CYTHONIZED
+        sage: from sage.env import SAGE_SRC, SAGE_LIB, SAGE_ROOT
+        sage: from sage_setup.find import _cythonized_dir
+        sage: cythonized_dir = _cythonized_dir(SAGE_SRC)
         sage: from sage_setup.find import find_python_sources, find_extra_files
-        sage: python_packages, python_modules = find_python_sources(
+        sage: python_packages, python_modules, cython_modules = find_python_sources(
         ....:     SAGE_SRC, ['sage', 'sage_setup'])
-        sage: extra_files = find_extra_files(python_packages, SAGE_SRC,
-        ....:     SAGE_CYTHONIZED, SAGE_LIB, ["ntlwrap.cpp"])
+        sage: extra_files = find_extra_files(SAGE_SRC,
+        ....:     ['sage', 'sage_setup'], cythonized_dir, [])
+        sage: from importlib.metadata import files
+        sage: for f in files('sagemath-standard'):
+        ....:     dir = os.path.dirname(str(f))
+        ....:     extra_files[dir] = extra_files.get(dir, [])
+        ....:     extra_files[dir].append(str(f))
+        sage: extra_files = list(extra_files.items())
         sage: from sage_setup.clean import _find_stale_files
 
-    TODO: move ``module_list.py`` into ``sage_setup`` and also check
-    extension modules::
+    TODO: Also check extension modules::
 
         sage: stale_iter = _find_stale_files(SAGE_LIB, python_packages, python_modules, [], extra_files)
-        sage: from sage.misc.sageinspect import loadable_module_extension
-        sage: skip_extensions = (loadable_module_extension(),)
+        sage: from importlib.machinery import EXTENSION_SUFFIXES
+        sage: skip_extensions = tuple(EXTENSION_SUFFIXES)
         sage: for f in stale_iter:
         ....:     if f.endswith(skip_extensions): continue
+        ....:     if '/ext_data/' in f: continue
         ....:     print('Found stale file: ' + f)
     """
-    from sage.misc.sageinspect import loadable_module_extension
-    PYMOD_EXTS = (os.path.extsep + 'py', os.path.extsep + 'pyc')
-    CEXTMOD_EXTS = (loadable_module_extension(),)
+
+    PYMOD_EXTS = get_extensions('source') + get_extensions('bytecode')
+    CEXTMOD_EXTS = get_extensions('extension')
     INIT_FILES = tuple('__init__' + x for x in PYMOD_EXTS)
 
-    module_files = installed_files_by_module(site_packages, ['sage', 'sage_setup'])
+    module_files = installed_files_by_module(site_packages, ['sage'])
 
     for mod in python_packages:
         try:
@@ -119,11 +137,11 @@ def _find_stale_files(site_packages, python_packages, python_modules, ext_module
     # Convert data_files to a set
     installed_files = set()
     for dir, files in data_files:
-        dir = os.path.relpath(dir, site_packages)
-        if dir.startswith("."):  # dir is not inside site_packages
-            continue
         for f in files:
             installed_files.add(os.path.join(dir, os.path.basename(f)))
+    for dir, files in nobase_data_files:
+        for f in files:
+            installed_files.add(f)
 
     for files in module_files.values():
         for f in files:
@@ -131,7 +149,8 @@ def _find_stale_files(site_packages, python_packages, python_modules, ext_module
                 yield f
 
 
-def clean_install_dir(site_packages, python_packages, python_modules, ext_modules, data_files):
+def clean_install_dir(site_packages, python_packages, python_modules, ext_modules, data_files, nobase_data_files, *,
+                      distributions=None, exclude_distributions=None):
     """
     Delete all modules that are **not** being installed
 
@@ -156,11 +175,23 @@ def clean_install_dir(site_packages, python_packages, python_modules, ext_module
       output of ``cythonize``.
 
     - ``data_files`` -- a list of (installation directory, files) pairs,
-      like the ``data_files`` argument to distutils' ``setup()``.
+      like the ``data_files`` argument to distutils' ``setup()``. Only
+      the basename of the files is used.
+
+    - ``nobase_data_files`` -- a list of (installation directory, files)
+      pairs. The files are expected to be in a subdirectory of the
+      installation directory; the filenames are used as is.
+
+    - ``distributions`` -- (default: ``None``) if not ``None``,
+      should be a sequence or set of strings: only clean files whose
+      ``distribution`` (from a ``# sage_setup: distribution = PACKAGE``
+      directive in the file) is an element of ``distributions``.
     """
+    distribution_filter = SourceDistributionFilter(distributions, exclude_distributions)
     stale_file_iter = _find_stale_files(
-        site_packages, python_packages, python_modules, ext_modules, data_files)
+        site_packages, python_packages, python_modules, ext_modules, data_files, nobase_data_files)
     for f in stale_file_iter:
         f = os.path.join(site_packages, f)
-        print('Cleaning up stale file: {0}'.format(f))
-        os.unlink(f)
+        if f in distribution_filter:
+            print('Cleaning up stale file: {0}'.format(f))
+            os.unlink(f)

@@ -37,7 +37,7 @@ from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.element_wrapper import ElementWrapper
 from sage.structure.set_factories import (
     SetFactory, ParentWithSetFactory, TopMostParentPolicy)
-from sage.sets.all import DisjointUnionEnumeratedSets
+from sage.sets.disjoint_union_enumerated_sets import DisjointUnionEnumeratedSets
 from sage.sets.family import LazyFamily
 from sage.categories.enumerated_sets import EnumeratedSets
 from sage.rings.integer import Integer
@@ -169,6 +169,7 @@ class XYPairsFactory(SetFactory):
         """
         return "Factory for XY pairs"
 
+
 XYPairs = XYPairsFactory()
 XYPairs.__doc__ = XYPairsFactory.__call__.__doc__
 
@@ -213,7 +214,7 @@ class AllPairs(ParentWithSetFactory, DisjointUnionEnumeratedSets):
     It is constructed as the disjoint union
     (:class:`DisjointUnionEnumeratedSets`) of :class:`Pairs_Y` parents:
 
-    .. math::
+    .. MATH::
 
         S := \bigcup_{i = 0,1,..., 4} S^y
 
@@ -379,7 +380,7 @@ class Pairs_Y(ParentWithSetFactory, DisjointUnionEnumeratedSets):
     It is constructed as the disjoint union
     (:class:`DisjointUnionEnumeratedSets`) of :class:`SingletonPair` parents:
 
-    .. math::
+    .. MATH::
 
         S^y := \bigcup_{i = 0,1,..., 4} S_i^y
 

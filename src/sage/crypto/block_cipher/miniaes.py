@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.modules sage.rings.finite_rings
 r"""
 Mini-AES
 
@@ -37,7 +38,7 @@ from sage.structure.sage_object import SageObject
 class MiniAES(SageObject):
     r"""
     This class implements the Mini Advanced Encryption Standard (Mini-AES)
-    described in [P02]_. Note that Phan's Mini-AES is for educational purposes
+    described in [Pha2002]_. Note that Phan's Mini-AES is for educational purposes
     only and is not secure for practical purposes. Mini-AES is a version of
     the AES with all parameters significantly reduced, but at the same time
     preserving the structure of AES. The goal of Mini-AES is to allow a
@@ -65,9 +66,8 @@ class MiniAES(SageObject):
         [    x^3 + x^2       x^3 + x]
         [x^3 + x^2 + x   x^2 + x + 1]
         sage: C = maes.encrypt(P, key); C
-        <BLANKLINE>
-        [            x       x^2 + x]
-        [x^3 + x^2 + x       x^3 + x]
+        [    x^3 + x^2 + 1 x^3 + x^2 + x + 1]
+        [                x     x^3 + x^2 + x]
 
     Decrypt the result::
 
@@ -92,7 +92,7 @@ class MiniAES(SageObject):
         sage: P = bin.encoding("Encrypt this secret message!"); P
         01000101011011100110001101110010011110010111000001110100001000000111010001101000011010010111001100100000011100110110010101100011011100100110010101110100001000000110110101100101011100110111001101100001011001110110010100100001
         sage: C = maes(P, key, algorithm="encrypt"); C
-        10001000101001101111000001111000010011001110110101000111011011010101001011101111101011001110011100100011101100101010100010100111110110011001010001000111011011010010000011000110001100000111000011100110101111000000001110001001
+        11100000101000010110001101101001110110010010111011010001100111100000101000101111100110010010100001110101011100111001000010101000001111000101010011010001100111100111001100000001101100110110101001001000011100000101010110110101
         sage: plaintxt = maes(C, key, algorithm="decrypt")
         sage: plaintxt == P
         True
@@ -101,7 +101,7 @@ class MiniAES(SageObject):
 
         sage: from sage.crypto.block_cipher.miniaes import MiniAES
         sage: maes = MiniAES()
-        sage: P = [n for n in xrange(16)]; P
+        sage: P = [n for n in range(16)]; P
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         sage: key = [2, 3, 11, 0]; key
         [2, 3, 11, 0]
@@ -110,7 +110,7 @@ class MiniAES(SageObject):
         sage: key = maes.integer_to_binary(key); key
         0010001110110000
         sage: C = maes(P, key, algorithm="encrypt"); C
-        1100100000100011111001010101010101011011100111110001000011100001
+        0011101000101110010011000101010100011101010000111000100100011010
         sage: plaintxt = maes(C, key, algorithm="decrypt")
         sage: plaintxt == P
         True
@@ -128,11 +128,6 @@ class MiniAES(SageObject):
         sage: plaintxt = maes.decrypt(C, key)
         sage: plaintxt == P
         True
-
-    REFERENCES:
-
-    .. [P02] \R. C.-W. Phan. Mini advanced encryption standard (mini-AES): a
-      testbed for cryptanalysis students. Cryptologia, 26(4):283--306, 2002.
     """
 
     def __init__(self):
@@ -152,7 +147,7 @@ class MiniAES(SageObject):
             sage: plaintxt == P
             True
         """
-        from sage.crypto.mq import SBox
+        from sage.crypto.sbox import SBox
         self._key_size = 16  # the number of bits in a secret key
         B = BinaryStrings()
         K = FiniteField(self._key_size, "x")
@@ -298,7 +293,7 @@ class MiniAES(SageObject):
             sage: P = bin.encoding("Encrypt this secret message!"); P
             01000101011011100110001101110010011110010111000001110100001000000111010001101000011010010111001100100000011100110110010101100011011100100110010101110100001000000110110101100101011100110111001101100001011001110110010100100001
             sage: C = maes(P, key, algorithm="encrypt"); C
-            10001000101001101111000001111000010011001110110101000111011011010101001011101111101011001110011100100011101100101010100010100111110110011001010001000111011011010010000011000110001100000111000011100110101111000000001110001001
+            11100000101000010110001101101001110110010010111011010001100111100000101000101111100110010010100001110101011100111001000010101000001111000101010011010001100111100111001100000001101100110110101001001000011100000101010110110101
             sage: plaintxt = maes(C, key, algorithm="decrypt")
             sage: plaintxt == P
             True
@@ -368,7 +363,7 @@ class MiniAES(SageObject):
         S = ""
         if algorithm == "encrypt":
             # encrypt each 16-bit block in succession
-            for i in xrange(N):
+            for i in range(N):
                 # here 16 is the number of bits per encryption block
                 block = B[i*16 : (i+1)*16]
                 matB = MS(self.binary_to_GF(block))
@@ -379,7 +374,7 @@ class MiniAES(SageObject):
             return bin(S)
         elif algorithm == "decrypt":
             # decrypt each 16-bit block in succession
-            for i in xrange(N):
+            for i in range(N):
                 # here 16 is the number of bits per encryption block
                 block = B[i*16 : (i+1)*16]
                 matB = MS(self.binary_to_GF(block))
@@ -618,9 +613,8 @@ class MiniAES(SageObject):
             [        x^3 + x^2 x^3 + x^2 + x + 1]
             [            x + 1                 0]
             sage: C = maes.encrypt(P, key); C
-            <BLANKLINE>
-            [x^2 + x + 1   x^3 + x^2]
-            [          x     x^2 + x]
+            [            x + 1           x^2 + 1]
+            [x^3 + x^2 + x + 1               x^2]
             sage: plaintxt = maes.decrypt(C, key)
             sage: plaintxt; P
             <BLANKLINE>
@@ -789,9 +783,8 @@ class MiniAES(SageObject):
             [        x^3 + x^2 x^3 + x^2 + x + 1]
             [            x + 1                 0]
             sage: maes.encrypt(P, key)
-            <BLANKLINE>
-            [x^2 + x + 1   x^3 + x^2]
-            [          x     x^2 + x]
+            [            x + 1           x^2 + 1]
+            [x^3 + x^2 + x + 1               x^2]
 
         But we can also work with binary strings::
 
@@ -1223,7 +1216,7 @@ class MiniAES(SageObject):
         MS = MatrixSpace(FiniteField(self._key_size, "x"), 2, 2)
         # get the integer representation of each GF(2^4) element
         # in the input matrix block
-        lst = [self._GF_to_int[block[i][j]] for i in xrange(block.nrows()) for j in xrange(block.ncols())]
+        lst = [self._GF_to_int[block[i][j]] for i in range(block.nrows()) for j in range(block.ncols())]
         if algorithm == "encrypt":
             # Now run each resulting integer through the S-box for
             # encryption. Then convert the result output by the S-box
@@ -1259,7 +1252,7 @@ class MiniAES(SageObject):
             sage: from sage.crypto.block_cipher.miniaes import MiniAES
             sage: maes = MiniAES()
             sage: key = maes.random_key()
-            sage: [key[i][j] in K for i in xrange(key.nrows()) for j in xrange(key.ncols())]
+            sage: [key[i][j] in K for i in range(key.nrows()) for j in range(key.ncols())]
             [True, True, True, True]
 
         Generate a random key, then perform encryption and decryption using
@@ -1315,13 +1308,12 @@ class MiniAES(SageObject):
             [        x^3 + x^2 x^3 + x^2 + x + 1]
             [            x + 1                 0]
             sage: maes.round_key(key, 1)
-            <BLANKLINE>
-            [            x + 1 x^3 + x^2 + x + 1]
-            [                0 x^3 + x^2 + x + 1]
+            [x^3 + x x^2 + x]
+            [x^3 + 1 x^2 + x]
             sage: maes.round_key(key, 2)
             <BLANKLINE>
-            [x^2 + x x^3 + 1]
-            [x^2 + x x^2 + x]
+            [  x^2 + 1   x^3 + x]
+            [x^3 + x^2 x^3 + x^2]
 
         TESTS:
 
@@ -1519,7 +1511,6 @@ class MiniAES(SageObject):
                    [block[1][1], block[1][0]] ] )
         return mat
 
-
     ### conversion functions to convert between different data formats
 
     def GF_to_binary(self, G):
@@ -1569,7 +1560,7 @@ class MiniAES(SageObject):
             sage: K = FiniteField(16, "x")
             sage: S = Set(K); len(S)  # GF(2^4) has this many elements
             16
-            sage: [maes.GF_to_binary(S[i]) for i in xrange(len(S))]
+            sage: [maes.GF_to_binary(S[i]) for i in range(len(S))]
             <BLANKLINE>
             [0000,
             0001,
@@ -1637,7 +1628,7 @@ class MiniAES(SageObject):
             Traceback (most recent call last):
             ...
             ValueError: input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)
-            sage: G = [K.random_element() for i in xrange(5)]
+            sage: G = [K.random_element() for i in range(5)]
             sage: maes.GF_to_binary(G)
             Traceback (most recent call last):
             ...
@@ -1660,13 +1651,14 @@ class MiniAES(SageObject):
         elif isinstance(G, list):
             if len(G) == 0:
                 raise ValueError("input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)")
-            S = "".join([str(self._GF_to_bin[g]) for g in G])
+            S = "".join(str(self._GF_to_bin[g]) for g in G)
             return B(S)
         # G is a matrix over GF(16)
         elif isinstance(G, Matrix_dense):
             if not (G.base_ring() is K):
                 raise TypeError("input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)")
-            S = "".join([str(self._GF_to_bin[G[i][j]]) for i in xrange(G.nrows()) for j in xrange(G.ncols())])
+            S = "".join(str(self._GF_to_bin[G[i][j]])
+                        for i in range(G.nrows()) for j in range(G.ncols()))
             return B(S)
         # the type of G doesn't match the supported types
         else:
@@ -1718,7 +1710,7 @@ class MiniAES(SageObject):
             sage: K = FiniteField(16, "x")
             sage: S = Set(K); len(S)  # GF(2^4) has this many elements
             16
-            sage: [maes.GF_to_integer(S[i]) for i in xrange(len(S))]
+            sage: [maes.GF_to_integer(S[i]) for i in range(len(S))]
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
         The integer representation of a list of elements belonging to
@@ -1770,7 +1762,7 @@ class MiniAES(SageObject):
             Traceback (most recent call last):
             ...
             ValueError: input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)
-            sage: G = [K.random_element() for i in xrange(5)]
+            sage: G = [K.random_element() for i in range(5)]
             sage: maes.GF_to_integer(G)
             Traceback (most recent call last):
             ...
@@ -1797,7 +1789,7 @@ class MiniAES(SageObject):
         elif isinstance(G, Matrix_dense):
             if not (G.base_ring() is K):
                 raise TypeError("input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)")
-            return [self._GF_to_int[G[i][j]] for i in xrange(G.nrows()) for j in xrange(G.ncols())]
+            return [self._GF_to_int[G[i][j]] for i in range(G.nrows()) for j in range(G.ncols())]
         # the type of G doesn't match the supported types
         else:
             raise TypeError("input G must be an element of GF(16), a list of elements of GF(16), or a matrix over GF(16)")
@@ -1886,7 +1878,7 @@ class MiniAES(SageObject):
         # a string with number of bits that is a multiple of 4
         if Mod(len(b), 4).lift() == 0:
             M = len(b) // 4  # the number of nibbles
-            return [self._bin_to_GF[b[i*4 : (i+1)*4]] for i in xrange(M)]
+            return [self._bin_to_GF[b[i*4 : (i+1)*4]] for i in range(M)]
         else:
             raise ValueError("the number of bits in the binary string B must be positive and a multiple of 4")
 
@@ -1956,7 +1948,7 @@ class MiniAES(SageObject):
         # a string with number of bits that is a multiple of 4
         if Mod(len(b), 4).lift() == 0:
             M = len(b) // 4  # the number of nibbles
-            return [self._bin_to_int[b[i*4 : (i+1)*4]] for i in xrange(M)]
+            return [self._bin_to_int[b[i*4 : (i+1)*4]] for i in range(M)]
         else:
             raise ValueError("the number of bits in the binary string B must be positive and a multiple of 4")
 
@@ -2001,7 +1993,7 @@ class MiniAES(SageObject):
 
             sage: from sage.crypto.block_cipher.miniaes import MiniAES
             sage: maes = MiniAES()
-            sage: lst = [n for n in xrange(16)]; lst
+            sage: lst = [n for n in range(16)]; lst
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
             sage: maes.integer_to_binary(lst)
             0000000100100011010001010110011110001001101010111100110111101111
@@ -2062,7 +2054,7 @@ class MiniAES(SageObject):
             bin = BinaryStrings()
             # Here, we assume that each element of the list is an integer n
             # such that 0 <= n <= 15. An error will be raised if otherwise.
-            b = "".join([str(self._int_to_bin[n]) for n in N])
+            b = "".join(str(self._int_to_bin[n]) for n in N)
             return bin(b)
         elif isinstance(N, Integer):
             # Here, we assume that N is an integer such that 0 <= n <= 15.
@@ -2124,7 +2116,7 @@ class MiniAES(SageObject):
 
             sage: from sage.crypto.block_cipher.miniaes import MiniAES
             sage: maes = MiniAES()
-            sage: lst = [n for n in xrange(16)]; lst
+            sage: lst = [n for n in range(16)]; lst
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
             sage: maes.integer_to_GF(lst)
             <BLANKLINE>

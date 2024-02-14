@@ -8,18 +8,17 @@ Cython Functions for Timing Clone Protocol
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-
-import sage
 from sage.structure.list_clone cimport ClonableArray
 
 
 #####################################################################
 ######                    Timings functions                    ######
 #####################################################################
-cpdef ClonableArray cy_add1_internal(ClonableArray bla):
+cpdef ClonableArray cy_add1_internal(ClonableArray bla) noexcept:
     """
     TESTS::
 
+        sage: from sage.structure.list_clone_timings_cy import *
         sage: from sage.structure.list_clone_timings import *
         sage: cy_add1_internal(IncreasingArrays()([1,4,5]))
         [2, 5, 6]
@@ -34,11 +33,13 @@ cpdef ClonableArray cy_add1_internal(ClonableArray bla):
     blo.check()
     return blo
 
-cpdef ClonableArray cy_add1_immutable(ClonableArray bla):
+
+cpdef ClonableArray cy_add1_immutable(ClonableArray bla) noexcept:
     """
     TESTS::
 
         sage: from sage.structure.list_clone_timings import *
+        sage: from sage.structure.list_clone_timings_cy import *
         sage: cy_add1_immutable(IncreasingArrays()([1,4,5]))
         [2, 5, 6]
     """
@@ -48,11 +49,12 @@ cpdef ClonableArray cy_add1_immutable(ClonableArray bla):
     for i in range(len(lbla)): lbla[i] += 1
     return bla.__class__(bla._parent, lbla)
 
-cpdef ClonableArray cy_add1_mutable(ClonableArray bla):
+cpdef ClonableArray cy_add1_mutable(ClonableArray bla) noexcept:
     """
     TESTS::
 
         sage: from sage.structure.list_clone_timings import *
+        sage: from sage.structure.list_clone_timings_cy import *
         sage: cy_add1_mutable(IncreasingArrays()([1,4,5]))
         [2, 5, 6]
     """
@@ -65,11 +67,13 @@ cpdef ClonableArray cy_add1_mutable(ClonableArray bla):
     blo.check()
     return blo
 
-cpdef ClonableArray cy_add1_with(ClonableArray bla):
+
+cpdef ClonableArray cy_add1_with(ClonableArray bla) noexcept:
     """
     TESTS::
 
         sage: from sage.structure.list_clone_timings import *
+        sage: from sage.structure.list_clone_timings_cy import *
         sage: cy_add1_with(IncreasingArrays()([1,4,5]))
         [2, 5, 6]
     """

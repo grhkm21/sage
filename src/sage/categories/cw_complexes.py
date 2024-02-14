@@ -18,7 +18,7 @@ class CWComplexes(Category_singleton):
     r"""
     The category of CW complexes.
 
-    A CW complex is a Closure-finite cell complex in the Weak toplogy.
+    A CW complex is a Closure-finite cell complex in the Weak topology.
 
     REFERENCES:
 
@@ -153,7 +153,7 @@ class CWComplexes(Category_singleton):
         """
         Return extraneous super categories for ``CWComplexes().Compact()``.
 
-        A compact CW complex is finite, see Proposition A.1 in [Hat]_.
+        A compact CW complex is finite, see Proposition A.1 in [Hat2002]_.
 
         .. TODO::
 
@@ -212,4 +212,3 @@ class CWComplexes(Category_singleton):
                  (1, (0-cell e1, 0-cell e2)),
                  (2, (2-cell f,))]
             """
-

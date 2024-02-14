@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# sage.doctest: needs sage.rings.padics
 r"""
 Manin map
 
@@ -34,23 +34,22 @@ EXAMPLES::
     1
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2012 Robert Pollack <rpollack@math.bu.edu>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
+
 from sage.rings.continued_fraction import convergents
-from sage.misc.misc import verbose
-from sigma0 import Sigma0
-from fund_domain import t00, t10, t01, t11, M2Z
+from .sigma0 import Sigma0
+from .fund_domain import t00, t10, t01, t11, M2Z
 from sage.matrix.matrix_space import MatrixSpace
 from sage.rings.integer_ring import ZZ
-from sage.parallel.decorate import parallel
-from operator import methodcaller
+from sage.structure.element import coercion_model
+
 
 def unimod_matrices_to_infty(r, s):
     r"""
@@ -97,7 +96,7 @@ def unimod_matrices_to_infty(r, s):
     # Computes the continued fraction convergents of r/s
     v = [M2Z([1, L[0].numerator(), 0, L[0].denominator()])]
     # Initializes the list of matrices
-    for j in range(0, len(L) - 1):
+    for j in range(len(L) - 1):
         a = L[j].numerator()
         c = L[j].denominator()
         b = L[j + 1].numerator()
@@ -150,7 +149,7 @@ def unimod_matrices_from_infty(r, s):
         # Initializes the list of matrices
         # the function contfrac_q in https://github.com/williamstein/psage/blob/master/psage/modform/rational/modular_symbol_map.pyx
         # is very, very relevant to massively optimizing this.
-        for j in range(0, len(L) - 1):
+        for j in range(len(L) - 1):
             a = L[j].numerator()
             c = L[j].denominator()
             b = L[j + 1].numerator()
@@ -162,7 +161,7 @@ def unimod_matrices_from_infty(r, s):
         return []
 
 
-class ManinMap(object):
+class ManinMap():
     r"""
     Map from a set of right coset representatives of `\Gamma_0(N)` in
     `SL_2(\ZZ)` to a coefficient module that satisfies the Manin
@@ -220,13 +219,13 @@ class ManinMap(object):
         self._codomain = codomain
         self._manin = manin_relations
         if check:
-            if not codomain.get_action(Sigma0(manin_relations._N)):
+            if coercion_model.get_action(codomain, Sigma0(manin_relations._N)) is None:
                 raise ValueError("Codomain must have an action of Sigma0(N)")
             self._dict = {}
             if isinstance(defining_data, (list, tuple)):
                 if len(defining_data) != manin_relations.ngens():
                     raise ValueError("length of defining data must be the same as number of Manin generators")
-                for i in xrange(len(defining_data)):
+                for i in range(len(defining_data)):
                     self._dict[manin_relations.gen(i)] = codomain(defining_data[i])
             elif isinstance(defining_data, dict):
                 for g in manin_relations.gens():
@@ -246,7 +245,7 @@ class ManinMap(object):
         r"""
         Extend the codomain of self to new_codomain. There must be a valid conversion operation from the old to the new codomain. This is most often used for extension of scalars from `\QQ` to `\QQ_p`.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: from sage.modular.pollack_stevens.manin_map import ManinMap, M2Z
             sage: from sage.modular.pollack_stevens.fund_domain import ManinRelations
@@ -368,7 +367,7 @@ class ManinMap(object):
             38
         """
         for B in self._manin.reps():
-            if not B in self._dict:
+            if B not in self._dict:
                 self._dict[B] = self._compute_image_from_gens(B)
 
     def __add__(self, right):
@@ -403,7 +402,7 @@ class ManinMap(object):
         D = {}
         sd = self._dict
         rd = right._dict
-        for ky, val in sd.iteritems():
+        for ky, val in sd.items():
             if ky in rd:
                 D[ky] = val + rd[ky]
         return self.__class__(self._codomain, self._manin, D, check=False)
@@ -440,7 +439,7 @@ class ManinMap(object):
         D = {}
         sd = self._dict
         rd = right._dict
-        for ky, val in sd.iteritems():
+        for ky, val in sd.items():
             if ky in rd:
                 D[ky] = val - rd[ky]
         return self.__class__(self._codomain, self._manin, D, check=False)
@@ -478,8 +477,7 @@ class ManinMap(object):
             return self._right_action(right)
 
         D = {}
-        sd = self._dict
-        for ky, val in sd.iteritems():
+        for ky, val in self._dict.items():
             D[ky] = val * right
         return self.__class__(self._codomain, self._manin, D, check=False)
 
@@ -528,7 +526,7 @@ class ManinMap(object):
         SN = Sigma0(self._manin._N)
         A = M2Z(A)
         B = self._manin.equivalent_rep(A)
-        gaminv = SN(B * M2Z(A).adjoint())
+        gaminv = SN(B * M2Z(A).adjugate())
         return (self[B] * gaminv).normalize()
 
     def __call__(self, A):
@@ -613,7 +611,7 @@ class ManinMap(object):
         sd = self._dict
         if codomain is None:
             codomain = self._codomain
-        for ky, val in sd.iteritems():
+        for ky, val in sd.items():
             if to_moments:
                 D[ky] = codomain([f(val.moment(a))
                                   for a in range(val.precision_absolute())])
@@ -687,10 +685,8 @@ class ManinMap(object):
             (17, -34, 69)
         """
         D = {}
-        sd = self._dict
         # we should eventually replace the for loop with a call to apply_many
-        keys = [ky for ky in sd.iterkeys()]
-        for ky in keys:
+        for ky in self._dict:
             D[ky] = self(gamma * ky) * gamma
         return self.__class__(self._codomain, self._manin, D, check=False)
 
@@ -713,7 +709,7 @@ class ManinMap(object):
             (1 + O(11^2), 2 + O(11))
         """
         sd = self._dict
-        for val in sd.itervalues():
+        for val in sd.values():
             val.normalize()
         return self
 
@@ -739,8 +735,7 @@ class ManinMap(object):
             1 + O(11^2)
         """
         D = {}
-        sd = self._dict
-        for ky, val in sd.iteritems():
+        for ky, val in self._dict.items():
             D[ky] = val.reduce_precision(M)
         return self.__class__(self._codomain, self._manin, D, check=False)
 
@@ -762,13 +757,12 @@ class ManinMap(object):
             Sym^0 Z_11^2
         """
         D = {}
-        sd = self._dict
-        for ky, val in sd.iteritems():
+        for ky, val in self._dict.items():
             D[ky] = val.specialize(*args)
         return self.__class__(self._codomain.specialize(*args), self._manin,
                               D, check=False)
 
-    def hecke(self, ell, algorithm = 'prep'):
+    def hecke(self, ell, algorithm='prep'):
         r"""
         Return the image of this Manin map under the Hecke operator `T_{\ell}`.
 
@@ -802,7 +796,7 @@ class ManinMap(object):
         M = self._manin
 
         if algorithm == 'prep':
-            ## psi will denote self | T_ell
+            # psi will denote self | T_ell
             psi = {}
             for g in M.gens():
                 psi_g = sum((self[h] * A for h, A in M.prep_hecke_on_gen_list(ell, g)), self._codomain(0))
@@ -823,7 +817,7 @@ class ManinMap(object):
 
     def p_stabilize(self, p, alpha, V):
         r"""
-        Return the `p`-stablization of self to level `N*p` on which
+        Return the `p`-stabilization of self to level `N*p` on which
         `U_p` acts by `\alpha`.
 
         INPUT:

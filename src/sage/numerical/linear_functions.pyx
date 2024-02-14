@@ -11,12 +11,12 @@ either equalities or less-or-equal. For example::
     sage: f = 1 + x[1] + 2*x[2];  f     #  a linear function
     1 + x_0 + 2*x_1
     sage: type(f)
-    <type 'sage.numerical.linear_functions.LinearFunction'>
+    <class 'sage.numerical.linear_functions.LinearFunction'>
 
     sage: c = (0 <= f);  c    # a constraint
     0 <= 1 + x_0 + 2*x_1
     sage: type(c)
-    <type 'sage.numerical.linear_functions.LinearConstraint'>
+    <class 'sage.numerical.linear_functions.LinearConstraint'>
 
 Note that you can use this module without any reference to linear
 programming, it only implements linear functions over a base ring and
@@ -52,7 +52,7 @@ inequalities as less or equal::
     The implementation of chained inequalities uses a Python hack to
     make it work, so it is not completely robust. In particular, while
     constants are allowed, no two constants can appear next to
-    eachother. The following does not work for example::
+    each other. The following does not work for example::
 
         sage: x[0] <= 3 <= 4
         True
@@ -62,10 +62,18 @@ inequalities as less or equal::
 
         sage: from sage.numerical.linear_functions import LinearFunctionsParent
         sage: LF = LinearFunctionsParent(QQ)
-        sage: x[0] <= LF(3) <= LF(4)
-        x_0 <= 3 <= 4
+        sage: x[1] <= LF(3) <= LF(4)
+        x_1 <= 3 <= 4
 
 TESTS:
+
+This was fixed in :trac:`24423`::
+
+    sage: p.<x> = MixedIntegerLinearProgram()
+    sage: from sage.numerical.linear_functions import LinearFunctionsParent
+    sage: LF = LinearFunctionsParent(QQ)
+    sage: 3 <= x[0] <= LF(4)
+    3 <= x_0 <= 4
 
 See :trac:`12091`::
 
@@ -81,7 +89,7 @@ See :trac:`12091`::
     2*x_0 <= x_1 <= x_2
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2012 Nathann Cohen <nathann.cohen@gmail.com>
 #       Copyright (C) 2012 Volker Braun <vbraun.name@gmail.com>
 #       Copyright (C) 2016 Jeroen Demeyer <jdemeyer@cage.ugent.be>
@@ -90,9 +98,8 @@ See :trac:`12091`::
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from cpython.object cimport Py_EQ, Py_GE, Py_LE, Py_GT, Py_LT
 
@@ -107,7 +114,7 @@ from sage.misc.cachefunc import cached_function
 #
 #*****************************************************************************
 
-cpdef is_LinearFunction(x):
+cpdef is_LinearFunction(x) noexcept:
     """
     Test whether ``x`` is a linear function
 
@@ -130,6 +137,7 @@ cpdef is_LinearFunction(x):
         False
     """
     return isinstance(x, LinearFunction)
+
 
 def is_LinearConstraint(x):
     """
@@ -187,19 +195,20 @@ def LinearFunctionsParent(base_ring):
     """
     return LinearFunctionsParent_class(base_ring)
 
+
 @cached_function
 def LinearConstraintsParent(linear_functions_parent):
-   """
-   Return the parent for linear functions over ``base_ring``.
+    """
+    Return the parent for linear functions over ``base_ring``.
 
-   The output is cached, so only a single parent is ever constructed
-   for a given base ring.
+    The output is cached, so only a single parent is ever constructed
+    for a given base ring.
 
     INPUT:
 
-    - ``linear_functions_parent`` -- a
-      :class:`LinearFunctionsParent_class`. The type of linear
-      functions that the constraints are made out of.
+     - ``linear_functions_parent`` -- a
+       :class:`LinearFunctionsParent_class`. The type of linear
+       functions that the constraints are made out of.
 
     OUTPUT:
 
@@ -212,15 +221,15 @@ def LinearConstraintsParent(linear_functions_parent):
         sage: LF = LinearFunctionsParent(QQ)
         sage: LinearConstraintsParent(LF)
         Linear constraints over Rational Field
-   """
-   return LinearConstraintsParent_class(linear_functions_parent)
+    """
+    return LinearConstraintsParent_class(linear_functions_parent)
 
 
-#*****************************************************************************
+# ****************************************************************************
 #
 # Elements of linear functions or constraints
 #
-#*****************************************************************************
+# ****************************************************************************
 
 cdef chained_comparator_left = None
 cdef chained_comparator_right = None
@@ -233,7 +242,7 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
     This class exists solely to implement chaining of inequalities
     in constraints.
     """
-    def __richcmp__(py_left, py_right, int op):
+    def __richcmp__(self, other, int op):
         """
         Create an inequality or equality object, possibly chaining
         several together.
@@ -247,14 +256,15 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
         ::
 
             sage: p = MixedIntegerLinearProgram()
+            sage: LF = p.linear_functions_parent()
             sage: from sage.numerical.linear_functions import LinearFunction
-            sage: p({2 : 5, 3 : 2}) <= p({2 : 3, 9 : 2})
+            sage: LF({2 : 5, 3 : 2}) <= LF({2 : 3, 9 : 2})
             5*x_2 + 2*x_3 <= 3*x_2 + 2*x_9
 
-            sage: p({2 : 5, 3 : 2}) >= p({2 : 3, 9 : 2})
+            sage: LF({2 : 5, 3 : 2}) >= LF({2 : 3, 9 : 2})
             3*x_2 + 2*x_9 <= 5*x_2 + 2*x_3
 
-            sage: p({2 : 5, 3 : 2}) == p({2 : 3, 9 : 2})
+            sage: LF({2 : 5, 3 : 2}) == LF({2 : 3, 9 : 2})
             5*x_2 + 2*x_3 == 3*x_2 + 2*x_9
 
         We can chain multiple (in)equalities::
@@ -304,10 +314,11 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
         TESTS::
 
             sage: p.<x> = MixedIntegerLinearProgram()
+            sage: LF = p.linear_functions_parent()
             sage: cm = sage.structure.element.get_coercion_model()
-            sage: cm.explain(10, p(1), operator.le)
+            sage: cm.explain(10, LF(1), operator.le)
             Coercion on left operand via
-                Conversion map:
+                Coercion map:
                   From: Integer Ring
                   To:   Linear functions over Real Double Field
             Arithmetic performed after coercions.
@@ -333,37 +344,34 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
             sage: int(1) >= b[0] >= int(2)
             2 <= x_0 <= 1
             sage: int(1) == b[0] == int(2)
-            x_0 == 1 == 2
+            1 == x_0 == 2
             sage: float(0) <= b[0] <= int(1) <= b[1] <= float(2)
             0 <= x_0 <= 1 <= x_1 <= 2
         """
+        # Store the chaining variables and set them to None for now in
+        # order to have a sane state for any conversions below or when
+        # an exception is raised.
         global chained_comparator_left
         global chained_comparator_right
         global chained_comparator_replace
 
-        # Ensure that we use chained_comparator_replace only for this
-        # call to __richcmp__.
-        cdef LinearConstraint replace = chained_comparator_replace
+        chain_left = chained_comparator_left
+        chain_right = chained_comparator_right
+        chain_replace = chained_comparator_replace
+
+        chained_comparator_left = None
+        chained_comparator_right = None
         chained_comparator_replace = None
 
-        # At least one of py_left or py_right must be of type
-        # LinearFunctionOrConstraint: figure out its parent
-        try:
-            LC = (<LinearFunctionOrConstraint?>py_left)._parent
-        except TypeError:
-            LC = (<LinearFunctionOrConstraint>py_right)._parent
-
-        # We want the parent to be a LinearConstraintsParent
-        if not isinstance(LC, LinearConstraintsParent_class):
-            LC = LinearConstraintsParent(LC)
-
-        # Check op and change >= to <=
+        # Assign {self, other} to {py_left, py_right} such that
+        # py_left <= py_right.
         cdef bint equality = False
         if op == Py_LE:
-            pass
+            py_left, py_right = self, other
         elif op == Py_GE:
-            py_left, py_right = py_right, py_left
+            py_left, py_right = other, self
         elif op == Py_EQ:
+            py_left, py_right = self, other
             equality = True
         elif op == Py_LT:
             raise ValueError("strict < is not allowed, use <= instead")
@@ -372,31 +380,16 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
         else:
             raise ValueError("inequality != is not allowed, use one of <=, ==, >=")
 
-        # Convert py_left and py_right to constraints left and right
-        cdef LinearConstraint left
-        cdef LinearConstraint right
-
-        try:
-            left = <LinearConstraint?>py_left
-        except TypeError:
-            left = <LinearConstraint>LC(py_left, equality=equality)
-        else:
-            if left._parent is not LC:
-                left = <LinearConstraint>LC(left.constraints, equality=left.equality)
-
-        try:
-            right = <LinearConstraint?>py_right
-        except TypeError:
-            right = <LinearConstraint>LC(py_right, equality=equality)
-        else:
-            if right._parent is not LC:
-                right = <LinearConstraint>LC(right.constraints, equality=right.equality)
+        # Convert py_left and py_right to constraints left and right,
+        # possibly replacing them to implement the hack below.
+        cdef LinearConstraint left = None
+        cdef LinearConstraint right = None
 
         # HACK to allow chained constraints: Python translates
         # x <= y <= z into:
         #
         #     temp = x <= y      # calls x.__richcmp__(y)
-        #     if temp:           # calls temp.__nonzero__()
+        #     if temp:           # calls temp.__bool__()
         #         return y <= z  # calls y.__richcmp__(z)
         #     else:
         #         return temp
@@ -405,48 +398,82 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
         # non-Sage type):
         #
         #     temp = y >= x      # calls y.__richcmp__(x)
-        #     if temp:           # calls temp.__nonzero__()
+        #     if temp:           # calls temp.__bool__()
         #         return y <= z  # calls y.__richcmp__(z)
         #     else:
         #         return temp
         #
         # but we would like x <= y <= z as output. The trick to make it
         # work is to store x and y in the first call to __richcmp__
-        # and temp in the call to __nonzero__. Then we can replace x
+        # and temp in the call to __bool__. Then we can replace x
         # or y by x <= y in the second call to __richcmp__.
-        if replace is not None:
+        if chain_replace is not None:
+            if chain_replace.equality != equality:
+                raise ValueError("cannot mix equations and inequalities")
+
             # First, check for correctly-chained inequalities
             # x <= y <= z or z <= y <= x.
-            if py_left is chained_comparator_right:
-                left = replace
-            elif py_right is chained_comparator_left:
-                right = replace
-            # Next, check for wrongly-chained inequalities like
-            # x <= y >= z. In case of equality, these are accepted
-            # anyway.
-            elif py_left is chained_comparator_left:
+            if py_left is chain_right:
+                left = chain_replace
+            elif py_right is chain_left:
+                right = chain_replace
+            # Next, check for incorrectly chained inequalities like
+            # x <= y >= z. If we are dealing with inequalities, this
+            # is an error. For an equality, we fix the chaining by
+            # reversing one of the sides.
+            elif py_left is chain_left:
                 if not equality:
                     raise ValueError("incorrectly chained inequality")
-                left = replace
-            elif py_right is chained_comparator_right:
+                chain_replace.constraints.reverse()
+                left = chain_replace
+            elif py_right is chain_right:
                 if not equality:
                     raise ValueError("incorrectly chained inequality")
-                right = replace
+                left = chain_replace
+                py_right = py_left
 
-        chained_comparator_left = py_left
-        chained_comparator_right = py_right
+        # Figure out the correct parent to work with: if we did a
+        # replacement, its parent takes priority.
+        if left is not None:
+            LC = left._parent
+        elif right is not None:
+            LC = right._parent
+        else:
+            LC = (<LinearFunctionOrConstraint>self)._parent
+
+            # We want the parent to be a LinearConstraintsParent
+            if not isinstance(LC, LinearConstraintsParent_class):
+                LC = LinearConstraintsParent(LC)
+
+        if left is None:
+            try:
+                left = <LinearConstraint?>py_left
+            except TypeError:
+                left = <LinearConstraint>LC(py_left, equality=equality)
+            else:
+                if left._parent is not LC:
+                    left = <LinearConstraint>LC(left.constraints, equality=left.equality)
+
+        if right is None:
+            try:
+                right = <LinearConstraint?>py_right
+            except TypeError:
+                right = <LinearConstraint>LC(py_right, equality=equality)
+            else:
+                if right._parent is not LC:
+                    right = <LinearConstraint>LC(right.constraints, equality=right.equality)
 
         # Finally, chain the (in)equalities
         if left.equality != equality or right.equality != equality:
             raise ValueError("cannot mix equations and inequalities")
-        return LC(left.constraints + right.constraints, equality=equality)
+        ret = LC(left.constraints + right.constraints, equality=equality)
 
-    cdef void chained_comparator_hack_nonzero(self):
-        """
-        Hack to allow chained (in)equalities, see ``__richcmp__``.
-        """
-        global chained_comparator_replace
-        chained_comparator_replace = self
+        # Everything done, so we set the chaining variables
+        chained_comparator_left = py_left
+        chained_comparator_right = py_right
+        chained_comparator_replace = None
+
+        return ret
 
     def __hash__(self):
         r"""
@@ -455,47 +482,29 @@ cdef class LinearFunctionOrConstraint(ModuleElement):
         EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: f = p({2 : 5, 3 : 2})
-            sage: f.__hash__()   # random output
+            sage: LF = p.linear_functions_parent()
+            sage: f = LF({2 : 5, 3 : 2})
+            sage: hash(f)  # indirect doctest; random
             103987752
-            sage: d = {}
-            sage: d[f] = 3
-        """
-        # see __cmp__() if you want to change the hash function
-        return hash_by_id(<void*>self)
 
-    def __cmp__(left, right):
-        """
-        Implement comparison of two linear functions or constraints.
+        Since we hash by ``id()``, linear functions and constraints are
+        only considered equal for sets and dicts if they are the same
+        object::
 
-        EXAMPLES::
-
-            sage: p = MixedIntegerLinearProgram()
-            sage: f = p({2 : 5, 3 : 2})
-            sage: cmp(f, f)
-            0
-            sage: abs(cmp(f, f+0))     # since we are comparing by id()
-            1
-            sage: abs(cmp(f, f+1))
-            1
-            sage: len(set([f, f]))
-            1
-            sage: len(set([f, f+0]))
-            2
+            sage: f = LF.0
+            sage: set([f, f])
+            {x_0}
+            sage: set([f, f+0])
+            {x_0, x_0}
             sage: len(set([f, f+1]))
             2
-            sage: abs(cmp(f <= 0, f <= 0))
-            1
+            sage: d = {}
+            sage: d[f] = 123
+            sage: d[f+0] = 456
+            sage: list(d)
+            [x_0, x_0]
         """
-        # Note: if you want to implement smarter comparison, you also
-        # need to change __hash__(). The comparison function must
-        # satisfy cmp(x,y)==0 => hash(x)==hash(y)
-        if left is right:
-            return 0
-        if <size_t><void*>left < <size_t><void*>right:
-            return -1
-        else:
-            return 1
+        return hash_by_id(<void*>self)
 
 
 #*****************************************************************************
@@ -521,7 +530,7 @@ cdef class LinearFunctionsParent_class(Parent):
 
         sage: from sage.numerical.linear_functions import LinearFunctionsParent_class
         sage: LinearFunctionsParent_class
-        <type 'sage.numerical.linear_functions.LinearFunctionsParent_class'>
+        <class 'sage.numerical.linear_functions.LinearFunctionsParent_class'>
     """
     def __cinit__(self):
         """
@@ -641,7 +650,7 @@ cdef class LinearFunctionsParent_class(Parent):
             sage: LF.gen(23)
             x_23
         """
-        return LinearFunction(self, {i:1})
+        return LinearFunction(self, {i: 1})
 
     def _repr_(self):
         """
@@ -652,11 +661,11 @@ cdef class LinearFunctionsParent_class(Parent):
             sage: MixedIntegerLinearProgram().linear_functions_parent()
             Linear functions over Real Double Field
         """
-        return 'Linear functions over '+str(self.base_ring())
+        return 'Linear functions over ' + str(self.base_ring())
 
-    cpdef _element_constructor_(self, x):
+    cpdef _element_constructor_(self, x) noexcept:
         """
-        Construt a :class:`LinearFunction` from ``x``.
+        Construct a :class:`LinearFunction` from ``x``.
 
         EXAMPLES::
 
@@ -664,10 +673,10 @@ cdef class LinearFunctionsParent_class(Parent):
             sage: LF = p.linear_functions_parent()
             sage: LF._element_constructor_(123)
             123
-            sage: p(123)    # indirect doctest
+            sage: LF(123)    # indirect doctest
             123
             sage: type(_)
-            <type 'sage.numerical.linear_functions.LinearFunction'>
+            <class 'sage.numerical.linear_functions.LinearFunction'>
 
             sage: p_QQ = MixedIntegerLinearProgram(solver='ppl')
             sage: LF_QQ = p_QQ.linear_functions_parent()
@@ -681,13 +690,10 @@ cdef class LinearFunctionsParent_class(Parent):
             False
         """
         if is_LinearFunction(x):
-            if x.parent() is self:
-                return x
-            else:
-                return LinearFunction(self, (<LinearFunction>x)._f)
+            return LinearFunction(self, (<LinearFunction>x)._f)
         return LinearFunction(self, x)
 
-    cpdef _coerce_map_from_(self, R):
+    cpdef _coerce_map_from_(self, R) noexcept:
         """
         Allow coercion of scalars into linear functions.
 
@@ -708,11 +714,8 @@ cdef class LinearFunctionsParent_class(Parent):
             sage: parent._coerce_map_from_(int)
             True
         """
-        if R in [int, float, long, complex]:
-            return True
-        from sage.rings.real_mpfr import mpfr_prec_min
-        from sage.rings.all import RealField
-        if RealField(mpfr_prec_min()).has_coerce_map_from(R):
+        from sage.structure.coerce import parent_is_real_numerical
+        if parent_is_real_numerical(R) or R is complex:
             return True
         return False
 
@@ -749,19 +752,13 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
 
         You should never instantiate :class:`LinearFunction`
         manually. Use the element constructor in the parent
-        instead. For convenience, you can also call the
-        :class:`MixedIntegerLinearProgram` instance directly.
+        instead.
 
     EXAMPLES:
 
     For example, do this::
 
         sage: p = MixedIntegerLinearProgram()
-        sage: p({0 : 1, 3 : -8})
-        x_0 - 8*x_3
-
-    or this::
-
         sage: parent = p.linear_functions_parent()
         sage: parent({0 : 1, 3 : -8})
         x_0 - 8*x_3
@@ -787,13 +784,15 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         With a dictionary::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: p({0 : 1, 3 : -8})
+            sage: LF = p.linear_functions_parent()
+            sage: LF({0 : 1, 3 : -8})
             x_0 - 8*x_3
 
         Using the constructor with a numerical value::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: p(25)
+            sage: LF = p.linear_functions_parent()
+            sage: LF(25)
             25
         """
         ModuleElement.__init__(self, parent)
@@ -803,9 +802,9 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         else:
             self._f = {-1: R(f)}
 
-    cpdef iteritems(self):
+    cpdef iteritems(self) noexcept:
         """
-        Iterate over the index, coefficient pairs
+        Iterate over the index, coefficient pairs.
 
         OUTPUT:
 
@@ -818,11 +817,11 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
             sage: p = MixedIntegerLinearProgram(solver = 'ppl')
             sage: x = p.new_variable()
             sage: f = 0.5 + 3/2*x[1] + 0.6*x[3]
-            sage: for id, coeff in f.iteritems():
+            sage: for id, coeff in sorted(f.iteritems()):
             ....:     print('id = {}   coeff = {}'.format(id, coeff))
+            id = -1   coeff = 1/2
             id = 0   coeff = 3/2
             id = 1   coeff = 3/5
-            id = -1   coeff = 1/2
         """
         return self._f.iteritems()
 
@@ -837,10 +836,11 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         which are integers ). The key ``-1`` corresponds to the
         constant term.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: lf = p({0 : 1, 3 : -8})
+            sage: LF = p.linear_functions_parent()
+            sage: lf = LF({0 : 1, 3 : -8})
             sage: lf.dict()
             {0: 1.0, 3: -8.0}
         """
@@ -848,7 +848,7 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
 
     def coefficient(self, x):
         r"""
-        Return one of the the coefficients.
+        Return one of the coefficients.
 
         INPUT:
 
@@ -860,7 +860,7 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         A base ring element. The coefficient of ``x`` in the linear
         function. Pass ``-1`` for the constant term.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: mip.<b> = MixedIntegerLinearProgram()
             sage: lf = -8 * b[3] + b[0] - 5;  lf
@@ -895,7 +895,7 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
                 raise ValueError('x is from a different linear functions module')
             if len((<LinearFunction>x)._f) != 1:
                 raise ValueError('x is a sum, must be a single variable')
-            i = (<LinearFunction>x)._f.keys()[0]
+            i, = (<LinearFunction>x)._f.keys()
             if (<LinearFunction>x)._f[i] != 1:
                 raise ValueError('x must have a unit coefficient')
         else:
@@ -905,14 +905,15 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         except KeyError:
             return self.parent().base_ring().zero()
 
-    cpdef _add_(self, b):
+    cpdef _add_(self, b) noexcept:
         r"""
         Defining the + operator
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: p({0 : 1, 3 : -8}) + p({2 : 5, 3 : 2}) - 16
+            sage: LF = p.linear_functions_parent()
+            sage: LF({0 : 1, 3 : -8}) + LF({2 : 5, 3 : 2}) - 16
             -16 + x_0 + 5*x_2 - 6*x_3
         """
         e = dict(self._f)
@@ -921,116 +922,109 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         P = self.parent()
         return P(e)
 
-    cpdef _neg_(self):
+    cpdef _neg_(self) noexcept:
         r"""
         Defining the - operator (opposite).
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: - p({0 : 1, 3 : -8})
+            sage: LF = p.linear_functions_parent()
+            sage: - LF({0 : 1, 3 : -8})
             -1*x_0 + 8*x_3
         """
         P = self.parent()
-        return P(dict([(id,-coeff) for (id, coeff) in self._f.iteritems()]))
+        return P({id: -coeff for id, coeff in self._f.iteritems()})
 
-    cpdef _sub_(self, b):
+    cpdef _sub_(self, b) noexcept:
         r"""
-        Defining the - operator (substraction).
+        Defining the - operator (subtraction).
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: p({2 : 5, 3 : 2}) - 3
+            sage: LF = p.linear_functions_parent()
+            sage: LF({2 : 5, 3 : 2}) - 3
             -3 + 5*x_2 + 2*x_3
-            sage: p({0 : 1, 3 : -8}) - p({2 : 5, 3 : 2}) - 16
+            sage: LF({0 : 1, 3 : -8}) - LF({2 : 5, 3 : 2}) - 16
             -16 + x_0 - 5*x_2 - 10*x_3
         """
         e = dict(self._f)
-        for (id,coeff) in b.dict().iteritems():
-            e[id] = self._f.get(id,0) - coeff
+        for id, coeff in b.dict().iteritems():
+            e[id] = self._f.get(id, 0) - coeff
         P = self.parent()
         return P(e)
 
-    cpdef _rmul_(self, RingElement b):
+    cpdef _lmul_(self, Element b) noexcept:
         r"""
-        Left multiplication by scalars
+        Multiplication by scalars
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: p({2 : 5, 3 : 2}) * 3
+            sage: LF = p.linear_functions_parent()
+            sage: LF({2 : 5, 3 : 2}) * 3
+            15*x_2 + 6*x_3
+            sage: 3 * LF({2 : 5, 3 : 2})
             15*x_2 + 6*x_3
         """
         P = self.parent()
         return P(dict([(id,b*coeff) for (id, coeff) in self._f.iteritems()]))
 
-    cpdef _lmul_(self, RingElement b):
-        r"""
-        Right multiplication by scalars
-
-        EXAMPLE::
-
-            sage: p = MixedIntegerLinearProgram()
-            sage: 3 * p({2 : 5, 3 : 2})
-            15*x_2 + 6*x_3
+    cpdef _acted_upon_(self, x, bint self_on_left) noexcept:
         """
-        return self._rmul_(b)
+        Act with scalars that do not have a natural coercion into
+        ``self.base_ring()``
 
-    cpdef _acted_upon_(self, x, bint self_on_left):
-       """
-       Act with scalars that do not have a natural coercion into
-       ``self.base_ring()``
+        EXAMPLES:
 
-       EXAMPLES:
+        Note that there is no coercion from ``RR`` to ``QQ``, but you
+        can explicitly convert them::
 
-       Note that there is no coercion from ``RR`` to ``QQ``, but you
-       can explicitly convert them::
+            sage: 1/2 * 0.6
+            0.300000000000000
 
-           sage: 1/2 * 0.6
-           0.300000000000000
+        If there were a coercion, then 0.6 would have been coerced into
+        6/10 and the result would have been rational. This is
+        undesirable, which is why there cannot be a coercion on the
+        level of the coefficient rings.
 
-       If there were a coercion, then 0.6 would have been coerced into
-       6/10 and the result would have been rational. This is
-       undesirable, which is why there cannot be a coercion on the
-       level of the coefficient rings.
+        By declaring an action of ``RR`` on the linear functions over
+        ``QQ`` we make the following possible::
 
-       By declaring an action of ``RR`` on the linear functions over
-       ``QQ`` we make the following possible::
+            sage: p = MixedIntegerLinearProgram(solver='ppl')
+            sage: p.base_ring()
+            Rational Field
+            sage: x = p.new_variable()
+            sage: x[0] * 0.6
+            3/5*x_0
 
-           sage: p = MixedIntegerLinearProgram(solver='ppl')
-           sage: p.base_ring()
-           Rational Field
-           sage: x = p.new_variable()
-           sage: x[0] * 0.6
-           3/5*x_0
+            sage: vf = (2 + x[0]) * vector(ZZ, [3,4]);  vf
+            (6, 8) + (3, 4)*x_0
+            sage: vf.parent()
+            Tensor product of Vector space of dimension 2 over Rational Field
+            and Linear functions over Rational Field
 
-           sage: vf = (2 + x[0]) * vector(ZZ, [3,4]);  vf
-           (6, 8) + (3, 4)*x_0
-           sage: vf.parent()
-           Tensor product of Vector space of dimension 2 over Rational Field
-           and Linear functions over Rational Field
-
-           sage: tf = x[0] * identity_matrix(2);  tf
-           [x_0 0  ]
-           [0   x_0]
-           sage: tf.parent()
-           Tensor product of Full MatrixSpace of 2 by 2 dense matrices over
-           Rational Field and Linear functions over Rational Field
-       """
-       R = self.base_ring()
-       try:
-           x_R = R(x)
-       except TypeError:
-           M = x.parent().base_extend(R)
-           x_M = M(x)
-           from sage.numerical.linear_tensor import LinearTensorParent
-           P = LinearTensorParent(M, self.parent())
-           tensor = dict()
-           for k, v in self._f.items():
-               tensor[k] = x_M * v
-           return P(tensor)
-       return self._rmul_(x_R)
+            sage: tf = x[0] * identity_matrix(2);  tf
+            [x_0 0  ]
+            [0   x_0]
+            sage: tf.parent()
+            Tensor product of Full MatrixSpace of 2 by 2 dense matrices over
+            Rational Field and Linear functions over Rational Field
+        """
+        R = self.base_ring()
+        try:
+            x_R = R(x)
+        except TypeError:
+            M = x.parent().base_extend(R)
+            x_M = M(x)
+            from sage.numerical.linear_tensor import LinearTensorParent
+            P = LinearTensorParent(M, self.parent())
+            tensor = dict()
+            for k, v in self._f.items():
+                tensor[k] = x_M * v
+            return P(tensor)
+        return self._rmul_(x_R)
 
     def _coeff_formatter(self, coeff, constant_term=False):
         """
@@ -1044,8 +1038,9 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
-            sage: f = p(1);  type(f)
-            <type 'sage.numerical.linear_functions.LinearFunction'>
+            sage: LF = p.linear_functions_parent()
+            sage: f = LF(1);  type(f)
+            <class 'sage.numerical.linear_functions.LinearFunction'>
             sage: f._coeff_formatter(1)
             ''
             sage: f._coeff_formatter(1, constant_term=True)
@@ -1056,21 +1051,24 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
             '12.3*'
 
             sage: p = MixedIntegerLinearProgram(solver='ppl')
-            sage: f = p(1)
+            sage: LF = p.linear_functions_parent()
+            sage: f = LF(1)
             sage: f._coeff_formatter(13/45)
             '13/45*'
 
             sage: from sage.rings.number_field.number_field import QuadraticField
             sage: K.<sqrt5> = QuadraticField(5, 'sqrt5')
             sage: p = MixedIntegerLinearProgram(solver='interactivelp', base_ring=K)
-            sage: f = p(1)
+            sage: LF = p.linear_functions_parent()
+            sage: f = LF(1)
             sage: f._coeff_formatter(sqrt5)
             'sqrt5*'
 
-            sage: from sage.rings.all import AA
+            sage: from sage.rings.qqbar import AA
             sage: sqrt5 = AA(5).sqrt()
             sage: p = MixedIntegerLinearProgram(solver='interactivelp', base_ring=AA)
-            sage: f = p(1)
+            sage: LF = p.linear_functions_parent()
+            sage: f = LF(1)
             sage: f._coeff_formatter(sqrt5)
             '2.236067977499790?*'
         """
@@ -1078,8 +1076,8 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         if coeff == R.one() and not constant_term:
             return ''
         try:
-            from sage.rings.all import ZZ
-            coeff = ZZ(coeff)    # print as integer if possible
+            from sage.rings.integer_ring import ZZ
+            coeff = ZZ(coeff)
         except (TypeError, ValueError):
             pass
         if constant_term:
@@ -1091,13 +1089,15 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         r"""
         Returns a string version of the linear function.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram(solver='GLPK')
-            sage: p({-1: -15, 2 : -5.1, 3 : 2/3})
-            -15 - 5.1*x_2 + 0.666666666667*x_3
+            sage: LF = p.linear_functions_parent()
+            sage: LF({-1: -15, 2 : -5.1, 3 : 2/3})
+            -15 - 5.1*x_2 + 0.6666666666666666*x_3
             sage: p = MixedIntegerLinearProgram(solver='ppl')
-            sage: p({-1: -15, 2 : -5.1, 3 : 2/3})
+            sage: LF = p.linear_functions_parent()
+            sage: LF({-1: -15, 2 : -5.1, 3 : 2/3})
             -15 - 51/10*x_2 + 2/3*x_3
         """
         cdef dict d = dict(self._f)
@@ -1106,13 +1106,13 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
 
         if -1 in d:
             coeff = d.pop(-1)
-            if coeff!=0:
+            if coeff:
                 t = self._coeff_formatter(coeff, constant_term=True)
                 first = False
 
         cdef list l = sorted(d.items())
-        for id,coeff in l:
-            sign = cmp(coeff,0)
+        for id, coeff in l:
+            sign = coeff.sign()
             if sign == 0:
                 continue
             if not first:
@@ -1130,7 +1130,7 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
         else:
             return t
 
-    cpdef is_zero(self):
+    cpdef is_zero(self) noexcept:
         """
         Test whether ``self`` is zero.
 
@@ -1150,7 +1150,7 @@ cdef class LinearFunction(LinearFunctionOrConstraint):
                 return False
         return True
 
-    cpdef equals(LinearFunction left, LinearFunction right):
+    cpdef equals(LinearFunction left, LinearFunction right) noexcept:
         """
         Logically compare ``left`` and ``right``.
 
@@ -1265,11 +1265,11 @@ cdef class LinearConstraintsParent_class(Parent):
             sage: MixedIntegerLinearProgram().linear_constraints_parent()
             Linear constraints over Real Double Field
         """
-        return 'Linear constraints over '+str(self.linear_functions_parent().base_ring())
+        return 'Linear constraints over ' + str(self.linear_functions_parent().base_ring())
 
-    cpdef _element_constructor_(self, left, right=None, equality=False):
+    cpdef _element_constructor_(self, left, right=None, equality=False) noexcept:
         """
-        Construt a :class:`LinearConstraint`.
+        Construct a :class:`LinearConstraint`.
 
         INPUT:
 
@@ -1303,7 +1303,7 @@ cdef class LinearConstraintsParent_class(Parent):
             x_0 == x_1 == x_2
 
             sage: type(_)
-            <type 'sage.numerical.linear_functions.LinearConstraint'>
+            <class 'sage.numerical.linear_functions.LinearConstraint'>
 
         TESTS::
 
@@ -1332,7 +1332,7 @@ cdef class LinearConstraintsParent_class(Parent):
         else:
             return LinearConstraint(self, [left, right], equality=equality)
 
-    cpdef _coerce_map_from_(self, R):
+    cpdef _coerce_map_from_(self, R) noexcept:
         """
         Allow coercion of scalars into linear functions.
 
@@ -1403,7 +1403,7 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
       are the entries of a chained less-or-equal (``<=``) inequality
       or a chained equality.
 
-    EXAMPLE::
+    EXAMPLES::
 
         sage: p = MixedIntegerLinearProgram()
         sage: b = p.new_variable()
@@ -1419,7 +1419,7 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
 
         See :class:`LinearConstraint`.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
             sage: b = p.new_variable()
@@ -1427,12 +1427,12 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
             x_0 + 2*x_1 <= -5 + x_2
         """
         assert len(terms) > 0
-        super(LinearConstraint, self).__init__(parent)
+        super().__init__(parent)
         self.equality = equality
         LF = parent.linear_functions_parent()
         self.constraints = [ LF(term) for term in terms ]
 
-    cpdef equals(LinearConstraint left, LinearConstraint right):
+    cpdef equals(LinearConstraint left, LinearConstraint right) noexcept:
         """
         Compare ``left`` and ``right``.
 
@@ -1572,14 +1572,17 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
             3 == x_2
         """
         if not self.is_equation() or self.is_trivial():
-            raise StopIteration
+            return
         term_iter = iter(self)
         lhs = next(term_iter)
         rhs = next(term_iter)
         while True:
             yield (lhs, rhs)
             lhs = rhs
-            rhs = next(term_iter)
+            try:
+                rhs = next(term_iter)
+            except StopIteration:
+                return
 
     def inequalities(self):
         """
@@ -1605,14 +1608,17 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
             3 <= x_2
         """
         if not self.is_less_or_equal() or self.is_trivial():
-            raise StopIteration
+            return
         term_iter = iter(self)
         lhs = next(term_iter)
         rhs = next(term_iter)
         while True:
             yield (lhs, rhs)
             lhs = rhs
-            rhs = next(term_iter)
+            try:
+                rhs = next(term_iter)
+            except StopIteration:
+                return
 
     def _repr_(self):
         r"""
@@ -1622,7 +1628,7 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
 
         String.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: p = MixedIntegerLinearProgram()
             sage: b = p.new_variable()
@@ -1635,13 +1641,13 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
             sage: LC(b[3])
             trivial constraint starting with x_0
         """
-        comparator = ( ' == ' if self.equality else ' <= ' )
+        comparator = (' == ' if self.equality else ' <= ')
         result = comparator.join(map(str, self))
         if self.is_trivial():
-            return 'trivial constraint starting with '+result
+            return 'trivial constraint starting with ' + result
         return result
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Part of the hack to allow chained (in)equalities
 
@@ -1653,5 +1659,6 @@ cdef class LinearConstraint(LinearFunctionOrConstraint):
             sage: ieq <= ieq <= ieq
             x_0 <= 9 + x_1 <= x_0 <= 9 + x_1 <= x_0 <= 9 + x_1
         """
-        self.chained_comparator_hack_nonzero()
+        global chained_comparator_replace
+        chained_comparator_replace = self
         return True

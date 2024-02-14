@@ -6,15 +6,14 @@ AUTHORS:
 - Daniel Krenn (2015)
 
 """
-#*****************************************************************************
+# ****************************************************************************
 #  Copyright (C) 2015 Daniel Krenn <dev@danielkrenn.at>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                http://www.gnu.org/licenses/
-#*****************************************************************************
-from __future__ import print_function
+#                https://www.gnu.org/licenses/
+# ****************************************************************************
 
 from sage.sets.cartesian_product import CartesianProduct
 
@@ -71,18 +70,18 @@ class CartesianProductPoset(CartesianProduct):
         sage: Cl.category()
         Join of Category of finite posets and
         Category of Cartesian products of finite enumerated sets
-        sage: TestSuite(Cl).run()
+        sage: TestSuite(Cl).run(skip=['_test_construction'])
         sage: Cp.category()
         Join of Category of finite posets and
         Category of Cartesian products of finite enumerated sets
-        sage: TestSuite(Cp).run()
+        sage: TestSuite(Cp).run(skip=['_test_construction'])
 
-    .. SEEALSO:
+    .. SEEALSO::
 
         :class:`CartesianProduct`
     """
 
-    def __init__(self, sets, category, order=None, **kwargs):
+    def __init__(self, sets, category, order=None, **kwargs) -> None:
         r"""
         See :class:`CartesianProductPoset` for details.
 
@@ -92,7 +91,7 @@ class CartesianProductPoset(CartesianProduct):
             sage: C = cartesian_product((P, P), order='notexisting')
             Traceback (most recent call last):
             ...
-            ValueError: No order 'notexisting' known.
+            ValueError: no order 'notexisting' known
             sage: C = cartesian_product((P, P), category=(Groups(),))
             sage: C.category()
             Join of Category of groups and Category of posets
@@ -103,7 +102,7 @@ class CartesianProductPoset(CartesianProduct):
             try:
                 self._le_ = getattr(self, 'le_' + order)
             except AttributeError:
-                raise ValueError("No order '%s' known." % (order,))
+                raise ValueError(f"no order '{order}' known")
         else:
             self._le_ = order
 
@@ -112,9 +111,7 @@ class CartesianProductPoset(CartesianProduct):
         if not isinstance(category, tuple):
             category = (category,)
         category = Category.join(category + (Posets(),))
-        super(CartesianProductPoset, self).__init__(
-            sets, category, **kwargs)
-
+        super().__init__(sets, category, **kwargs)
 
     def le(self, left, right):
         r"""
@@ -137,7 +134,7 @@ class CartesianProductPoset(CartesianProduct):
 
         EXAMPLES::
 
-            sage: P = Posets.ChainPoset(10)
+            sage: P = posets.ChainPoset(10)
             sage: def le_sum(left, right):
             ....:     return (sum(left) < sum(right) or
             ....:             sum(left) == sum(right) and left[0] <= right[0])
@@ -152,7 +149,6 @@ class CartesianProductPoset(CartesianProduct):
             False
         """
         return self._le_(left, right)
-
 
     def le_lex(self, left, right):
         r"""
@@ -176,7 +172,7 @@ class CartesianProductPoset(CartesianProduct):
             sage: T = [Q((0, 0)), Q((1, 1)), Q((0, 1)), Q((1, 0))]
             sage: for a in T:
             ....:     for b in T:
-            ....:         assert(Q.le(a, b) == (a <= b))
+            ....:         assert Q.le(a, b) == (a <= b)
             ....:         print('%s <= %s = %s' % (a, b, a <= b))
             (0, 0) <= (0, 0) = True
             (0, 0) <= (1, 1) = True
@@ -218,7 +214,6 @@ class CartesianProductPoset(CartesianProduct):
             return False  # incomparable components
         return True  # equal
 
-
     def le_product(self, left, right):
         r"""
         Test whether ``left`` is component-wise smaller or equal
@@ -235,7 +230,7 @@ class CartesianProductPoset(CartesianProduct):
         A boolean.
 
         The comparison is ``True`` if the result of the
-        comparision in each component is ``True``.
+        comparison in each component is ``True``.
 
         EXAMPLES::
 
@@ -244,7 +239,7 @@ class CartesianProductPoset(CartesianProduct):
             sage: T = [Q((0, 0)), Q((1, 1)), Q((0, 1)), Q((1, 0))]
             sage: for a in T:
             ....:     for b in T:
-            ....:         assert(Q.le(a, b) == (a <= b))
+            ....:         assert Q.le(a, b) == (a <= b)
             ....:         print('%s <= %s = %s' % (a, b, a <= b))
             (0, 0) <= (0, 0) = True
             (0, 0) <= (1, 1) = True
@@ -268,7 +263,6 @@ class CartesianProductPoset(CartesianProduct):
             for l, r, S in
             zip(left.value, right.value, self.cartesian_factors()))
 
-
     def le_native(self, left, right):
         r"""
         Test whether ``left`` is smaller or equal to ``right`` in the order
@@ -291,7 +285,7 @@ class CartesianProductPoset(CartesianProduct):
             sage: T = [Q((0, 0)), Q((1, 1)), Q((0, 1)), Q((1, 0))]
             sage: for a in T:
             ....:     for b in T:
-            ....:         assert(Q.le(a, b) == (a <= b))
+            ....:         assert Q.le(a, b) == (a <= b)
             ....:         print('%s <= %s = %s' % (a, b, a <= b))
             (0, 0) <= (0, 0) = True
             (0, 0) <= (1, 1) = True
@@ -311,7 +305,6 @@ class CartesianProductPoset(CartesianProduct):
             (1, 0) <= (1, 0) = True
         """
         return left.value <= right.value
-
 
     class Element(CartesianProduct.Element):
 
@@ -337,7 +330,8 @@ class CartesianProductPoset(CartesianProduct):
 
             TESTS::
 
-                sage: QQ.CartesianProduct = sage.combinat.posets.cartesian_product.CartesianProductPoset  # needed until #19269 is fixed
+                sage: from sage.combinat.posets.cartesian_product import CartesianProductPoset
+                sage: QQ.CartesianProduct = CartesianProductPoset  # needed until #19269 is fixed
                 sage: def le_sum(left, right):
                 ....:     return (sum(left) < sum(right) or
                 ....:             sum(left) == sum(right) and left[0] <= right[0])
@@ -348,7 +342,6 @@ class CartesianProductPoset(CartesianProduct):
                 True
             """
             return self.parent().le(self, other)
-
 
         def __le__(self, other):
             r"""
@@ -384,7 +377,7 @@ class CartesianProductPoset(CartesianProduct):
                 True
 
             The following example tests that the coercion gets involved in
-            comparisons; it can be simplified once #18182 is in merged.
+            comparisons; it can be simplified once :trac:`18182` is merged.
             ::
 
                 sage: class MyCP(CartesianProductPoset):
@@ -413,7 +406,6 @@ class CartesianProductPoset(CartesianProduct):
             except TypeError:
                 return False
 
-
         def __ge__(self, other):
             r"""
             Return if this element is greater than or equal to ``other``.
@@ -436,7 +428,8 @@ class CartesianProductPoset(CartesianProduct):
 
             TESTS::
 
-                sage: QQ.CartesianProduct = sage.combinat.posets.cartesian_product.CartesianProductPoset  # needed until #19269 is fixed
+                sage: from sage.combinat.posets.cartesian_product import CartesianProductPoset
+                sage: QQ.CartesianProduct = CartesianProductPoset  # needed until #19269 is fixed
                 sage: def le_sum(left, right):
                 ....:     return (sum(left) < sum(right) or
                 ....:             sum(left) == sum(right) and left[0] <= right[0])
@@ -470,7 +463,8 @@ class CartesianProductPoset(CartesianProduct):
 
             TESTS::
 
-                sage: QQ.CartesianProduct = sage.combinat.posets.cartesian_product.CartesianProductPoset  # needed until #19269 is fixed
+                sage: from sage.combinat.posets.cartesian_product import CartesianProductPoset
+                sage: QQ.CartesianProduct = CartesianProductPoset  # needed until #19269 is fixed
                 sage: def le_sum(left, right):
                 ....:     return (sum(left) < sum(right) or
                 ....:             sum(left) == sum(right) and left[0] <= right[0])
@@ -504,7 +498,8 @@ class CartesianProductPoset(CartesianProduct):
 
             TESTS::
 
-                sage: QQ.CartesianProduct = sage.combinat.posets.cartesian_product.CartesianProductPoset  # needed until #19269 is fixed
+                sage: from sage.combinat.posets.cartesian_product import CartesianProductPoset
+                sage: QQ.CartesianProduct = CartesianProductPoset  # needed until #19269 is fixed
                 sage: def le_sum(left, right):
                 ....:     return (sum(left) < sum(right) or
                 ....:             sum(left) == sum(right) and left[0] <= right[0])

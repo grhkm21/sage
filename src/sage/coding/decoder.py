@@ -1,11 +1,13 @@
+# sage.doctest: optional - sage.modules sage.rings.finite_rings
 r"""
-Decoder
+Decoders
 
 Representation of an error-correction algorithm for a code.
 
 AUTHORS:
 
 - David Joyner (2009-02-01): initial version
+
 - David Lucas (2015-06-29): abstract class version
 
 """
@@ -26,15 +28,15 @@ class Decoder(SageObject):
     r"""
     Abstract top-class for :class:`Decoder` objects.
 
-    Every decoder class should inherit from this abstract class.
+    Every decoder class for linear codes (of any metric) should inherit from
+    this abstract class.
 
-    To implement an decoder, you need to:
+    To implement a decoder, you need to:
 
     - inherit from :class:`Decoder`
 
     - call ``Decoder.__init__`` in the subclass constructor.
-      Example: ``super(SubclassName, self).__init__(code, input_space,
-      connected_encoder_name)``.
+      Example: ``super().__init__(code, input_space, connected_encoder_name)``.
       By doing that, your subclass will have all the parameters described above initialized.
 
     - Then, you need to override one of decoding methods, either :meth:`decode_to_code` or
@@ -47,6 +49,89 @@ class Decoder(SageObject):
     - As :class:`Decoder` is not designed to be instantiated, it does not have any representation
       methods. You should implement ``_repr_`` and ``_latex_`` methods in the subclass.
     """
+
+    @classmethod
+    def decoder_type(cls):
+        r"""
+        Returns the set of types of ``self``.
+
+        This method can be called on both an uninstantiated decoder class,
+        or on an instance of a decoder class.
+
+        The types of a decoder are a set of labels commonly associated with
+        decoders which describe the nature and behaviour of the decoding
+        algorithm. It should be considered as an informal descriptor but
+        can be coarsely relied upon for e.g. program logic.
+
+        The following are the most common types and a brief definition:
+
+        ======================  ================================================
+        Decoder type            Definition
+        ======================  ================================================
+        always-succeed          The decoder always returns a closest codeword if
+                                the number of errors is up to the decoding
+                                radius.
+        bounded-distance        Any vector with Hamming distance at most
+                                ``decoding_radius()`` to a codeword is
+                                decodable to some codeword. If ``might-fail`` is
+                                also a type, then this is not a guarantee but an
+                                expectancy.
+        complete                The decoder decodes every word in the ambient
+                                space of the code.
+        dynamic                 Some of the decoder's types will only be
+                                determined at construction time
+                                (depends on the parameters).
+        half-minimum-distance   The decoder corrects up to half the minimum
+                                distance, or a specific lower bound thereof.
+        hard-decision           The decoder uses no information on which
+                                positions are more likely to be in error or not.
+        list-decoder            The decoder outputs a list of likely codewords,
+                                instead of just a single codeword.
+        might-fail              The decoder can fail at decoding even within its
+                                usual promises, e.g. bounded distance.
+        not-always-closest      The decoder does not guarantee to always return a
+                                closest codeword.
+        probabilistic           The decoder has internal randomness which can affect
+                                running time and the decoding result.
+        soft-decision           As part of the input, the decoder takes
+                                reliability information on which positions are
+                                more likely to be in error. Such a decoder only
+                                works for specific channels.
+        ======================  ================================================
+
+
+        EXAMPLES:
+
+        We call it on a class::
+
+            sage: codes.decoders.LinearCodeSyndromeDecoder.decoder_type()
+            {'dynamic', 'hard-decision'}
+
+        We can also call it on a instance of a :class:`Decoder` class::
+
+            sage: G = Matrix(GF(2), [[1, 0, 0, 1], [0, 1, 1, 1]])
+            sage: C = LinearCode(G)
+            sage: D = C.decoder()
+            sage: D.decoder_type()
+            {'complete', 'hard-decision', 'might-error'}
+        """
+        return cls._decoder_type
+
+    def _instance_decoder_type(self):
+        r"""
+        See the documentation of :meth:`decoder_type`.
+
+        EXAMPLES:
+
+        Test to satisfy the doc-testing framework::
+
+            sage: G = Matrix(GF(2), [[1, 0, 0, 1], [0, 1, 1, 1]])
+            sage: C = LinearCode(G)
+            sage: D = C.decoder()
+            sage: D.decoder_type() #indirect doctest
+            {'complete', 'hard-decision', 'might-error'}
+        """
+        return self._decoder_type
 
     def __init__(self, code, input_space, connected_encoder_name):
         r"""
@@ -75,7 +160,7 @@ class Decoder(SageObject):
             ....:   def __init__(self, code):
             ....:       in_space = code.ambient_space()
             ....:       connected_enc = "GeneratorMatrix"
-            ....:       super(DecoderExample, self).__init__(code, in_space, connected_enc)
+            ....:       super().__init__(code, in_space, connected_enc)
 
         We now create a member of our brand new class::
 
@@ -88,10 +173,11 @@ class Decoder(SageObject):
             sage: D.input_space()
             Vector space of dimension 4 over Finite Field of size 2
             sage: D.connected_encoder()
-            Generator matrix-based encoder for Linear code of length 4, dimension 2 over Finite Field of size 2
+            Generator matrix-based encoder for [4, 2] linear code over GF(2)
             sage: D.code()
-            Linear code of length 4, dimension 2 over Finite Field of size 2
+            [4, 2] linear code over GF(2)
         """
+        self.decoder_type = self._instance_decoder_type
         self._code = code
         self._input_space = input_space
         self._connected_encoder_name = connected_encoder_name
@@ -135,24 +221,9 @@ class Decoder(SageObject):
         """
         return not self == other
 
-    def decoder_type(self):
-        r"""
-        Returns the set of types of ``self``. These types describe the nature of ``self``
-        and its decoding algorithm.
-
-        EXAMPLES::
-
-            sage: G = Matrix(GF(2), [[1, 0, 0, 1], [0, 1, 1, 1]])
-            sage: C = LinearCode(G)
-            sage: D = C.decoder()
-            sage: D.decoder_type()
-            {'complete', 'hard-decision', 'might-error', 'unique'}
-        """
-        return self._decoder_type
-
     def decode_to_code(self, r):
         r"""
-        Corrects the errors in ``r`` and returns a codeword.
+        Correct the errors in ``r`` and return a codeword.
 
         This is a default implementation which assumes that the method
         :meth:`decode_to_message` has been implemented, else it returns an exception.
@@ -167,7 +238,8 @@ class Decoder(SageObject):
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: word = vector(GF(2), (1, 1, 0, 0, 1, 1, 0))
             sage: word in C
@@ -187,24 +259,26 @@ class Decoder(SageObject):
 
     def connected_encoder(self):
         r"""
-        Returns the connected encoder of ``self``.
+        Return the connected encoder of ``self``.
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: D = C.decoder()
             sage: D.connected_encoder()
-            Generator matrix-based encoder for Linear code of length 7, dimension 4 over Finite Field of size 2
+            Generator matrix-based encoder for [7, 4] linear code over GF(2)
         """
         return self.code().encoder(encoder_name=self._connected_encoder_name)
 
     def decode_to_message(self, r):
         r"""
-        Decodes ``r`` to the message space of meth:`connected_encoder`.
+        Decode ``r`` to the message space of :meth:`connected_encoder`.
 
-        This is a default implementation, which assumes that the method
-        :meth:`decode_to_code` has been implemented, else it returns an exception.
+        This is a default implementation, which assumes that the
+        method :meth:`decode_to_code` has been implemented, else it
+        returns an exception.
 
         INPUT:
 
@@ -216,7 +290,8 @@ class Decoder(SageObject):
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: word = vector(GF(2), (1, 1, 0, 0, 1, 1, 0))
             sage: w_err = word + vector(GF(2), (1, 0, 0, 0, 0, 0, 0))
@@ -229,25 +304,27 @@ class Decoder(SageObject):
 
     def code(self):
         r"""
-        Returns the code for this :class:`Decoder`.
+        Return the code for this :class:`Decoder`.
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: D = C.decoder()
             sage: D.code()
-            Linear code of length 7, dimension 4 over Finite Field of size 2
+            [7, 4] linear code over GF(2)
         """
         return self._code
 
     def message_space(self):
         r"""
-        Returns the message space of ``self``'s :meth:`connected_encoder`.
+        Return the message space of ``self``'s :meth:`connected_encoder`.
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: D = C.decoder()
             sage: D.message_space()
@@ -257,11 +334,12 @@ class Decoder(SageObject):
 
     def input_space(self):
         r"""
-        Returns the input space of ``self``.
+        Return the input space of ``self``.
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: D = C.decoder()
             sage: D.input_space()
@@ -272,22 +350,24 @@ class Decoder(SageObject):
         else:
             raise NotImplementedError("Decoder does not have an _input_space parameter")
 
-    @abstract_method(optional = True)
+    @abstract_method(optional=True)
     def decoding_radius(self, **kwargs):
         r"""
-        Returns the maximal number of errors that ``self`` is able to correct.
+        Return the maximal number of errors that ``self`` is able to correct.
 
         This is an abstract method and it should be implemented in subclasses.
 
         EXAMPLES::
 
-            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0],[1,0,0,1,1,0,0],[0,1,0,1,0,1,0],[1,1,0,1,0,0,1]])
+            sage: G = Matrix(GF(2), [[1,1,1,0,0,0,0], [1,0,0,1,1,0,0],
+            ....:                    [0,1,0,1,0,1,0], [1,1,0,1,0,0,1]])
             sage: C = LinearCode(G)
             sage: D = codes.decoders.LinearCodeSyndromeDecoder(C)
             sage: D.decoding_radius()
             1
         """
         raise NotImplementedError
+
 
 class DecodingError(Exception):
     r"""

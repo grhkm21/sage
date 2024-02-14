@@ -1,14 +1,11 @@
 """
 Coerce maps
 """
-from __future__ import print_function
-
-import re
 import types
 
-from parent import Set_PythonType
 from sage.structure.parent cimport Parent
 from sage.structure.element cimport Element
+from sage.sets.pythonclass cimport Set_PythonType
 
 cdef object BuiltinMethodType = type(repr)
 
@@ -20,43 +17,90 @@ cdef class DefaultConvertMap(Map):
     """
     This morphism simply calls the codomain's element_constructor method,
     passing in the codomain as the first argument.
+
+    EXAMPLES::
+
+        sage: QQ[['x']].coerce_map_from(QQ)
+        Coercion map:
+          From: Rational Field
+          To:   Power Series Ring in x over Rational Field
     """
-    def __init__(self, domain, codomain, force_use=False):
+    def __init__(self, domain, codomain, category=None):
         """
         TESTS:
 
         Maps of this type are morphisms in the category of sets with
         partial maps (see :trac:`15618`)::
 
-            sage: f = GF(11).convert_map_from(GF(7)); f
+            sage: f = GF(11).convert_map_from(GF(7)); f                                 # needs sage.rings.finite_rings
             Conversion map:
               From: Finite Field of size 7
               To:   Finite Field of size 11
-            sage: f.parent()
-            Set of Morphisms from Finite Field of size 7 to Finite Field of size 11 in Category of sets with partial maps
+            sage: f.parent()                                                            # needs sage.rings.finite_rings
+            Set of Morphisms
+             from Finite Field of size 7
+             to Finite Field of size 11
+             in Category of sets with partial maps
+
+        Test that :trac:`23211` is resolved::
+
+            sage: f._is_coercion                                                        # needs sage.rings.finite_rings
+            False
+            sage: QQ[['x']].coerce_map_from(QQ)._is_coercion
+            True
+
+        This class is deprecated when used directly::
+
+            sage: from sage.structure.coerce_maps import DefaultConvertMap
+            sage: DefaultConvertMap(ZZ, ZZ)
+            doctest:...: DeprecationWarning: DefaultConvertMap is deprecated, use DefaultConvertMap_unique instead.
+            This probably means that _element_constructor_ should be a method and not some other kind of callable
+            See https://github.com/sagemath/sage/issues/26879 for details.
+            Conversion map:
+              From: Integer Ring
+              To:   Integer Ring
         """
+        # The base class DefaultConvertMap is deprecated, only the
+        # derived class DefaultConvertMap_unique should be used.
+        # When removing this deprecation, this class should be merged
+        # into DefaultConvertMap_unique.
+        if not isinstance(self, DefaultConvertMap_unique):
+            from sage.misc.superseded import deprecation_cython as deprecation
+            deprecation(26879, "DefaultConvertMap is deprecated, use DefaultConvertMap_unique instead. This probably means that _element_constructor_ should be a method and not some other kind of callable")
+
         if not isinstance(domain, Parent):
             domain = Set_PythonType(domain)
-        from sage.categories.sets_with_partial_maps import SetsWithPartialMaps
-        parent = domain.Hom(codomain, category=SetsWithPartialMaps())
+        if category is None:
+            from sage.categories.sets_with_partial_maps import SetsWithPartialMaps
+            category = SetsWithPartialMaps()
+        parent = domain.Hom(codomain, category=category)
         Map.__init__(self, parent)
         self._coerce_cost = 100
-        self._force_use = force_use
         if (<Parent>codomain)._element_constructor is None:
             raise RuntimeError("BUG in coercion model, no element constructor for {}".format(type(codomain)))
-        self._repr_type_str = "Coercion" if self._is_coercion else "Conversion"
 
-    cdef dict _extra_slots(self, dict _slots):
-        _slots['_force_use'] = self._force_use
-        _slots['_is_coercion'] = self._is_coercion
-        return Map._extra_slots(self, _slots)
+    def _repr_type(self):
+        r"""
+        Return a printable type for this morphism.
 
-    cdef _update_slots(self, dict _slots):
-        self._force_use = _slots['_force_use']
-        self._is_coercion = _slots['_is_coercion']
-        Map._update_slots(self, _slots)
+        EXAMPLES::
 
-    cpdef Element _call_(self, x):
+            sage: f = GF(11).convert_map_from(GF(7))                                    # needs sage.rings.finite_rings
+            sage: f._repr_type()                                                        # needs sage.rings.finite_rings
+            'Conversion'
+        """
+        return self._repr_type_str or ("Coercion" if self._is_coercion else "Conversion")
+
+    cpdef Element _call_(self, x) noexcept:
+        """
+        Create an element of the codomain from a single element of the domain.
+
+        EXAMPLES::
+
+            sage: f = QQ[['x']].coerce_map_from(QQ)
+            sage: f(2/3).parent()
+            Power Series Ring in x over Rational Field
+        """
         cdef Parent C = self._codomain
         try:
             return C._element_constructor(C, x)
@@ -66,7 +110,16 @@ cdef class DefaultConvertMap(Map):
                 print(type(C._element_constructor), C._element_constructor)
             raise
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
+        """
+        Create an element of the codomain from an element of the domain, with extra arguments.
+
+        EXAMPLES::
+
+            sage: f = QQ[['x']].coerce_map_from(QQ)
+            sage: f(2/3, 4)
+            2/3 + O(x^4)
+        """
         cdef Parent C = self._codomain
         try:
             if len(args) == 0:
@@ -99,7 +152,7 @@ cdef class DefaultConvertMap_unique(DefaultConvertMap):
     used when the element_constructor is a bound method (whose self
     argument is assumed to be bound to the codomain).
     """
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         cdef Parent C = self._codomain
         try:
             return C._element_constructor(x)
@@ -109,7 +162,7 @@ cdef class DefaultConvertMap_unique(DefaultConvertMap):
                 print(type(C._element_constructor), C._element_constructor)
             raise
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
         cdef Parent C = self._codomain
         try:
             if len(args) == 0:
@@ -131,40 +184,41 @@ cdef class DefaultConvertMap_unique(DefaultConvertMap):
 
 cdef class NamedConvertMap(Map):
     """
-    This is used for creating a elements via the _xxx_ methods.
+    This is used for creating elements via the _xxx_ methods.
 
     For example, many elements implement an _integer_ method to
     convert to ZZ, or a _rational_ method to convert to QQ.
     """
 
-    def __init__(self, domain, codomain, method_name, force_use=False):
+    def __init__(self, domain, codomain, method_name):
         """
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.structure.coerce_maps import NamedConvertMap
             sage: var('t')
             t
             sage: mor = NamedConvertMap(SR, QQ['t'], '_polynomial_')
-            sage: mor(t^2/4+1)
+            sage: mor(t^2/4 + 1)
             1/4*t^2 + 1
             sage: mor = NamedConvertMap(SR, GF(7)[['t']], '_polynomial_')
-            sage: mor(t^2/4+1)
+            sage: mor(t^2/4 + 1)
             1 + 2*t^2
         """
         if isinstance(domain, type):
             domain = Set_PythonType(domain)
         Map.__init__(self, domain, codomain)
         self._coerce_cost = 400
-        self._force_use = force_use
         self.method_name = method_name
         self._repr_type_str = "Conversion via %s method" % self.method_name
 
-    cdef dict _extra_slots(self, dict _slots):
+    cdef dict _extra_slots(self) noexcept:
         """
         Helper for copying and pickling.
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.structure.coerce_maps import NamedConvertMap
             sage: var('t')
             t
@@ -174,23 +228,24 @@ cdef class NamedConvertMap(Map):
             Conversion via _polynomial_ method map:
               From: Symbolic Ring
               To:   Univariate Polynomial Ring in t over Rational Field
-            sage: phi == psi         # todo: comparison not implemented
+            sage: phi == psi                    # not implemented
             True
-            sage: psi(t^2/4+1)
+            sage: psi(t^2/4 + 1)
             1/4*t^2 + 1
-            sage: psi(t^2/4+1) == phi(t^2/4+1)
+            sage: psi(t^2/4 + 1) == phi(t^2/4 + 1)
             True
         """
-        _slots['method_name'] = self.method_name
-        _slots['_force_use'] = self._force_use
-        return Map._extra_slots(self, _slots)
+        slots = Map._extra_slots(self)
+        slots['method_name'] = self.method_name
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         """
         Helper for copying and pickling.
 
         EXAMPLES::
 
+            sage: # needs sage.symbolic
             sage: from sage.structure.coerce_maps import NamedConvertMap
             sage: var('t')
             t
@@ -200,18 +255,17 @@ cdef class NamedConvertMap(Map):
             Conversion via _polynomial_ method map:
               From: Symbolic Ring
               To:   Univariate Polynomial Ring in t over Rational Field
-            sage: phi == psi         # todo: comparison not implemented
+            sage: phi == psi                    # not implemented
             True
-            sage: psi(t^2/4+1)
+            sage: psi(t^2/4 + 1)
             1/4*t^2 + 1
-            sage: psi(t^2/4+1) == phi(t^2/4+1)
+            sage: psi(t^2/4 + 1) == phi(t^2/4 + 1)
             True
         """
         self.method_name = _slots['method_name']
-        self._force_use = _slots['_force_use']
         Map._update_slots(self, _slots)
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         EXAMPLES::
 
@@ -233,7 +287,7 @@ cdef class NamedConvertMap(Map):
                 print(type(x), x)
                 print(type(C), C)
                 print(self.method_name)
-            raise TypeError("Cannot coerce {} to {}".format(x, C))
+            raise TypeError(f"cannot coerce {x} to {C}")
         cdef Map m
         cdef Element e = method(C)
         if e is None:
@@ -245,13 +299,13 @@ cdef class NamedConvertMap(Map):
             e = m._call_(e)
         return e
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
         """
         EXAMPLES::
 
             sage: from sage.structure.coerce_maps import NamedConvertMap
-            sage: f = NamedConvertMap(SR, ZZ['x'], '_polynomial_')
-            sage: f(x^2+1, check=True)
+            sage: f = NamedConvertMap(SR, ZZ['x'], '_polynomial_')                      # needs sage.symbolic
+            sage: f(x^2 + 1, check=True)                                                # needs sage.symbolic
             x^2 + 1
         """
         cdef Parent C = self._codomain
@@ -262,11 +316,8 @@ cdef class NamedConvertMap(Map):
 # and constructing a CCallableConvertMap_class if it is bound to the codomain.
 
 cdef class CallableConvertMap(Map):
-    cdef bint _parent_as_first_arg
-    cdef _func
-
     def __init__(self, domain, codomain, func, parent_as_first_arg=None):
-        """
+        r"""
         This lets one easily create maps from any callable object.
 
         This is especially useful to create maps from bound methods.
@@ -283,10 +334,11 @@ cdef class CallableConvertMap(Map):
               From: Integer Ring
               To:   Rational Field
 
-        Create a homomorphism from $\RR$ to $\RR^+$ viewed as additive groups.
+        Create a homomorphism from `\RR` to `\RR^+` viewed as additive groups.
 
         ::
 
+            sage: # needs sage.symbolic
             sage: f = CallableConvertMap(RR, RR, exp, parent_as_first_arg=False)
             sage: f(0)
             1.00000000000000
@@ -314,7 +366,7 @@ cdef class CallableConvertMap(Map):
         except AttributeError:
             self._repr_type_str = "Conversion via %s" % self._func
 
-    cdef dict _extra_slots(self, dict _slots):
+    cdef dict _extra_slots(self) noexcept:
         """
         Helper for copying and pickling.
 
@@ -324,16 +376,17 @@ cdef class CallableConvertMap(Map):
             sage: def foo(P, x): return x^2
             sage: f = CallableConvertMap(ZZ, ZZ, foo)
             sage: g = copy(f)     # indirect doctest
-            sage: f == g          # todo: comparison not implemented
+            sage: f == g          # not implemented (todo: implement comparison)
             True
             sage: f(3) == g(3)
             True
         """
-        _slots['_parent_as_first_arg'] = self._parent_as_first_arg
-        _slots['_func'] = self._func
-        return Map._extra_slots(self, _slots)
+        slots = Map._extra_slots(self)
+        slots['_func'] = self._func
+        slots['_parent_as_first_arg'] = self._parent_as_first_arg
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         """
         Helper for copying and pickling.
 
@@ -343,7 +396,7 @@ cdef class CallableConvertMap(Map):
             sage: def foo(P, x): return x^2
             sage: f = CallableConvertMap(ZZ, ZZ, foo)
             sage: g = copy(f)     # indirect doctest
-            sage: f == g          # todo: comparison not implemented
+            sage: f == g          # not implemented (todo: implement comparison)
             True
             sage: f(3) == g(3)
             True
@@ -352,7 +405,7 @@ cdef class CallableConvertMap(Map):
         self._parent_as_first_arg = _slots['_parent_as_first_arg']
         Map._update_slots(self, _slots)
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         Because self._func may be anything we do a little bit of sanity
         checking (the return value must be an element with the correct parent).
@@ -394,7 +447,7 @@ cdef class CallableConvertMap(Map):
             raise RuntimeError("BUG in coercion model: {} returned element with wrong parent (expected {} got {})".format(self._func, C, y._parent))
         return y
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
         """
         TESTS::
 
@@ -432,7 +485,7 @@ cdef class CallableConvertMap(Map):
 
 
 cdef class CCallableConvertMap_class(Map):
-    cdef Element (*_func)(Parent, object)
+    cdef Element (*_func)(Parent, object) noexcept
     cdef public _name
 
     def __init__(self, domain, codomain, name):
@@ -442,7 +495,7 @@ cdef class CCallableConvertMap_class(Map):
         self._coerce_cost = 10
         self._name = name
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         TESTS::
 
@@ -473,7 +526,7 @@ cdef class CCallableConvertMap_class(Map):
             return "Conversion via c call '%s'" % self._name
 
 
-cdef Map CCallableConvertMap(domain, codomain, void* func, name):
+cdef Map CCallableConvertMap(domain, codomain, void* func, name) noexcept:
     """
     Use this to create a map from domain to codomain by calling func
     (which must be a function pointer taking a Parent and object, and
@@ -487,7 +540,7 @@ cdef Map CCallableConvertMap(domain, codomain, void* func, name):
     map._func = <Element (*)(Parent, object)>func
     return map
 
-cpdef Element _ccall_test_function(codomain, x):
+cpdef Element _ccall_test_function(codomain, x) noexcept:
     """
     For testing CCallableConvertMap_class. Returns x*x*x-x in the codomain.
 
@@ -534,22 +587,23 @@ cdef class ListMorphism(Map):
         self._real_morphism = real_morphism
         self._repr_type_str = "List"
 
-    cdef dict _extra_slots(self, dict _slots):
-        _slots['_real_morphism'] = self._real_morphism
-        return Map._extra_slots(self, _slots)
+    cdef dict _extra_slots(self) noexcept:
+        slots = Map._extra_slots(self)
+        slots['_real_morphism'] = self._real_morphism
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         self._real_morphism = _slots['_real_morphism']
         Map._update_slots(self, _slots)
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         try:
             x = x._data
         except AttributeError:
             x = list(x)
         return self._real_morphism._call_(x)
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
         try:
             x = x._data
         except AttributeError:
@@ -578,7 +632,7 @@ cdef class TryMap(Map):
         else:
             self._error_types = error_types
 
-    cdef dict _extra_slots(self, dict _slots):
+    cdef dict _extra_slots(self) noexcept:
         """
         Helper for copying and pickling.
 
@@ -588,19 +642,20 @@ cdef class TryMap(Map):
             sage: map2 = QQ.coerce_map_from(ZZ)
             sage: map = sage.structure.coerce_maps.TryMap(map1, map2, error_types=(ZeroDivisionError,))
             sage: cmap = copy(map)     # indirect doctest
-            sage: cmap == map          # todo: comparison not implemented
+            sage: cmap == map          # not implemented (todo: implement comparison)
             True
             sage: map(3) == cmap(3)
             True
             sage: map(0) == cmap(0)
             True
         """
-        _slots['_map_p'] = self._map_p
-        _slots['_map_b'] = self._map_b
-        _slots['_error_types'] = self._error_types
-        return Map._extra_slots(self, _slots)
+        slots = Map._extra_slots(self)
+        slots['_map_p'] = self._map_p
+        slots['_map_b'] = self._map_b
+        slots['_error_types'] = self._error_types
+        return slots
 
-    cdef _update_slots(self, dict _slots):
+    cdef _update_slots(self, dict _slots) noexcept:
         """
         Helper for copying and pickling.
 
@@ -610,7 +665,7 @@ cdef class TryMap(Map):
             sage: map2 = QQ.coerce_map_from(ZZ)
             sage: map = sage.structure.coerce_maps.TryMap(map1, map2, error_types=(ZeroDivisionError,))
             sage: cmap = copy(map)     # indirect doctest
-            sage: cmap == map          # todo: comparison not implemented
+            sage: cmap == map          # not implemented (todo: implement comparison)
             True
             sage: map(3) == cmap(3)
             True
@@ -622,7 +677,7 @@ cdef class TryMap(Map):
         self._error_types = _slots['_error_types']
         Map._update_slots(self, _slots)
 
-    cpdef Element _call_(self, x):
+    cpdef Element _call_(self, x) noexcept:
         """
         EXAMPLES::
 
@@ -641,7 +696,7 @@ cdef class TryMap(Map):
         except self._error_types:
             return self._map_b._call_(x)
 
-    cpdef Element _call_with_args(self, x, args=(), kwds={}):
+    cpdef Element _call_with_args(self, x, args=(), kwds={}) noexcept:
         """
         EXAMPLES::
 

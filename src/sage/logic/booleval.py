@@ -23,17 +23,17 @@ We can change our assignment of values by modifying the dictionary::
     sage: booleval.eval_formula(t, d)
     False
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2006 Chris Gorecki <chris.k.gorecki@gmail.com>
 #       Copyright (C) 2013 Paul Scurek <scurek86@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-import logicparser
+from . import logicparser
 
 # dictionary containing variable keys and boolean values
 __vars = {}
@@ -72,8 +72,8 @@ def eval_formula(tree, vdict):
     """
     global __vars
     __vars = vdict
-    b = logicparser.apply_func(tree, eval_f)
-    return b
+    return logicparser.apply_func(tree, eval_f)
+
 
 def eval_f(tree):
     r"""
@@ -103,6 +103,7 @@ def eval_f(tree):
          True
     """
     return eval_op(tree[0], tree[1], tree[2])
+
 
 def eval_op(op, lv, rv):
     r"""
@@ -135,16 +136,16 @@ def eval_op(op, lv, rv):
         True
     """
     lval = rval = None
-    if lv == False:
+    if lv is False:
         lval = False
-    elif lv == True:
+    elif lv is True:
         lval = True
     elif lv is not None:
         lval = __vars[lv]
 
-    if rv == False:
+    if rv is False:
         rval = False
-    elif rv == True:
+    elif rv is True:
         rval = True
     elif rv is not None:
         rval = __vars[rv]

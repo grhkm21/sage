@@ -2,8 +2,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to the Sage Tutorial!
-=============================
+.. _tutorial:
+
+========================
+Welcome to Sage Tutorial
+========================
 
 Sage is free, open-source math software that supports research and
 teaching in algebra, geometry, number theory, cryptography,
@@ -42,5 +45,4 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

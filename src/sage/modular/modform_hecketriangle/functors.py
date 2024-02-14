@@ -1,3 +1,4 @@
+# sage.doctest: needs sage.combinat sage.graphs
 r"""
 Functor construction for all spaces
 
@@ -7,27 +8,30 @@ AUTHORS:
 
 """
 
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2013-2014 Jonas Jermann <jjermann2@gmail.com>
 #
 #  Distributed under the terms of the GNU General Public License (GPL)
 #  as published by the Free Software Foundation; either version 2 of
 #  the License, or (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
-from sage.rings.all import ZZ, QQ, infinity
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
+from sage.rings.infinity import infinity
 
-from sage.categories.functor                     import Functor
-from sage.categories.pushout                     import ConstructionFunctor
-from sage.categories.sets_cat                    import Sets
-from sage.structure.parent                       import Parent
+from sage.categories.functor import Functor
+from sage.categories.pushout import ConstructionFunctor
+from sage.categories.sets_cat import Sets
+from sage.structure.parent import Parent
+from sage.structure.unique_representation import UniqueRepresentation
 from sage.categories.commutative_additive_groups import CommutativeAdditiveGroups
-from sage.categories.rings                       import Rings
+from sage.categories.rings import Rings
 
-from constructor                                 import FormsSpace, FormsRing
-from abstract_space                              import FormsSpace_abstract
-from subspace                                    import SubSpaceForms
+from .constructor import FormsSpace, FormsRing
+from .abstract_space import FormsSpace_abstract
+from .subspace import SubSpaceForms
 
 
 def _get_base_ring(ring, var_name="d"):
@@ -45,7 +49,7 @@ def _get_base_ring(ring, var_name="d"):
 
     Otherwise return ``ring``.
 
-    The base ring is used in the construction of the correponding
+    The base ring is used in the construction of the corresponding
     ``FormsRing`` or ``FormsSpace``. In particular in the construction
     of holomorphic forms of degree (0, 1). For (binary)
     operations a general ring element is considered (coerced to)
@@ -75,16 +79,16 @@ def _get_base_ring(ring, var_name="d"):
         True
     """
 
-    #from sage.rings.fraction_field import is_FractionField
+    # from sage.rings.fraction_field import is_FractionField
     from sage.rings.polynomial.polynomial_ring import is_PolynomialRing
     from sage.categories.pushout import FractionField as FractionFieldFunctor
 
     base_ring = ring
-    #if (is_FractionField(base_ring)):
+    # if (is_FractionField(base_ring)):
     #    base_ring = base_ring.base()
     if (base_ring.construction() and base_ring.construction()[0] == FractionFieldFunctor()):
         base_ring = base_ring.construction()[1]
-    if (is_PolynomialRing(base_ring) and base_ring.ngens()==1 and base_ring.variable_name()==var_name):
+    if (is_PolynomialRing(base_ring) and base_ring.ngens() == 1 and base_ring.variable_name() == var_name):
         base_ring = base_ring.base()
     if (base_ring.construction() and base_ring.construction()[0] == FractionFieldFunctor()):
         base_ring = base_ring.construction()[1]
@@ -125,7 +129,7 @@ def ConstantFormsSpaceFunctor(group):
     r"""
     Construction functor for the space of constant forms.
 
-    When determening a common parent between a ring
+    When determining a common parent between a ring
     and a forms ring or space this functor is first
     applied to the ring.
 
@@ -137,8 +141,7 @@ def ConstantFormsSpaceFunctor(group):
         sage: ConstantFormsSpaceFunctor(4)
         ModularFormsFunctor(n=4, k=0, ep=1)
     """
-
-    return FormsSpaceFunctor("holo", group, QQ(0), ZZ(1))
+    return FormsSpaceFunctor("holo", group, QQ.zero(), ZZ.one())
 
 
 class FormsSubSpaceFunctor(ConstructionFunctor):
@@ -214,10 +217,10 @@ class FormsSubSpaceFunctor(ConstructionFunctor):
 
             sage: F(BaseFacade(ZZ))
             Subspace of dimension 1 of CuspForms(n=4, k=12, ep=1) over Integer Ring
-            sage: F(BaseFacade(CC))
-            Subspace of dimension 1 of CuspForms(n=4, k=12, ep=1) over Complex Field with 53 bits of precision
-            sage: F(CC)
-            ModularFormsRing(n=4) over Complex Field with 53 bits of precision
+            sage: F(BaseFacade(QQ))
+            Subspace of dimension 1 of CuspForms(n=4, k=12, ep=1) over Integer Ring
+            sage: F(QQ)
+            ModularFormsRing(n=4) over Integer Ring
 
             sage: ambient_space_functor = FormsSpaceFunctor("holo", group=4, k=0, ep=1)
             sage: F = FormsSubSpaceFunctor(ambient_space_functor, [1])
@@ -225,8 +228,6 @@ class FormsSubSpaceFunctor(ConstructionFunctor):
             FormsSubSpaceFunctor with 1 generator for the ModularFormsFunctor(n=4, k=0, ep=1)
             sage: F(BaseFacade(ZZ))
             Subspace of dimension 1 of ModularForms(n=4, k=0, ep=1) over Integer Ring
-            sage: F(CC)
-            Subspace of dimension 1 of ModularForms(n=4, k=0, ep=1) over Complex Field with 53 bits of precision
         """
 
         ambient_space = self._ambient_space_functor(R)
@@ -326,13 +327,9 @@ class FormsSubSpaceFunctor(ConstructionFunctor):
             sage: ss_functor1 == ss_functor2
             False
         """
-
-        if (type(self) is type(other) and
-            self._ambient_space_functor == other._ambient_space_functor and
-            self._generators == other._generators):
-                return True
-        else:
-            return False
+        return (type(self) is type(other) and
+                self._ambient_space_functor == other._ambient_space_functor and
+                self._generators == other._generators)
 
 
 class FormsSpaceFunctor(ConstructionFunctor):
@@ -347,7 +344,7 @@ class FormsSpaceFunctor(ConstructionFunctor):
     between a forms space and a ring which is not a ``BaseFacade``).
     """
 
-    from analytic_type import AnalyticType
+    from .analytic_type import AnalyticType
     AT = AnalyticType()
 
     rank = 10
@@ -383,7 +380,7 @@ class FormsSpaceFunctor(ConstructionFunctor):
         """
 
         Functor.__init__(self, Rings(), CommutativeAdditiveGroups())
-        from space import canonical_parameters
+        from .space import canonical_parameters
         (self._group, R, self._k, self._ep, n) = canonical_parameters(group, ZZ, k, ep)
 
         self._analytic_type = self.AT(analytic_type)
@@ -488,7 +485,7 @@ class FormsSpaceFunctor(ConstructionFunctor):
 
         if isinstance(other, FormsSpaceFunctor):
             group = _common_subgroup(self._group, other._group)
-            if group == None:
+            if group is None:
                 return None
             analytic_type = self._analytic_type + other._analytic_type
             if (self._k == other._k) and (self._ep == other._ep):
@@ -497,7 +494,7 @@ class FormsSpaceFunctor(ConstructionFunctor):
                 return FormsRingFunctor(analytic_type, group, True)
         elif isinstance(other, FormsRingFunctor):
             group = _common_subgroup(self._group, other._group)
-            if group == None:
+            if group is None:
                 return None
             red_hom = other._red_hom
             analytic_type = self._analytic_type + other._analytic_type
@@ -515,15 +512,11 @@ class FormsSpaceFunctor(ConstructionFunctor):
             sage: functor1 == functor2
             False
         """
-
-        if (type(self) is type(other) and
-            self._group == other._group and
-            self._analytic_type == other._analytic_type and
-            self._k == other._k and
-            self._ep == other._ep):
-                return True
-        else:
-            return False
+        return (type(self) is type(other) and
+                self._group == other._group and
+                self._analytic_type == other._analytic_type and
+                self._k == other._k and
+                self._ep == other._ep)
 
 
 class FormsRingFunctor(ConstructionFunctor):
@@ -538,7 +531,7 @@ class FormsRingFunctor(ConstructionFunctor):
     between a forms ring and a ring which is not a ``BaseFacade``).
     """
 
-    from analytic_type import AnalyticType
+    from .analytic_type import AnalyticType
     AT = AnalyticType()
 
     rank = 10
@@ -574,7 +567,7 @@ class FormsRingFunctor(ConstructionFunctor):
         """
 
         Functor.__init__(self, Rings(), Rings())
-        from graded_ring import canonical_parameters
+        from .graded_ring import canonical_parameters
         (self._group, R, red_hom, n) = canonical_parameters(group, ZZ, red_hom)
         self._red_hom = bool(red_hom)
         self._analytic_type = self.AT(analytic_type)
@@ -679,14 +672,14 @@ class FormsRingFunctor(ConstructionFunctor):
 
         if isinstance(other, FormsSpaceFunctor):
             group = _common_subgroup(self._group, other._group)
-            if group == None:
+            if group is None:
                 return None
             red_hom = self._red_hom
             analytic_type = self._analytic_type + other._analytic_type
             return FormsRingFunctor(analytic_type, group, red_hom)
         elif isinstance(other, FormsRingFunctor):
             group = _common_subgroup(self._group, other._group)
-            if group == None:
+            if group is None:
                 return None
             red_hom = self._red_hom & other._red_hom
             analytic_type = self._analytic_type + other._analytic_type
@@ -704,17 +697,12 @@ class FormsRingFunctor(ConstructionFunctor):
             sage: functor1 == functor2
             False
         """
-
-        if (type(self) is type(other) and
-            self._group == other._group and
-            self._analytic_type == other._analytic_type and
-            self._red_hom == other._red_hom):
-                return True
-        else:
-            return False
+        return (type(self) is type(other) and
+                self._group == other._group and
+                self._analytic_type == other._analytic_type and
+                self._red_hom == other._red_hom)
 
 
-from sage.structure.unique_representation import UniqueRepresentation
 class BaseFacade(Parent, UniqueRepresentation):
     r"""
     BaseFacade of a ring.
@@ -735,7 +723,7 @@ class BaseFacade(Parent, UniqueRepresentation):
     ring element. Hence we use the ``BaseFacade`` to
     distinguish the two cases.
 
-    Since the ``BaseFacade`` of a ring embedds into that ring,
+    Since the ``BaseFacade`` of a ring embeds into that ring,
     a common base (resp. a coercion) between the two (or even a
     more general ring) can be found, namely the ring
     (not the ``BaseFacade`` of it).
@@ -755,11 +743,10 @@ class BaseFacade(Parent, UniqueRepresentation):
             sage: CC.has_coerce_map_from(BaseFacade(ZZ))
             True
         """
-
         Parent.__init__(self, facade=ring, category=Rings())
         self._ring = _get_base_ring(ring)
         # The BaseFacade(R) coerces/embeds into R, used in pushout
-        self.register_embedding(self.Hom(self._ring,Sets())(lambda x: x))
+        self.register_embedding(self.Hom(self._ring, Sets())(lambda x: x))
 
     def __repr__(self):
         r"""
@@ -771,5 +758,4 @@ class BaseFacade(Parent, UniqueRepresentation):
             sage: BaseFacade(ZZ)
             BaseFacade(Integer Ring)
         """
-
         return "BaseFacade({})".format(self._ring)

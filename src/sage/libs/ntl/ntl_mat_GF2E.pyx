@@ -1,3 +1,10 @@
+# distutils: libraries = NTL_LIBRARIES gmp m
+# distutils: extra_compile_args = NTL_CFLAGS
+# distutils: include_dirs = NTL_INCDIR
+# distutils: library_dirs = NTL_LIBDIR
+# distutils: extra_link_args = NTL_LIBEXTRA
+# distutils: language = c++
+
 #*****************************************************************************
 #       Copyright (C) 2005 William Stein <wstein@gmail.com>
 #
@@ -23,22 +30,24 @@
 #
 ##############################################################################
 
-include "cysignals/signals.pxi"
+from cysignals.signals cimport sig_on, sig_off
+from sage.ext.cplusplus cimport ccrepr
+
 include 'misc.pxi'
 include 'decl.pxi'
 
 from cpython.object cimport Py_EQ, Py_NE
-from ntl_GF2E cimport ntl_GF2E
-from ntl_GF2EContext import ntl_GF2EContext
-from ntl_GF2EContext cimport ntl_GF2EContext_class
+from sage.libs.ntl.ntl_GF2E cimport ntl_GF2E
+from sage.libs.ntl.ntl_GF2EContext import ntl_GF2EContext
+from sage.libs.ntl.ntl_GF2EContext cimport ntl_GF2EContext_class
 from sage.rings.integer cimport Integer
 from sage.misc.randstate cimport randstate, current_randstate
 
 from sage.libs.ntl.ntl_ZZ import unpickle_class_args
 
-cdef class ntl_mat_GF2E(object):
+cdef class ntl_mat_GF2E():
     r"""
-    The \class{mat_GF2E} class implements arithmetic with matrices over $GF(2**x)$.
+    The \class{mat_GF2E} class implements arithmetic with matrices over `GF(2**x)`.
     """
     def __init__(self, modulus = None, nrows=0, ncols=0, v=None):
         """
@@ -69,7 +78,7 @@ cdef class ntl_mat_GF2E(object):
             [0x0 0x0 0x0 0x0 0x0]
             [0x0 0x0 0x0 0x0 0x0]
             ]
-            sage: A= matrix(k,5,5,[k.fetch_int(_%(2^4)) for _ in range(25)])
+            sage: A = matrix(k, 5, 5, [k.from_integer(i % 2^4) for i in range(25)])
             sage: ntl.mat_GF2E(ctx, A)
             [[0x0 0x1 0x2 0x3 0x4]
             [0x5 0x6 0x7 0x8 0x9]
@@ -84,8 +93,8 @@ cdef class ntl_mat_GF2E(object):
         cdef unsigned long _nrows, _ncols
         cdef unsigned long i, j
 
-        import sage.matrix.matrix
-        if sage.matrix.matrix.is_Matrix(nrows):
+        from sage.structure.element import is_Matrix
+        if is_Matrix(nrows):
             _nrows = nrows.nrows()
             _ncols = nrows.ncols()
             v     = nrows.list()
@@ -127,14 +136,14 @@ cdef class ntl_mat_GF2E(object):
             self.c = <ntl_GF2EContext_class>ntl_GF2EContext(modulus)
             self.c.restore_c()
 
-    cdef ntl_GF2E _new_element(self):
+    cdef ntl_GF2E _new_element(self) noexcept:
         cdef ntl_GF2E r
         self.c.restore_c()
         r = ntl_GF2E.__new__(ntl_GF2E)
         r.c = self.c
         return r
 
-    cdef ntl_mat_GF2E _new(self):
+    cdef ntl_mat_GF2E _new(self) noexcept:
         cdef ntl_mat_GF2E r
         self.c.restore_c()
         r = ntl_mat_GF2E.__new__(ntl_mat_GF2E)
@@ -161,7 +170,7 @@ cdef class ntl_mat_GF2E(object):
 
     def __reduce__(self):
         """
-        EXAMPLE::
+        EXAMPLES::
 
             sage: k.<a> = GF(2^4)
             sage: ctx = ntl.GF2EContext(k)
@@ -186,7 +195,7 @@ cdef class ntl_mat_GF2E(object):
             '[[[] [1]]\n[[] [1]]\n]'
         """
         self.c.restore_c()
-        return mat_GF2E_to_PyString(&self.x)
+        return ccrepr(self.x)
 
     def __mul__(ntl_mat_GF2E self, other):
         """
@@ -196,7 +205,7 @@ cdef class ntl_mat_GF2E(object):
             sage: ntl.GF2XHexOutput(1)
             sage: m = ntl.mat_GF2E(ctx, 5,5,[0..24])
             sage: n = ntl.mat_GF2E(ctx, 5,5,[3..27])
-            sage: m*n ## indirect doctest
+            sage: m*n  # indirect doctest
             [[0x87 0x04 0xc4 0xc7 0x87]
             [0x32 0x84 0x17 0x63 0x73]
             [0xa1 0x46 0x25 0xcd 0x2f]
@@ -207,8 +216,8 @@ cdef class ntl_mat_GF2E(object):
         cdef ntl_mat_GF2E r = self._new()
         if not isinstance(other, ntl_mat_GF2E):
             other = ntl_mat_GF2E(other, self.c)
-        if not self.c is (<ntl_mat_GF2E>other).c:
-            raise ValueError("You can not perform arithmetic with matrices over different fields.")
+        if self.c is not (<ntl_mat_GF2E>other).c:
+            raise ValueError("You cannot perform arithmetic with matrices over different fields.")
         sig_on()
         mat_GF2E_mul(r.x, self.x, (<ntl_mat_GF2E>other).x)
         sig_off()
@@ -222,7 +231,7 @@ cdef class ntl_mat_GF2E(object):
             sage: m = ntl.mat_GF2E(ctx, 5,5,[0..24])
             sage: n = ntl.mat_GF2E(ctx, 5,5,[3..27])
             sage: ntl.GF2XHexOutput(0)
-            sage: m-n ## indirect doctest
+            sage: m-n  # indirect doctest
             [[[1 1] [1 0 1] [1 1 1] [1 0 1] [1 1]]
             [[1 0 1 1] [1 1 1 1] [1 0 1 1] [1 1] [1 0 1]]
             [[1 1 1] [1 0 1] [1 1] [1 0 1 1 1] [1 1 1 1 1]]
@@ -233,8 +242,8 @@ cdef class ntl_mat_GF2E(object):
         cdef ntl_mat_GF2E r = self._new()
         if not isinstance(other, ntl_mat_GF2E):
             other = ntl_mat_GF2E(other, self.c)
-        if not self.c is (<ntl_mat_GF2E>other).c:
-            raise ValueError("You can not perform arithmetic with matrices over different fields.")
+        if self.c is not (<ntl_mat_GF2E>other).c:
+            raise ValueError("You cannot perform arithmetic with matrices over different fields.")
         sig_on()
         mat_GF2E_sub(r.x, self.x, (<ntl_mat_GF2E>other).x)
         sig_off()
@@ -247,7 +256,7 @@ cdef class ntl_mat_GF2E(object):
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
             sage: m = ntl.mat_GF2E(ctx, 5,5,[0..24])
             sage: n = ntl.mat_GF2E(ctx, 5,5,[3..27])
-            sage: m+n ## indirect doctest
+            sage: m+n   # indirect doctest
             [[[1 1] [1 0 1] [1 1 1] [1 0 1] [1 1]]
             [[1 0 1 1] [1 1 1 1] [1 0 1 1] [1 1] [1 0 1]]
             [[1 1 1] [1 0 1] [1 1] [1 0 1 1 1] [1 1 1 1 1]]
@@ -258,8 +267,8 @@ cdef class ntl_mat_GF2E(object):
         cdef ntl_mat_GF2E r = self._new()
         if not isinstance(other, ntl_mat_GF2E):
             other = ntl_mat_GF2E(other, self.c)
-        if not self.c is (<ntl_mat_GF2E>other).c:
-            raise ValueError("You can not perform arithmetic with matrices over different fields.")
+        if self.c is not (<ntl_mat_GF2E>other).c:
+            raise ValueError("You cannot perform arithmetic with matrices over different fields.")
         sig_on()
         mat_GF2E_add(r.x, self.x, (<ntl_mat_GF2E>other).x)
         sig_off()
@@ -271,7 +280,7 @@ cdef class ntl_mat_GF2E(object):
 
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
             sage: m = ntl.mat_GF2E(ctx, 5,5,[0..24])
-            sage: -m == m ## indirect doctest
+            sage: -m == m  # indirect doctest
             True
         """
         cdef ntl_mat_GF2E r = self._new()
@@ -286,7 +295,7 @@ cdef class ntl_mat_GF2E(object):
 
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
             sage: m = ntl.mat_GF2E(ctx, 5,5,[0..24])
-            sage: m**2 == m*m ## indirect doctest
+            sage: m**2 == m*m  # indirect doctest
             True
         """
         cdef ntl_mat_GF2E r = self._new()
@@ -380,7 +389,7 @@ cdef class ntl_mat_GF2E(object):
             raise IndexError("array index out of range")
 
         if not (<ntl_GF2E>x).c is self.c:
-            raise ValueError("You can not assign elements from different fields.")
+            raise ValueError("You cannot assign elements from different fields.")
 
         self.c.restore_c()
 
@@ -436,17 +445,18 @@ cdef class ntl_mat_GF2E(object):
         sig_off()
         return r
 
-    def gauss(self,ncols=-1):
-        """
-        Performs unitary row operations so as to bring this matrix
-        into row echelon form.  If the optional argument \code{ncols}
-        is supplied, stops when first ncols columns are in echelon
-        form.  The return value is the rank (or the rank of the first
-        ncols columns).
+    def gauss(self, ncols=-1):
+        r"""
+        Perform unitary row operations so as to bring this matrix
+        into row echelon form.
+
+        If the optional argument ``ncols`` is supplied, stops when
+        first ``ncols`` columns are in echelon form.  The return value
+        is the rank (or the rank of the first ``ncols`` columns).
 
         INPUT:
 
-        - ``ncols`` - number of columns to process (default: all)
+        - ``ncols`` -- number of columns to process (default: all)
 
         EXAMPLES::
 
@@ -469,10 +479,15 @@ cdef class ntl_mat_GF2E(object):
         EXAMPLES::
 
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
-            sage: m = ntl.mat_GF2E(ctx, 2,2,[ntl.GF2E_random(ctx) for x in xrange(2*2)])
+            sage: m = ntl.mat_GF2E(ctx, 2,2,[ntl.GF2E_random(ctx) for x in range(2*2)])
             sage: ntl.GF2XHexOutput(0)
-            sage: m.list()
+            sage: l = m.list(); l  # random
             [[1 1 0 0 1 0 1 1], [1 1 1 0 1 1 1], [0 1 1 1 1 0 0 1], [0 1 0 1 1 1]]
+            sage: len(l) == 4
+            True
+            sage: all(a.modulus_context() is ctx for a in l)
+            True
+
         """
         return [self[i,j] for i in range(self.NumRows()) for j in range(self.x.NumCols())]
 
@@ -557,7 +572,7 @@ cdef class ntl_mat_GF2E(object):
 
     def __invert__(self):
         """
-        Return $X = A^{-1}$; an error is raised if A is singular.
+        Return `X = A^{-1}`; an error is raised if A is singular.
 
         EXAMPLES::
 
@@ -608,10 +623,10 @@ cdef class ntl_mat_GF2E(object):
 
     def image(self):
         """
-        The rows of X are computed as basis of A's row space.  X is is
+        The rows of X are computed as basis of A's row space.  X is
         row echelon form.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
             sage: m = ntl.mat_GF2E(ctx, 3,3,[0..24])
@@ -633,7 +648,7 @@ cdef class ntl_mat_GF2E(object):
         Computes a basis for the kernel of the map ``x -> x*A``, where
         ``x`` is a row vector.
 
-        EXAMPLE::
+        EXAMPLES::
 
             sage: ctx = ntl.GF2EContext([1,1,0,1,1,0,0,0,1])
             sage: m = ntl.mat_GF2E(ctx, 3,3,[0..24])
@@ -664,21 +679,39 @@ cdef class ntl_mat_GF2E(object):
             sage: k.<a> = GF(2^4)
             sage: ctx = ntl.GF2EContext(k)
             sage: ntl.GF2XHexOutput(1)
-            sage: A = ntl.mat_GF2E(ctx, 100,100)
-            sage: A.randomize()
-            sage: len([e for e in A.list() if e!=0])
-            9346
+            sage: A = ntl.mat_GF2E(ctx, 100, 100)
+            sage: expected_non_zeros = 100 * 100 * (1 - 1.0/2^4)
+            sage: observed = lambda : len([e for e in A.list() if e!=0])
+            sage: n = 0; s = 0
+            sage: def add_samples():
+            ....:     global n, s, A
+            ....:     for i in range(10):
+            ....:         A.randomize()
+            ....:         n += 1
+            ....:         s += observed() - expected_non_zeros
+
+            sage: add_samples()
+            sage: while abs(s*1.0/n) > 10: add_samples()
+            sage: while abs(s*1.0/n) > 5: add_samples()  # long time
 
             sage: A = ntl.mat_GF2E(ctx, 100,100)
             sage: A.randomize(nonzero=True)
             sage: len([e for e in A.list() if e!=0])
             10000
 
-            sage: A = ntl.mat_GF2E(ctx, 100,100)
-            sage: A.randomize(nonzero=True, density=0.1)
-            sage: len([e for e in A.list() if e!=0])
-            994
+            sage: expected_non_zeros = 1000
+            sage: n = 0; s = 0
+            sage: def add_samples():
+            ....:     global n, s, A
+            ....:     for i in range(10):
+            ....:         A = ntl.mat_GF2E(ctx, 100,100)
+            ....:         A.randomize(nonzero=True, density=0.1)
+            ....:         n += 1
+            ....:         s += observed() - expected_non_zeros
 
+            sage: add_samples()
+            sage: while abs(s*1.0/n) > 10: add_samples()
+            sage: while abs(s*1.0/n) > 5: add_samples()  # long time
         """
         cdef long i,j
         cdef GF2E_c tmp
@@ -693,27 +726,27 @@ cdef class ntl_mat_GF2E(object):
 
         if not nonzero:
             if _density == 1.0:
-                for i in xrange(self.x.NumRows()):
-                    for j in xrange(self.x.NumCols()):
+                for i in range(self.x.NumRows()):
+                    for j in range(self.x.NumCols()):
                         tmp = GF2E_random()
                         mat_GF2E_setitem(&self.x, i, j, &tmp)
             else:
-                for i in xrange(self.x.NumRows()):
-                    for j in xrange(self.x.NumCols()):
+                for i in range(self.x.NumRows()):
+                    for j in range(self.x.NumCols()):
                         if rstate.c_rand_double() <= _density:
                             tmp = GF2E_random()
                             mat_GF2E_setitem(&self.x, i, j, &tmp)
         else:
             if _density == 1.0:
-                for i in xrange(self.x.NumRows()):
-                    for j in xrange(self.x.NumCols()):
+                for i in range(self.x.NumRows()):
+                    for j in range(self.x.NumCols()):
                         tmp = GF2E_random()
                         while GF2E_IsZero(tmp):
                             tmp = GF2E_random()
                         mat_GF2E_setitem(&self.x, i, j, &tmp)
             else:
-                for i in xrange(self.x.NumRows()):
-                    for j in xrange(self.x.NumCols()):
+                for i in range(self.x.NumRows()):
+                    for j in range(self.x.NumCols()):
                         if rstate.c_rand_double() <= _density:
                             tmp = GF2E_random()
                             while GF2E_IsZero(tmp):

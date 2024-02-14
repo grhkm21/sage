@@ -1,9 +1,19 @@
+# distutils: sources = sage/rings/bernmm/bern_modp.cpp sage/rings/bernmm/bern_modp_util.cpp sage/rings/bernmm/bern_rat.cpp
+# distutils: libraries = NTL_LIBRARIES pthread gmp
+# distutils: extra_compile_args = NTL_CFLAGS
+# distutils: include_dirs = NTL_INCDIR
+# distutils: library_dirs = NTL_LIBDIR
+# distutils: extra_link_args = NTL_LIBEXTRA
+# distutils: depends = sage/rings/bernmm/bern_modp.h sage/rings/bernmm/bern_modp_util.h sage/rings/bernmm/bern_rat.h
+# distutils: language = c++
+# distutils: define_macros = USE_THREADS=1 THREAD_STACK_SIZE=4096
+
 r"""
 Cython wrapper for bernmm library
 
 AUTHOR:
 
-    - David Harvey (2008-06): initial version
+- David Harvey (2008-06): initial version
 """
 
 #*****************************************************************************
@@ -14,8 +24,9 @@ AUTHOR:
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
 
-include "sage/ext/cdefs.pxi"
-include "cysignals/signals.pxi"
+from cysignals.signals cimport sig_on, sig_off
+
+from sage.libs.gmp.types cimport mpq_t
 
 
 cdef extern from "bernmm/bern_rat.h":
@@ -31,18 +42,18 @@ from sage.rings.rational cimport Rational
 
 def bernmm_bern_rat(long k, int num_threads = 1):
     r"""
-    Computes k-th Bernoulli number using a multimodular algorithm.
+    Compute `k`-th Bernoulli number using a multimodular algorithm.
     (Wrapper for bernmm library.)
 
     INPUT:
 
-    - k -- non-negative integer
-    - num_threads -- integer >= 1, number of threads to use
+    - ``k`` -- non-negative integer
+    - ``num_threads`` -- integer `\geq 1`, number of threads to use
 
     COMPLEXITY:
 
-        Pretty much quadratic in $k$. See the paper "A multimodular algorithm
-        for computing Bernoulli numbers", David Harvey, 2008, for more details.
+    Pretty much quadratic in `k`. See the paper "A multimodular algorithm
+    for computing Bernoulli numbers", David Harvey, 2008, for more details.
 
     EXAMPLES::
 
@@ -87,18 +98,18 @@ def bernmm_bern_rat(long k, int num_threads = 1):
 
 def bernmm_bern_modp(long p, long k):
     r"""
-    Computes $B_k \mod p$, where $B_k$ is the k-th Bernoulli number.
+    Compute `B_k \mod p`, where `B_k` is the `k`-th Bernoulli number.
 
-    If $B_k$ is not $p$-integral, returns -1.
+    If `B_k` is not `p`-integral, return `-1`.
 
     INPUT:
 
-        p -- a prime
-        k -- non-negative integer
+    - ``p`` -- a prime
+    - ``k`` -- non-negative integer
 
     COMPLEXITY:
 
-        Pretty much linear in $p$.
+    Pretty much linear in `p`.
 
     EXAMPLES::
 

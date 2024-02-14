@@ -8,12 +8,12 @@ AUTHORS:
 - William Stein (2007-08)
 """
 
-from sage.matrix.all import MatrixSpace
+from sage.matrix.matrix_space import MatrixSpace
 from sage.modular.dirichlet import DirichletGroup
 
-import constructor
+from . import constructor
 
-from theta import theta2_qexp, theta_qexp
+from .theta import theta2_qexp, theta_qexp
 from copy import copy
 
 def half_integral_weight_modform_basis(chi, k, prec):
@@ -24,14 +24,11 @@ def half_integral_weight_modform_basis(chi, k, prec):
 
     INPUT:
 
+    - ``chi`` -- a Dirichlet character with modulus divisible by 16
 
-    -  ``chi`` - a Dirichlet character with modulus
-       divisible by 16
+    - ``k`` -- an odd integer > 1
 
-    -  ``k`` - an odd integer = 1
-
-    -  ``prec`` - a positive integer
-
+    - ``prec`` -- a positive integer
 
     OUTPUT: a list of power series
 
@@ -113,36 +110,31 @@ def half_integral_weight_modform_basis(chi, k, prec):
     isomorphic to `S_{k/2}(\chi)` via the map
     `(a,b) \mapsto a/\Theta_3`.
     """
-
     if chi.modulus() % 16:
         raise ValueError("the character must have modulus divisible by 16")
 
-    if not k%2:
-        raise ValueError("k (=%s) must be odd"%k)
+    if not k % 2:
+        raise ValueError("k (=%s) must be odd" % k)
 
     if k < 3:
-        raise ValueError("k (=%s) must be at least 3"%k)
+        raise ValueError("k (=%s) must be at least 3" % k)
 
     chi = chi.minimize_base_ring()
     psi = chi.parent()(DirichletGroup(4, chi.base_ring()).gen())
     eps = chi*psi**((k+1) // 2)
     eps = eps.minimize_base_ring()
-    M   = constructor.ModularForms(eps, (k+1)//2)
-    C   = M.cuspidal_subspace()
-    B   = C.basis()
+    M = constructor.ModularForms(eps, (k+1)//2)
+    C = M.cuspidal_subspace()
+    B = C.basis()
 
     # This computation of S below -- of course --dominates the whole function.
-    #from sage.misc.all import cputime
-    #tm  = cputime()
-    #print "Computing basis..."
-    S   = [f.q_expansion(prec) for f in B]
-    #print "Time to compute basis", cputime(tm)
+    S = [f.q_expansion(prec) for f in B]
 
-    T2  = theta2_qexp(prec)
-    T3  = theta_qexp(prec)
-    n   = len(S)
-    MS  = MatrixSpace(M.base_ring(), 2*n, prec)
-    A   = copy(MS.zero_matrix())
+    T2 = theta2_qexp(prec)
+    T3 = theta_qexp(prec)
+    n = len(S)
+    MS = MatrixSpace(M.base_ring(), 2*n, prec)
+    A = copy(MS.zero_matrix())
 
     for i in range(n):
         T2f = T2*S[i]
@@ -158,4 +150,3 @@ def half_integral_weight_modform_basis(chi, k, prec):
     R = a_vec[0].parent()
     t3 = R(T3)
     return [R(a) / t3 for a in a_vec]
-
