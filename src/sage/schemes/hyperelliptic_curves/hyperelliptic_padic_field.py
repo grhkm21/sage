@@ -792,7 +792,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             sage: HK = H.change_ring(K)
             sage: w = HK.invariant_differential()
             sage: P = HK(0,1)
-            sage: QQ = HK(5, 1 + 3*5^3 + 2*5^4 + 2*5^5 + 3*5^7)
+            sage: Q = HK(5, 1 + 3*5^3 + 2*5^4 + 2*5^5 + 3*5^7)
             sage: x,y = HK.monsky_washnitzer_gens()
             sage: (2*y*w).coleman_integral(P,Q)
             5 + O(5^9)

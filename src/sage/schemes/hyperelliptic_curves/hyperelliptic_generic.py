@@ -483,15 +483,15 @@ class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
             # Special case for char 2
             if K.characteristic() == 2:
                 R = f.parent()
-                F = R([-a,b,1])
+                F = R([-a, b, 1])
                 ys = F.roots(L, multiplicities=False)
             else:
                 D = b*b + 4*a
-                if D.is_square():
-                    ys = [(-b+d)/2 for d in D.sqrt(all=True)]
+                # When D is not a square, ys will be an empty list
+                ys = [(-b+d)/2 for d in D.sqrt(all=True, extend=False)]
 
         if ys:
-            ys.sort() # Make lifting determinsitic
+            ys.sort()  # Make lifting deterministic
             if all:
                 return [self.point([x, y, one], check=False) for y in ys]
             else:
