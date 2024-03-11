@@ -112,9 +112,9 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
         TO = TermOrder("wdegrevlex", [1, d, 1])
         R = PolynomialRing(R_PP.base_ring(), R_PP.ngens(), R_PP._names, order=TO)
         X, Y, Z = R.gens()
-        # Let's use uppercase for projective coordinates!
+        # Use uppercase for projective coordinates
         # Evaluate f and h as polynomials in PP
-        # TODO (grhkm) :I think you can do something like f.list()
+        # TODO (grhkm): I think you can do something like f.list()
         f_ = sum(c * X**mon.degree() for c, mon in zip(f.coefficients(), f.monomials()))
         if h is not None:
             h_ = sum(c * X**mon.degree() for c, mon in zip(h.coefficients(), h.monomials()))
@@ -211,6 +211,22 @@ class HyperellipticCurve_generic(AlgebraicScheme_subscheme_toric):
             f, h = self._hyperelliptic_polynomials
             P = PolynomialRing(K, var)
             return (P(f), P(h))
+
+    def _point(self, *args, **kwds):
+        r"""
+        Construct a point of ``self``. For internal use only.
+
+        TESTS::
+
+            sage: R.<x> = GF(103)[]
+            sage: f = x^6 - 10 * x + 9
+            sage: H = HyperellipticCurve(f)
+            sage: H._point(1, -3, 0)
+            [1 : 100 : 0]
+            sage: H._point(6, 7)
+            [6 : 7 : 1]
+        """
+
 
     def is_singular(self):
         r"""
